@@ -574,6 +574,29 @@ bdb_env_aref()
 
 #endif
 
+VALUE
+bdb_protect_close(obj)
+    VALUE obj;
+{
+    return rb_funcall2(obj, rb_intern("close"), 0, 0);
+}
+
+static void
+env_finalize(ary)
+    VALUE ary;
+{
+    VALUE db;
+
+    if (BDB_VALID(ary, T_ARRAY)) {
+	while ((db = rb_ary_pop(ary)) != Qnil) {
+	    if (BDB_VALID(db, T_DATA) &&
+		rb_respond_to(db, rb_intern("close"))) {
+		rb_protect(bdb_protect_close, db, 0);
+	    }
+	}
+    }
+}
+
 static void
 bdb_final(envst)
     bdb_ENV *envst;
@@ -581,14 +604,8 @@ bdb_final(envst)
     VALUE db, obj;
     bdb_ENV *thst;
 
-    if (envst->db_ary) {
-	while ((db = rb_ary_pop(envst->db_ary)) != Qnil) {
-	    if (rb_respond_to(db, rb_intern("close"))) {
-		rb_funcall(db, rb_intern("close"), 0, 0);
-	    }
-	}
-	envst->db_ary = 0;
-    }
+    env_finalize(envst->db_ary);
+    envst->db_ary = 0;
     if (envst->envp) {
 	struct env_iv *eiv;
 	int i;
@@ -602,11 +619,16 @@ bdb_final(envst)
 #endif
 	}
 	envst->envp = NULL;
-	for (i = 0; i < RARRAY(bdb_env_internal_ary)->len; ++i) {
-	    eiv = (struct env_iv *)DATA_PTR(RARRAY(bdb_env_internal_ary)->ptr[i]);
-	    if (eiv->envst == envst) {
-		rb_ary_delete_at(bdb_env_internal_ary, i);
-		break;
+	if (BDB_VALID(bdb_env_internal_ary, T_ARRAY)) {
+	    for (i = 0; i < RARRAY(bdb_env_internal_ary)->len; ++i) {
+		db = RARRAY(bdb_env_internal_ary)->ptr[i];
+		if (BDB_VALID(db, T_DATA)) {
+		    Data_Get_Struct(db, struct env_iv, eiv);
+		    if (eiv->envst == envst) {
+			rb_ary_delete_at(bdb_env_internal_ary, i);
+			break;
+		    }
+		}
 	    }
 	}
     }
@@ -615,7 +637,7 @@ bdb_final(envst)
 	int status;
 
 	obj = rb_protect(bdb_env_aref, 0, &status);
-	if (!status && !NIL_P(obj)) {
+	if (!status && BDB_VALID(obj, T_DATA)) {
 	    Data_Get_Struct(obj, bdb_ENV, thst);
 	    if (thst == envst) {
 		rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, Qnil);

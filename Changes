@@ -221,3 +221,10 @@
 --- 0.4.0
 
 * adapted for debian (extconf.rb)
+
+--- 0.4.8
+
+* corrected various bug with 1.8.0
+* corrected lock_id_free, marshal with recnum
+   (Thanks YAEGASHI Takeshi <t@keshi.org>)
+   - added method Lockid#close

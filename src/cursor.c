@@ -5,9 +5,11 @@ bdb_cursor_free(dbcst)
     bdb_DBC *dbcst;
 {
     bdb_DB *dbst;
-    if (dbcst->dbc && dbcst->db) {
-	GetDB(dbcst->db, dbst);
-        bdb_test_error(dbcst->dbc->c_close(dbcst->dbc));
+    if (dbcst->dbc && BDB_VALID(dbcst->db, T_DATA)) {
+	Data_Get_Struct(dbcst->db, bdb_DB, dbst);
+	if (dbst->dbp) {
+	    dbcst->dbc->c_close(dbcst->dbc);
+	}
         dbcst->dbc = NULL;
 	dbcst->db = 0;
     }

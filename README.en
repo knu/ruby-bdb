@@ -16,15 +16,15 @@
  
  You may need to specify :
 
-  --with-db-include-dir=<include file directory for bdb>
+  --with-db-include=<include file directory for bdb>
 
-  --with-db-lib-dir=<library directory for bdb>
+  --with-db-lib=<library directory for bdb>
 
-  --with-db-prefix=<prefix for library and include of bdb>
+  --with-db-dir=<prefix for library and include of bdb>
 
  Example :
  
-  ruby extconf.rb --with-db-prefix=/home/ts/local
+  ruby extconf.rb --with-db-dir=/home/ts/local
 
 * examples 
 

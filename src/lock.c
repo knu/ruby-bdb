@@ -1,20 +1,47 @@
 #include "bdb.h"
 
-static void lockid_mark(dblockid)
+static void 
+lockid_mark(dblockid)
     bdb_LOCKID *dblockid;
 {
     rb_gc_mark(dblockid->env);
 }
 
-static void lockid_free(dblockid)
+void
+bdb_clean_env(env, obj)
+    VALUE env, obj;
+{
+    bdb_ENV *envst;
+    int i;
+
+    if (BDB_VALID(env, T_DATA)) {
+	Data_Get_Struct(env, bdb_ENV, envst);
+	if (BDB_VALID(envst->db_ary, T_ARRAY)) {
+	    for (i = 0; i < RARRAY(envst->db_ary)->len; ++i) {
+		if (RARRAY(envst->db_ary)->ptr[i] == obj) {
+		    rb_ary_delete_at(envst->db_ary, i);
+		}
+	    }
+	}
+    }
+}
+    
+static void 
+lockid_free(dblockid)
     bdb_LOCKID *dblockid;
 {
 #if BDB_VERSION >= 40000
     bdb_ENV *envst;
 
-    GetEnvDB(dblockid->env, envst);
-    bdb_test_error(envst->envp->lock_id_free(envst->envp, dblockid->lock));
+    if (BDB_VALID(dblockid->env, T_DATA)) {
+	bdb_clean_env(dblockid->env, dblockid->self);
+	Data_Get_Struct(dblockid->env, bdb_ENV, envst);
+	if (envst->envp) {
+	    envst->envp->lock_id_free(envst->envp, dblockid->lock);
+	}
+    }
 #endif
+    free(dblockid);
 }
 
 static VALUE
@@ -42,7 +69,32 @@ bdb_env_lockid(obj)
     a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, lockid_mark, lockid_free, dblockid);
     dblockid->lock = idp;
     dblockid->env = obj;
+    dblockid->self = a;
+#if BDB_VERSION >= 40000
+    rb_ary_push(envst->db_ary, a);
+#endif
     return a;
+}
+
+static VALUE
+bdb_env_lockid_close(obj)
+    VALUE obj;
+{
+    bdb_ENV *envst;
+    bdb_LOCKID *dblockid;
+
+    Data_Get_Struct(obj, bdb_LOCKID, dblockid);
+    if (BDB_VALID(dblockid->env, T_DATA)) { 
+	bdb_clean_env(dblockid->env, obj);
+#if BDB_VERSION >= 40000
+	GetEnvDB(dblockid->env, envst);
+	if (envst->envp) {
+	    bdb_test_error(envst->envp->lock_id_free(envst->envp, dblockid->lock));
+	}
+#endif
+	dblockid->env = 0;
+    }
+    return Qnil;
 }
 
 static VALUE
@@ -265,7 +317,8 @@ bdb_lockid_get(argc, argv, obj)
 #endif
     lockst->env = lockid->env;
     return res;
-} 
+}
+
 
 #if BDB_VERSION < 30000
 #define GetLock(obj, lock, envst)		\
@@ -459,6 +512,7 @@ void bdb_init_lock()
     rb_define_method(bdb_cLockid, "get", bdb_lockid_get, -1);
     rb_define_method(bdb_cLockid, "lock_vec", bdb_lockid_vec, -1);
     rb_define_method(bdb_cLockid, "vec", bdb_lockid_vec, -1);
+    rb_define_method(bdb_cLockid, "close", bdb_env_lockid_close, 0);
     bdb_cLock = rb_define_class_under(bdb_cLockid, "Lock", rb_cObject);
     rb_undef_method(CLASS_OF(bdb_cLock), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLock), "new");

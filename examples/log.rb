@@ -17,7 +17,7 @@ BDB::Env.cleanup "tmp", true
 env = BDB::Env.open "tmp", BDB::CREATE | BDB::INIT_LOG, "thread" => false
 lsn = []
 100.times do |i|
-   lsn.push env.log_put "test toto #{i}"
+   lsn.push(env.log_put("test toto #{i}"))
 end
 env.log_flush
 i = 0
@@ -42,8 +42,7 @@ end
 end
 env.close
 
-BDB::Env.cleanup "tmp"
-
+BDB::Env.cleanup "tmp" 
 
 max_log = 45000
 env = BDB::Env.open "tmp", BDB::CREATE | BDB::INIT_LOG, "thread" => false, 
@@ -58,6 +57,7 @@ rec = []
       lsn.push j
    end
 end
+env.log_flush
 log_file = Dir.glob("tmp/log*")
 l = nil
 lsn.each_with_index do |ls, i|
@@ -82,5 +82,6 @@ end
 env.close
 
 BDB::Env.cleanup "tmp"
+
 
 

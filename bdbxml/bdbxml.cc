@@ -904,15 +904,15 @@ xb_con_i_close(xcon *con, int flags, bool protect)
 
     if (!con->closed) {
 	db_ary = 0;
-	if (con->txn_val) {
+	if (BDB_VALID(con->txn_val, T_DATA)) {
 	    Data_Get_Struct(con->txn_val, bdb_TXN, txnst);
 	    db_ary = txnst->db_ary;
 	}
-	else if (con->env_val) {
+	else if (BDB_VALID(con->env_val, T_DATA)) {
 	    Data_Get_Struct(con->env_val, bdb_ENV, envst);
 	    db_ary = envst->db_ary;
 	}
-	if (db_ary) {
+	if (BDB_VALID(db_ary, T_ARRAY)) {
 	    for (i = 0; i < RARRAY(db_ary)->len; ++i) {
 		if (RARRAY(db_ary)->ptr[i] == con->ori_val) {
 		    rb_ary_delete_at(db_ary, i);
@@ -920,14 +920,17 @@ xb_con_i_close(xcon *con, int flags, bool protect)
 		}
 	    }
 	}
-	else {
+	else if (BDB_VALID(xb_internal_ary, T_ARRAY)) {
 	    struct xb_eiv *civ;
 	    
 	    for (i = 0; i < RARRAY(xb_internal_ary)->len; ++i) {
-		Data_Get_Struct(RARRAY(xb_internal_ary)->ptr[i], struct xb_eiv, civ);
-		if (civ->con == con) {
-		    rb_ary_delete_at(xb_internal_ary, i);
-		    break;
+		if (BDB_VALID(RARRAY(xb_internal_ary)->ptr[i], T_DATA)) {
+		    Data_Get_Struct(RARRAY(xb_internal_ary)->ptr[i], 
+				    struct xb_eiv, civ);
+		    if (civ->con == con) {
+			rb_ary_delete_at(xb_internal_ary, i);
+			break;
+		    }
 		}
 	    }
 	}
@@ -2103,9 +2106,13 @@ extern "C" {
 	VALUE con;
 	struct xb_eiv *civ;
 
-	while ((con = rb_ary_pop(xb_internal_ary)) != Qnil) {
-	    Data_Get_Struct(con, struct xb_eiv, civ);
-	    rb_funcall2(civ->con->ori_val, rb_intern("close"), 0, 0);
+	if (BDB_VALID(xb_internal_ary, T_ARRAY)) {
+	    while ((con = rb_ary_pop(xb_internal_ary)) != Qnil) {
+		if (BDB_VALID(con, T_DATA)) {
+		    Data_Get_Struct(con, struct xb_eiv, civ);
+		    rb_funcall2(civ->con->ori_val, rb_intern("close"), 0, 0);
+		}
+	    }
 	}
     }
 

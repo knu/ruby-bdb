@@ -179,8 +179,9 @@ test_load_dyna1(obj, key, val)
 				     bdb_id_call, 1, tmp);
 		}
 	    }
+	    tmp = rb_funcall(dbst->marshal, bdb_id_load, 1, tmp);
 	}
-	delegst->key = rb_funcall(dbst->marshal, bdb_id_load, 1, tmp);
+	delegst->key = tmp;
 	delegst->obj = res;
 	res = del;
     }
@@ -679,7 +680,7 @@ bdb_i_close(dbst, flags)
 	    Data_Get_Struct(dbst->env, bdb_ENV, envst);
 	    db_ary = envst->db_ary;
 	}
-	if (db_ary) {
+	if (BDB_VALID(db_ary, T_ARRAY)) {
 	    for (i = 0; i < RARRAY(db_ary)->len; ++i) {
 		if (RARRAY(db_ary)->ptr[i] == dbst->ori_val) {
 		    rb_ary_delete_at(db_ary, i);
@@ -687,15 +688,17 @@ bdb_i_close(dbst, flags)
 		}
 	    }
 	}
-	else {
+	else if (BDB_VALID(bdb_internal_ary, T_ARRAY)) {
 	    struct bdb_eiv *biv;
 
 	    for (i = 0; i < RARRAY(bdb_internal_ary)->len; ++i) {
-		Data_Get_Struct(RARRAY(bdb_internal_ary)->ptr[i], 
-				struct bdb_eiv, biv);
-		if (biv->dbst == dbst) {
-		    rb_ary_delete_at(bdb_internal_ary, i);
-		    break;
+		if (BDB_VALID(RARRAY(bdb_internal_ary)->ptr[i], T_DATA)) {
+		    Data_Get_Struct(RARRAY(bdb_internal_ary)->ptr[i], 
+				    struct bdb_eiv, biv);
+		    if (biv->dbst == dbst) {
+			rb_ary_delete_at(bdb_internal_ary, i);
+			break;
+		    }
 		}
 	    }
 	}
@@ -808,7 +811,7 @@ bdb_close(argc, argv, obj)
     VALUE *argv;
     VALUE obj;
 {
-    VALUE opt, db_ary;
+    VALUE opt;
     bdb_DB *dbst, *thst;
     bdb_ENV *envst;
     int flags = 0, i, status;
@@ -831,12 +834,6 @@ bdb_close(argc, argv, obj)
 	}
     }
     return Qnil;
-}
-
-static VALUE
-bdb_int_close(obj)
-{
-    return rb_funcall2(obj, rb_intern("close"), 0, 0);
 }
 
 #if BDB_VERSION < 30100
@@ -1416,7 +1413,7 @@ bdb_s_open(argc, argv, obj)
 {
     VALUE res = rb_funcall2(obj, rb_intern("new"), argc, argv);
     if (rb_block_given_p()) {
-	return rb_ensure(rb_yield, res, bdb_int_close, res);
+	return rb_ensure(rb_yield, res, bdb_protect_close, res);
     }
     return res;
 }
@@ -3718,9 +3715,15 @@ bdb_finalize(ary)
     VALUE bdb;
     struct bdb_eiv *biv;
 
-    while ((bdb = rb_ary_pop(bdb_internal_ary)) != Qnil) {
-	Data_Get_Struct(bdb, struct bdb_eiv, biv);
-	rb_funcall2(biv->bdb, rb_intern("close"), 0, 0);
+    if (BDB_VALID(bdb_internal_ary, T_ARRAY)) {
+	while ((bdb = rb_ary_pop(bdb_internal_ary)) != Qnil) {
+	    if (BDB_VALID(bdb, T_DATA)) {
+		Data_Get_Struct(bdb, struct bdb_eiv, biv);
+		if (BDB_VALID(biv->bdb, T_DATA)) {
+		    rb_protect(bdb_protect_close, biv->bdb, 0);
+		}
+	    }
+	}
     }
 }
 

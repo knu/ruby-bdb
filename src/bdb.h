@@ -171,7 +171,7 @@ typedef struct {
 
 typedef struct {
     unsigned int lock;
-    VALUE env;
+    VALUE env, self;
 } bdb_LOCKID;
 
 typedef struct {
@@ -197,7 +197,7 @@ struct deleg_class {
 };
 
 struct dblsnst {
-    VALUE env;
+    VALUE env, self;
     DB_LSN *lsn;
 #if BDB_VERSION >= 40000
     DB_LOGC *cursor;
@@ -314,6 +314,8 @@ struct dblsnst {
 
 #define GetTxnDB(obj, txnst) GetTxnDBErr(obj, txnst, bdb_eFatal)
 
+#define BDB_VALID(obj, type) (RTEST(obj) && BUILTIN_TYPE(obj) == (type))
+
 #if BDB_VERSION < 30000
 #define TEST_INIT_LOCK(dbst) (((dbst)->options & BDB_INIT_LOCK)?DB_RMW:0)
 #else
@@ -360,9 +362,10 @@ extern VALUE bdb_each_value _((int, VALUE *, VALUE));
 extern VALUE bdb_each_valuec _((int, VALUE *, VALUE, int, VALUE));
 extern VALUE bdb_each_kvc _((int, VALUE *, VALUE, int, VALUE, int));
 extern void bdb_env_errcall _((const char *, char *));
+extern VALUE bdb_protect_close _((VALUE));
 extern VALUE bdb_env_open_db _((int, VALUE *, VALUE));
 extern VALUE bdb_get _((int, VALUE *, VALUE));
-extern VALUE bdb_has_env _((VALUE));
+extern VALUE bdb_env_p _((VALUE));
 extern VALUE bdb_has_value _((VALUE, VALUE));
 extern VALUE bdb_index _((VALUE, VALUE));
 extern VALUE bdb_internal_value _((VALUE, VALUE, VALUE, int));
@@ -379,6 +382,7 @@ extern void bdb_init_cursor _((void));
 extern void bdb_init_lock _((void));
 extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
+extern void bdb_clean_env _((VALUE, VALUE));
 extern VALUE bdb_makelsn _((VALUE));
 extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
 extern VALUE bdb_return_err _((void));

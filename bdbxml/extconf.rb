@@ -1,6 +1,9 @@
 require 'mkmf'
 load './myconfig'
 
+$DLDFLAGS ||= ""
+$LDFLAGS ||= ""
+
 def addld(key, path, lib)
    libs = if lib.kind_of?(Array)
 	     "-l" + lib.join(" -l")

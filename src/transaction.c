@@ -7,7 +7,7 @@ bdb_txn_free(txnst)
     bdb_TXN *txnst;
 {
     if (txnst->txnid && txnst->parent == NULL) {
-        bdb_test_error(txn_abort(txnst->txnid));
+        txn_abort(txnst->txnid);
         txnst->txnid = NULL;
 #if BDB_VERSION >= 40000
 	if (txnst->txn_cxx) free(txnst->txn_cxx);
@@ -62,11 +62,7 @@ bdb_txn_close_all(obj, result)
 
     GetTxnDB(obj, txnst);
     GetEnvDB(txnst->env, envst);
-    for (i = 0; i < RARRAY(envst->db_ary)->len; ++i) {
-	if (RARRAY(envst->db_ary)->ptr[i] == obj) {
-	    rb_ary_delete_at(envst->db_ary, i);
-	}
-    }
+    bdb_clean_env(txnst->env, obj);
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
 	if (rb_respond_to(db, id_txn_close)) {
 	    rb_funcall(db, id_txn_close, 2, result, Qtrue);

@@ -11,12 +11,16 @@ static void
 free_lsn(lsnst)
     struct dblsnst *lsnst;
 {
+    if (BDB_VALID(lsnst->env, T_DATA)) {
+	bdb_clean_env(lsnst->env, lsnst->self);
+    }
 #if BDB_VERSION >= 40000
-    if (lsnst->cursor) {
+    if (lsnst->cursor && BDB_VALID(lsnst->env, T_DATA)) {
 	bdb_ENV *envst;
+
 	Data_Get_Struct(lsnst->env, bdb_ENV, envst);
 	if (envst->envp) {
-	    bdb_test_error(lsnst->cursor->close(lsnst->cursor, 0));
+	    lsnst->cursor->close(lsnst->cursor, 0);
 	}
 	lsnst->cursor = 0;
     }
@@ -37,6 +41,8 @@ bdb_makelsn(env)
     res = Data_Make_Struct(bdb_cLsn, struct dblsnst, mark_lsn, free_lsn, lsnst);
     lsnst->env = env;
     lsnst->lsn = ALLOC(DB_LSN);
+    lsnst->self = res;
+    rb_ary_push(envst->db_ary, res);
     return res;
 }
 
@@ -344,7 +350,7 @@ bdb_env_log_hcae(obj)
 #else
 
 static VALUE
-bdb_log_cursor_close(obj)
+log_cursor_close(obj)
     VALUE obj;
 {
     struct dblsnst *lsnst;
@@ -355,6 +361,17 @@ bdb_log_cursor_close(obj)
 	lsnst->cursor = 0;
     }
     return Qnil;
+}
+
+static VALUE
+bdb_log_cursor_close(obj)
+    VALUE obj;
+{
+    struct dblsnst *lsnst;
+
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+    bdb_clean_env(lsnst->env, obj);
+    return log_cursor_close(obj);
 }
 
 static VALUE
@@ -384,7 +401,7 @@ bdb_log_i_get(obj)
     bdb_ENV *envst;
     struct dblsnst *lsnst;
 
-    bdb_log_cursor_close(obj);
+    log_cursor_close(obj);
     Data_Get_Struct(obj, struct dblsnst, lsnst);
     GetEnvDB(lsnst->env, envst);
     bdb_test_error(envst->envp->log_cursor(envst->envp, &lsnst->cursor, 0));
@@ -618,7 +635,7 @@ bdb_log_register(obj, a)
     if (TYPE(a) != T_STRING) {
 	rb_raise(bdb_eFatal, "Need a filename");
     }
-    if (bdb_has_env(obj) == Qfalse) {
+    if (bdb_env_p(obj) == Qfalse) {
 	rb_raise(bdb_eFatal, "Database must be open in an Env");
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
@@ -654,7 +671,7 @@ bdb_log_unregister(obj)
     bdb_DB *dbst;
     bdb_ENV *envst;
 
-    if (bdb_has_env(obj) == Qfalse) {
+    if (bdb_env_p(obj) == Qfalse) {
 	rb_raise(bdb_eFatal, "Database must be open in an Env");
     }
     Data_Get_Struct(obj, bdb_DB, dbst);

@@ -28,6 +28,7 @@ unique = if with_config("uniquename")
 	 end
 
 version  = with_config('db-version', "-4.1,-4.0,-4,4,3,2,").split(/,/, -1)
+version << "" if version.empty?
 
 catch(:done) do
    version.each do |with_ver|
