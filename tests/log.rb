@@ -1,4 +1,4 @@
-#!/usr/bin/ruby -I.. -Itests
+#!/usr/bin/ruby -I../src -Isrc -Itests
 require 'bdb'
 require 'runit_'
 

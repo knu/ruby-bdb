@@ -75,3 +75,6 @@
 * added warning for BDB::Unknown and Recnum, Recno
 * corrected re-definition of RECNUM
 
+-- 0.2.0
+
+* better interface with Marshal (experimental)

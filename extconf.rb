@@ -1,35 +1,63 @@
 #!/usr/bin/ruby
 require 'mkmf'
-if prefix = with_config("db-prefix")
-    $CFLAGS += " -I#{prefix}/include"
-    $LDFLAGS += " -L#{prefix}/lib"
-end
-$CFLAGS += " -DBDB_NO_THREAD" if enable_config("thread") == false
-$CFLAGS += " -I#{incdir}" if incdir = with_config("db-include-dir")
-$LDFLAGS += " -I#{libdir}" if libdir = with_config("db-lib-dir")
-if ! have_library("db", "db_version") 
-    raise "libdb.a not found"
-end
-create_makefile("bdb")
-begin
-   make = open("Makefile", "a")
-   make.print <<-EOF
 
+def rule(target, clean = nil)
+   wr = "#{target}:
+\t@for subdir in $(SUBDIRS); do \\
+\t\t(cd $${subdir} && $(MAKE) #{target}); \\
+\tdone;
+"
+   if clean != nil
+      wr << "\t@-rm tmp/* tests/tmp/* 2> /dev/null\n"
+      wr << "\t@rm Makefile\n" if clean
+   end
+   wr
+end
+
+subdirs = Dir["*"].select do |subdir|
+   File.file?(subdir + "/extconf.rb")
+end
+
+begin
+   make = open("Makefile", "w")
+   make.print <<-EOF
+SUBDIRS = #{subdirs.join(' ')}
+
+#{rule('all')}
+#{rule('clean', false)}
+#{rule('distclean', true)}
+#{rule('realclean', true)}
+#{rule('install')}
+#{rule('site-install')}
+#{rule('unknown')}
 %.html: %.rd
 	rd2 $< > ${<:%.rd=%.html}
 
-HTML = bdb.html docs/arraylike.html  docs/env.html  docs/transaction.html \\
-       docs/cursor.html docs/hashlike.html
+   EOF
+   make.print "HTML = bdb.html"
+   Dir.foreach('docs') do |x|
+      make.print " \\\n\tdocs/#{x}" if x.sub!(/\.rd$/, ".html")
+   end
+   make.puts
+   make.print <<-EOF
 
 html: $(HTML)
 
-test: $(DLLIB) $(HTML)
+test: $(DLLIB)
    EOF
    Dir.foreach('tests') do |x|
       next if /^\./ =~ x || /(_\.rb|~)$/ =~ x
       next if FileTest.directory?(x)
-      make.print "	ruby tests/#{x}\n"
+      make.print "\truby tests/#{x}\n"
    end
 ensure
    make.close
+end
+
+subdirs.each do |subdir|
+   STDERR.puts("#{$0}: Entering directory `#{subdir}'")
+   Dir.chdir(subdir)
+   system("#{Config::CONFIG['RUBY_INSTALL_NAME']} extconf.rb " + ARGV.join(" "))
+   Dir.chdir("..")
+   STDERR.puts("#{$0}: Leaving directory `#{subdir}'")
 end
