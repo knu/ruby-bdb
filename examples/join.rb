@@ -31,14 +31,14 @@ sec2 = {
    "inexpensive" => ["apple", "pear", "raspberry"]
 }
 
-env = BDB::Env.open "tmp", BDB::INIT_MPOOL | BDB::CREATE
+env = BDB::Env.open "tmp", BDB::INIT_MPOOL | BDB::CREATE | BDB::INIT_LOCK
 
 p = BDB::Hash.open "primary", nil, BDB::CREATE | BDB::TRUNCATE, "env" => env
 primary.each do |k, v|
    p[k] = v
 end
 
-s1 = env.open_db BDB::Hash, "sec1", nil, BDB::CREATE | BDB::TRUNCATE,
+s1 = env.open_db BDB::Hash, "sec1", nil, "w",
    "set_flags" => BDB::DUP | BDB::DUPSORT
 sec1.each do |k, v|
    v.each do |v1|
@@ -46,7 +46,7 @@ sec1.each do |k, v|
    end
 end
 
-s2 = BDB::Hash.open "sec2", nil, BDB::CREATE | BDB::TRUNCATE, "env" => env,
+s2 = BDB::Hash.open "sec2", nil, "w", "env" => env,
    "set_flags" => BDB::DUP | BDB::DUPSORT
 sec2.each do |k, v|
    v.each do |v2|

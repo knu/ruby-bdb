@@ -28,6 +28,9 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
            created using a subdatabase name.
 
        : ((|flags|))
+         The flags must be the string "r", "r+", "w", "w+", "a", "a+" or
+         and integer value.
+
          The flags value must be set to 0 or by bitwise inclusively
          OR'ing together one or more of the following values
 

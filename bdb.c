@@ -190,10 +190,18 @@ dbenv_i_options(obj, db_st)
     }
 #if DB_VERSION_MAJOR == 3
     else if (strcmp(options, "set_region_init") == 0) {
+#if DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14
+        test_error(db_env_set_region_init(NUM2INT(value)));
+#else
         test_error(dbenvp->set_region_init(dbenvp, NUM2INT(value)));
+#endif
     }
     else if (strcmp(options, "set_tas_spins") == 0) {
+#if DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14
+        test_error(db_env_set_tas_spins(NUM2INT(value)));
+#else
         test_error(dbenvp->set_tas_spins(dbenvp, NUM2INT(value)));
+#endif
     }
     else if (strcmp(options, "set_tx_max") == 0) {
         test_error(dbenvp->set_tx_max(dbenvp, NUM2INT(value)));
@@ -481,8 +489,13 @@ db_set_func(dbenvst)
     db_ENV *dbenvst;
 {
 #if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14
+    test_error(db_env_set_func_sleep(db_func_sleep));
+    test_error(db_env_set_func_yield(db_func_yield));
+#else
     test_error(dbenvst->dbenvp->set_func_sleep(dbenvst->dbenvp, db_func_sleep));
     test_error(dbenvst->dbenvp->set_func_yield(dbenvst->dbenvp, db_func_yield));
+#endif
 #else
     test_error(db_jump_set((void *)db_func_sleep, DB_FUNC_SLEEP));
     test_error(db_jump_set((void *)db_func_yield, DB_FUNC_YIELD));
@@ -902,7 +915,23 @@ db_open_common(argc, argv, obj)
     case 5:
 	mode = NUM2INT(e);
     case 4:
-	flags = NUM2INT(d);
+	if (TYPE(d) == T_STRING) {
+	    if (strcmp(RSTRING(d)->ptr, "r") == 0)
+		flags = DB_RDONLY;
+	    else if (strcmp(RSTRING(d)->ptr, "r+") == 0)
+		flags = 0;
+	    else if (strcmp(RSTRING(d)->ptr, "w") == 0 ||
+		     strcmp(RSTRING(d)->ptr, "w+") == 0)
+		flags = DB_CREATE | DB_TRUNCATE;
+	    else if (strcmp(RSTRING(d)->ptr, "a") == 0 ||
+		     strcmp(RSTRING(d)->ptr, "a+") == 0)
+		flags = DB_CREATE;
+	    else {
+		rb_raise(db_eFatal, "falgs must be r, r+, w, w+ a or a+");
+	    }
+	}
+	else
+	    flags = NUM2INT(d);
     }
     if (NIL_P(a))
         name = NULL;
@@ -1170,7 +1199,12 @@ dbenv_open_db(argc, argv, obj)
     else {
 	argv[argc - 1] = rb_hash_new();
     }
-    rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("env"), obj);
+    if (rb_obj_is_kind_of(obj, db_cEnv)) {
+	rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("env"), obj);
+    }
+    else {
+	rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("txn"), obj);
+    }
     return db_s_new(argc, argv, cl);
 }
 
@@ -2034,7 +2068,13 @@ dbhash_stat(obj)
     rb_hash_aset(hash, rb_tainted_str_new2("hash_magic"), INT2NUM(stat->hash_magic));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_version"), INT2NUM(stat->hash_version));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_pagesize"), INT2NUM(stat->hash_pagesize));
+#if DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_nkeys"), INT2NUM(stat->hash_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(stat->hash_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_ndata"), INT2NUM(stat->hash_ndata));
+#else
     rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(stat->hash_nrecs));
+#endif
     rb_hash_aset(hash, rb_tainted_str_new2("hash_nelem"), INT2NUM(stat->hash_nelem));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_ffactor"), INT2NUM(stat->hash_ffactor));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_buckets"), INT2NUM(stat->hash_buckets));
@@ -2122,7 +2162,13 @@ dbqueue_stat(obj)
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("qs_magic"), INT2NUM(stat->qs_magic));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_version"), INT2NUM(stat->qs_version));
+#if DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(stat->qs_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_nkeys"), INT2NUM(stat->qs_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_ndata"), INT2NUM(stat->qs_ndata));
+#else
     rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(stat->qs_nrecs));
+#endif
     rb_hash_aset(hash, rb_tainted_str_new2("qs_pages"), INT2NUM(stat->qs_pages));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_pagesize"), INT2NUM(stat->qs_pagesize));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_pgfree"), INT2NUM(stat->qs_pgfree));
@@ -3561,6 +3607,7 @@ Init_bdb()
     rb_define_method(db_cTxn, "assoc", dbtxn_assoc, -1);
     rb_define_method(db_cTxn, "txn_assoc", dbtxn_assoc, -1);
     rb_define_method(db_cTxn, "associate", dbtxn_assoc, -1);
+    rb_define_method(db_cTxn, "open_db", dbenv_open_db, -1);
 /* CURSOR */
     db_cCursor = rb_define_class_under(db_mDb, "Cursor", rb_cObject);
     rb_undef_method(CLASS_OF(db_cCursor), "new");
