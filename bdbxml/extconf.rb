@@ -93,7 +93,13 @@ begin
 rdoc: docs/doc/index.html
 
 docs/doc/index.html: $(RDOC)
-\t@-(cd docs; #{CONFIG['RUBY_INSTALL_NAME']} b.rb bdbxml; rdoc bdbxml.rb)
+\t@-(cd docs; rdoc .)
+
+ri:
+\t@-(rdoc -r docs/*rb)
+
+ri-site:
+\t@-(rdoc -R docs/*rb)
 
 rd2: html
 

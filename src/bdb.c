@@ -152,7 +152,7 @@ Init_bdb()
 		 major, minor, patch);
     }
     bdb_mMarshal = rb_const_get(rb_cObject, rb_intern("Marshal"));
-    bdb_id_current_db = rb_intern("bdb_current_db");
+    bdb_id_current_db = rb_intern("__bdb_current_db__");
     bdb_id_dump = rb_intern("dump");
     bdb_id_load = rb_intern("load");
     bdb_mDb = rb_define_module("BDB");

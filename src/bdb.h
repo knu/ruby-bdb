@@ -421,7 +421,6 @@ extern VALUE bdb_assoc_dyna _((VALUE, DBT *, DBT *));
 extern VALUE bdb_clear _((int, VALUE *, VALUE));
 extern VALUE bdb_del _((VALUE, VALUE));
 extern void bdb_deleg_mark _((struct deleg_class *));
-extern void bdb_deleg_free _((struct deleg_class *));
 extern VALUE bdb_each_eulav _((int, VALUE *, VALUE));
 extern VALUE bdb_each_key _((int, VALUE *, VALUE));
 extern VALUE bdb_each_value _((int, VALUE *, VALUE));

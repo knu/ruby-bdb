@@ -984,7 +984,12 @@ void bdb_init_recnum()
     rb_define_singleton_method(bdb_cRecnum, "[]", bdb_sary_s_create, -1);
     rb_define_private_method(bdb_cRecnum, "initialize", bdb_recnum_init, -1);
     rb_define_method(bdb_cRecnum, "[]", bdb_sary_aref, -1);
+    rb_define_method(bdb_cRecnum, "get", bdb_sary_aref, -1);
+    rb_define_method(bdb_cRecnum, "db_get", bdb_sary_aref, -1);
     rb_define_method(bdb_cRecnum, "[]=", bdb_sary_aset, -1);
+    rb_define_method(bdb_cRecnum, "put", bdb_sary_aset, -1);
+    rb_define_method(bdb_cRecnum, "db_put", bdb_sary_aset, -1);
+    rb_define_method(bdb_cRecnum, "store", bdb_sary_aset, -1);
     rb_define_method(bdb_cRecnum, "at", bdb_sary_at, 1);
     rb_define_method(bdb_cRecnum, "fetch", bdb_sary_fetch, -1);
     rb_define_method(bdb_cRecnum, "first", bdb_sary_first, 0);

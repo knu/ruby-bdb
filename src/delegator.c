@@ -3,13 +3,6 @@
 static ID id_send;
 
 void
-bdb_deleg_free(delegst)
-    struct deleg_class *delegst;
-{
-    free(delegst);
-}
-
-void
 bdb_deleg_mark(delegst)
     struct deleg_class *delegst;
 {
@@ -28,13 +21,6 @@ bdb_deleg_each(tmp)
 }
 
 static VALUE
-bdb_deleg_yield(i, res)
-    VALUE i, res;
-{
-    return rb_ary_push(res, rb_yield(i));
-}
-
-static VALUE
 bdb_deleg_missing(argc, argv, obj)
     int argc;
     VALUE *argv, obj;
@@ -50,8 +36,7 @@ bdb_deleg_missing(argc, argv, obj)
 	tmp[0] = delegst->obj;
 	tmp[1] = (VALUE)argc;
 	tmp[2] = (VALUE)argv;
-	res = rb_ary_new();
-	rb_iterate(bdb_deleg_each, (VALUE)tmp, bdb_deleg_yield, res);
+	res = rb_iterate((VALUE(*)(VALUE))bdb_deleg_each, (VALUE)tmp, rb_yield, 0);
     }
     else {
 	res = rb_funcall2(delegst->obj, id_send, argc, argv);
@@ -64,7 +49,7 @@ bdb_deleg_missing(argc, argv, obj)
 	    (TYPE(res) != T_DATA || 
 	     RDATA(res)->dmark != (RUBY_DATA_FUNC)bdb_deleg_mark)) {
 	    new = Data_Make_Struct(bdb_cDelegate, struct deleg_class, 
-				   bdb_deleg_mark, bdb_deleg_free, newst);
+				   bdb_deleg_mark, free, newst);
 	    newst->db = delegst->db;
 	    newst->obj = res;
 	    newst->key = (!delegst->type)?obj:delegst->key;

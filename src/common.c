@@ -227,7 +227,7 @@ test_load_dyna1(obj, key, val)
     res = bdb_test_load(obj, val, FILTER_VALUE);
     if (dbst->marshal && !SPECIAL_CONST_P(res)) {
 	del = Data_Make_Struct(bdb_cDelegate, struct deleg_class, 
-			       bdb_deleg_mark, bdb_deleg_free, delegst);
+			       bdb_deleg_mark, free, delegst);
 	delegst->db = obj;
 	if (RECNUM_TYPE(dbst)) {
 	    tmp = INT2NUM((*(db_recno_t *)key->data) - dbst->array_base);
@@ -763,6 +763,20 @@ i_close(dbst)
     return Qnil;
 }
 
+static VALUE
+bdb_final_aref(dbst)
+    bdb_DB *dbst;
+{
+    VALUE obj;
+
+    obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db);
+    if (!NIL_P(obj) && RDATA(obj)->dmark == (RUBY_DATA_FUNC)bdb_mark &&
+        DATA_PTR(obj) == dbst) {
+        rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);
+    }
+    return Qnil;
+}
+
 static void
 bdb_free(dbst)
     bdb_DB *dbst;
@@ -772,14 +786,8 @@ bdb_free(dbst)
     int status;
 
     rb_protect(i_close, (VALUE)dbst, 0);
+    rb_protect(bdb_final_aref, (VALUE)dbst, 0);
     free(dbst);
-    obj = rb_protect(bdb_local_aref, 0, &status);
-    if (!status) {
-	Data_Get_Struct(obj, bdb_DB, thst);
-	if (thst == dbst) {
-	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);
-	}
-    }
 }
 
 static void
@@ -875,13 +883,7 @@ bdb_close(argc, argv, obj)
 	}
 	bdb_i_close(dbst, flags);
     }
-    obj = rb_protect(bdb_local_aref, 0, &status);
-    if (!status && !NIL_P(obj)) {
-	Data_Get_Struct(obj, bdb_DB, thst);
-	if (thst == dbst) {
-	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);
-	}
-    }
+    rb_protect(bdb_final_aref, (VALUE)dbst, &status);
     return Qnil;
 }
 
