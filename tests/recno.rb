@@ -194,6 +194,7 @@ class TestRecno < Inh::TestCase
    end
 =end
    def test_12_env
+      $bdb.close
       Dir.foreach('tmp') do |x|
 	 if FileTest.file?("tmp/#{x}")
 	    File.unlink("tmp/#{x}")

@@ -213,7 +213,8 @@ class TestHash < Inh::TestCase
    def test_11_unknown
       $bdb.close
       $bdb = nil
-      assert_kind_of(BDB::Hash, BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
+      assert_kind_of(BDB::Hash, unknown = BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
+      unknown.close
    end
    def test_12_env
       clean
@@ -279,6 +280,8 @@ class TestHash < Inh::TestCase
       assert_equal(6, $bdb.size, "<size after commit>")
    end
    def test_17_hash_delete
+      assert_equal(nil, $bdb.close, "<close>")
+      $env.close
       clean
       assert_kind_of(BDB::HashRuby, 
 		     $bdb = BDB::HashRuby.open("tmp/aa", nil, "w", 
@@ -341,7 +344,7 @@ class TestHash < Inh::TestCase
 	    assert($hash.key?(k), "<key>")
 	 end
 	 $hash.each_key do |k|
-	    assert($bdb.key?(k), "<key>")
+	    assert(!!$bdb.key?(k), "<key>")
 	 end
       end
    end

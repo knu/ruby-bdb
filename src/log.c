@@ -659,6 +659,7 @@ void bdb_init_log()
     rb_define_method(bdb_cCommon, "log_unregister", bdb_log_unregister, 0);
     bdb_cLsn = rb_define_class_under(bdb_mDb, "Lsn", rb_cObject);
     rb_include_module(bdb_cLsn, rb_mComparable);
+    rb_undef_method(CLASS_OF(bdb_cLsn), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLsn), "new");
 #if DB_VERSION_MAJOR >= 4
     rb_define_method(bdb_cLsn, "log_cursor", bdb_log_cursor, 0);

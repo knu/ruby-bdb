@@ -183,7 +183,8 @@ class TestBtree < Inh::TestCase
    def test_11_unknown
       $bdb.close
       $bdb = nil
-      assert_kind_of(BDB::Btree, BDB::Unknown.open("tmp/aa", nil, "r", "marshal" => Marshal), "<unknown>")
+      assert_kind_of(BDB::Btree, unknown = BDB::Unknown.open("tmp/aa", nil, "r", "marshal" => Marshal), "<unknown>")
+      unknown.close
    end
    def test_12_env
       clean

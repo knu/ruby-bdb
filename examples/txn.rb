@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-require 'bdb'
+require '../src/bdb'
 module BDB
    class ThreadHash < Hash
       def start(val, num)

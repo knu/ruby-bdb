@@ -154,7 +154,9 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
     VALUE obj;
     int c_pget;
 {
-    VALUE a, b, c;
+    volatile VALUE a = Qnil;
+    VALUE b = Qnil;
+    VALUE c;
     int flags, cnt, ret;
     DBT key, data, pkey;
     bdb_DBC *dbcst;
@@ -183,15 +185,15 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
     else if (flags == DB_SET || flags == DB_SET_RANGE) {
         if (cnt != 2)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbcst->db, key, recno, b);
+        b = bdb_test_recno(dbcst->db, &key, &recno, b);
 	data.flags |= DB_DBT_MALLOC;
     }
 #if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
     else if (flags == DB_GET_BOTH) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbcst->db, key, recno, b);
-        test_dump(dbcst->db, data, c, FILTER_VALUE);
+        b = bdb_test_recno(dbcst->db, &key, &recno, b);
+        a = bdb_test_dump(dbcst->db, &data, c, FILTER_VALUE);
     }
 #endif
     else {
@@ -339,6 +341,8 @@ bdb_cursor_put(argc, argv, obj)
     bdb_DBC *dbcst;
     bdb_DB *dbst;
     VALUE a, b, c, f;
+    volatile VALUE d = Qnil;
+    volatile VALUE e = Qnil;
     db_recno_t recno;
     int ret;
 
@@ -351,12 +355,12 @@ bdb_cursor_put(argc, argv, obj)
     if (flags & (DB_KEYFIRST | DB_KEYLAST)) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbcst->db, key, recno, b);
-        test_dump(dbcst->db, data, c, FILTER_VALUE);
+        d = bdb_test_recno(dbcst->db, &key, &recno, b);
+        e = bdb_test_dump(dbcst->db, &data, c, FILTER_VALUE);
 	f = c;
     }
     else {
-        test_dump(dbcst->db, data, b, FILTER_VALUE);
+        e = bdb_test_dump(dbcst->db, &data, b, FILTER_VALUE);
 	f = b;
     }
     set_partial(dbst, data);
@@ -374,7 +378,7 @@ bdb_cursor_put(argc, argv, obj)
 	    return bdb_cursor_current(obj);
 	}
 	else {
-	    return f;
+	    return bdb_test_ret(obj, e, f, FILTER_VALUE);
 	}
     }
 }
@@ -384,6 +388,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, 0);
     rb_define_method(bdb_cCommon, "cursor", bdb_cursor, 0);
     bdb_cCursor = rb_define_class_under(bdb_mDb, "Cursor", rb_cObject);
+    rb_undef_method(CLASS_OF(bdb_cCursor), "allocate");
     rb_undef_method(CLASS_OF(bdb_cCursor), "new");
     rb_define_method(bdb_cCursor, "close", bdb_cursor_close, 0);
     rb_define_method(bdb_cCursor, "c_close", bdb_cursor_close, 0);

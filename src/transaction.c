@@ -7,6 +7,9 @@ bdb_txn_free(txnst)
     if (txnst->txnid && txnst->parent == NULL) {
         bdb_test_error(txn_abort(txnst->txnid));
         txnst->txnid = NULL;
+#if DB_VERSION_MAJOR >= 4
+	if (txnst->txn_cxx) free(txnst->txn_cxx);
+#endif
     }
     free(txnst);
 }
@@ -16,14 +19,8 @@ bdb_txn_mark(txnst)
     bdb_TXN *txnst;
 {
     if (txnst->marshal) rb_gc_mark(txnst->marshal);
+    if (txnst->mutex) rb_gc_mark(txnst->mutex);
     rb_gc_mark(txnst->db_ary);
-}
-
-#define GetTxnDB(obj, txnst)				\
-{							\
-    Data_Get_Struct(obj, bdb_TXN, txnst);		\
-    if (txnst->txnid == 0)				\
-        rb_raise(bdb_eFatal, "closed transaction");	\
 }
 
 static VALUE
@@ -35,20 +32,11 @@ bdb_txn_assoc(argc, argv, obj)
     int i;
     VALUE ary, a;
     bdb_TXN *txnst;
-    bdb_DB *dbp, *dbh;
 
     ary = rb_ary_new();
     GetTxnDB(obj, txnst);
     for (i = 0; i < argc; i++) {
-        if (!rb_obj_is_kind_of(argv[i], bdb_cCommon))
-            rb_raise(bdb_eFatal, "argument must be a database handle");
-        a = Data_Make_Struct(CLASS_OF(argv[i]), bdb_DB, bdb_mark, bdb_free, dbh);
-        GetDB(argv[i], dbp);
-        MEMCPY(dbh, dbp, bdb_DB, 1);
-        dbh->txn = txnst;
-	dbh->orig = argv[i];
-	dbh->options |= BDB_TXN;
-	dbh->flags27 = txnst->flags27;
+	a = rb_funcall(argv[i], rb_intern("__txn_dup__"), 1, obj);
         rb_ary_push(ary, a);
     }
     switch (RARRAY(ary)->len) {
@@ -67,7 +55,6 @@ bdb_txn_commit(argc, argv, obj)
     bdb_TXN *txnst;
     VALUE a, db;
     int flags;
-    bdb_DB *dbst, *dbst1;
 
     rb_secure(4);
     flags = 0;
@@ -85,11 +72,8 @@ bdb_txn_commit(argc, argv, obj)
 #endif
 #endif
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	if (TYPE(db) == T_DATA) {
-	    Data_Get_Struct(db, bdb_DB, dbst);
-	    Data_Get_Struct(dbst->orig, bdb_DB, dbst1);
-	    dbst1->len = dbst->len;
-	    bdb_close(0, 0, db);
+	if (rb_respond_to(obj, rb_intern("__txn_close__"))) {
+	    rb_funcall(obj, rb_intern("__txn_close__"), 1, Qtrue);
 	}
     }
     txnst->txnid = NULL;
@@ -114,8 +98,8 @@ bdb_txn_abort(obj)
     bdb_test_error(txn_abort(txnst->txnid));
 #endif
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	if (TYPE(db) == T_DATA) {
-	    bdb_close(0, 0, db);
+	if (rb_respond_to(obj, rb_intern("__txn_close__"))) {
+	    rb_funcall2(obj, rb_intern("__txn_close__"), 1, Qfalse);
 	}
     }
     txnst->txnid = NULL;
@@ -127,6 +111,18 @@ bdb_txn_abort(obj)
 }
 
 static VALUE
+bdb_txn_unlock(txnv)
+    VALUE txnv;
+{
+    bdb_TXN *txnst;
+    Data_Get_Struct(txnv, bdb_TXN, txnst);
+    if (txnst->mutex != Qnil) {
+	rb_funcall2(txnst->mutex, rb_intern("unlock"), 0, 0);
+    }
+    return Qnil;
+}
+
+static VALUE
 bdb_catch(val, args, self)
     VALUE val, args, self;
 {
@@ -134,8 +130,47 @@ bdb_catch(val, args, self)
     return Qtrue;
 }
 
+static VALUE
+bdb_txn_lock(obj)
+    VALUE obj;
+{
+    VALUE result;
+    bdb_TXN *txnst;
+    VALUE txnv;
+
+    if (TYPE(obj) == T_ARRAY) {
+	txnv = RARRAY(obj)->ptr[0];
+    }
+    else {
+	txnv = obj;
+    }
+    Data_Get_Struct(txnv, bdb_TXN, txnst);
+    if (txnst->mutex != Qnil) {
+	rb_funcall2(txnst->mutex, rb_intern("lock"), 0, 0);
+    }
+    txnst->status = 1;
+    result = rb_catch("__bdb__begin", bdb_catch, obj);
+    if (rb_obj_is_kind_of(result, bdb_cTxnCatch)) {
+	bdb_TXN *txn1;
+	Data_Get_Struct(result, bdb_TXN, txn1);
+	if (txn1 == txnst)
+	    return Qnil;
+	else
+	    rb_throw("__bdb__begin", result);
+    }
+    txnst->status = 0;
+    if (txnst->txnid) {
+	if (txnst->commit)
+	    bdb_txn_commit(0, 0, txnv);
+	else
+	    bdb_txn_abort(txnv);
+    }
+    return Qnil;
+}
+
 struct dbtxnopt {
     int flags;
+    VALUE mutex;
     VALUE timeout, txn_timeout, lock_timeout;
 };
 
@@ -153,6 +188,20 @@ bdb_txn_i_options(obj, dbstobj)
     options = RSTRING(key)->ptr;
     if (strcmp(options, "flags") == 0) {
 	opt->flags = NUM2INT(value);
+    }
+    else if (strcmp(options, "mutex") == 0) {
+	if (rb_respond_to(value, rb_intern("lock")) &&
+	    rb_respond_to(value, rb_intern("unlock"))) {
+	    if (!rb_block_given_p()) {
+		rb_warning("a mutex is useless without a block");
+	    }
+	    else {
+		opt->mutex = value;
+	    }
+	}
+	else {
+	    rb_raise(bdb_eFatal, "mutex must respond to #lock and #unlock");
+	}
     }
 #if DB_VERSION_MAJOR >= 4
     else if (strcmp(options, "timeout") == 0) {
@@ -174,8 +223,9 @@ static VALUE bdb_txn_set_txn_timeout _((VALUE, VALUE));
 static VALUE bdb_txn_set_lock_timeout _((VALUE, VALUE));
 #endif
 
-static VALUE
-bdb_env_begin(argc, argv, obj)
+VALUE
+bdb_env_rslbl_begin(origin, argc, argv, obj)
+    VALUE origin;
     int argc;
     VALUE *argv;
     VALUE obj;
@@ -194,11 +244,11 @@ bdb_env_begin(argc, argv, obj)
     dbenvst = 0;
     env = 0;
     options = Qnil;
+    opt.flags = 0;
+    opt.mutex = opt.timeout = opt.txn_timeout = opt.lock_timeout = Qnil;
     if (argc > 0 && TYPE(argv[argc - 1]) == T_HASH) {
 	options = argv[argc - 1];
 	argc--;
-	opt.flags = 0;
-	opt.timeout = opt.txn_timeout = opt.lock_timeout = Qnil;
 	rb_iterate(rb_each, options, bdb_txn_i_options, (VALUE)&opt);
 	flags = opt.flags;
 	if (flags & BDB_TXN_COMMIT) {
@@ -206,8 +256,8 @@ bdb_env_begin(argc, argv, obj)
 	    flags &= ~BDB_TXN_COMMIT;
 	}
     }
-    if (argc >= 1 && !rb_obj_is_kind_of(argv[0], bdb_cCommon)) {
-        flags = NUM2INT(argv[0]);
+    if (argc > 0 && FIXNUM_P(argv[0])) {
+	flags = NUM2INT(argv[0]);
 	if (flags & BDB_TXN_COMMIT) {
 	    commit = 1;
 	    flags &= ~BDB_TXN_COMMIT;
@@ -235,7 +285,12 @@ bdb_env_begin(argc, argv, obj)
     bdb_test_error(txn_begin(dbenvp->tx_info, txnpar, &txn));
 #else
 #if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvp->txn_begin(dbenvp, txnpar, &txn, flags));
+    if (origin == Qfalse) {
+	bdb_test_error(dbenvp->txn_begin(dbenvp, txnpar, &txn, flags));
+    }
+    else {
+	txn = ((struct txn_rslbl *)origin)->txn;
+    }
 #else
     bdb_test_error(txn_begin(dbenvp, txnpar, &txn, flags));
 #endif
@@ -248,7 +303,14 @@ bdb_env_begin(argc, argv, obj)
     txnst->status = 0;
     txnst->flags27 = dbenvst->flags27;
     txnst->db_ary = rb_ary_new2(0);
-    b = bdb_txn_assoc(argc, argv, txnv);
+    txnst->mutex = opt.mutex;
+    txnst->commit = commit;
+#if DB_VERSION_MAJOR >= 4
+    if (origin != Qfalse) {
+	txnst->txn_cxx = ((struct txn_rslbl *)origin)->txn_cxx;
+    }
+#endif
+     b = bdb_txn_assoc(argc, argv, txnv);
 #if DB_VERSION_MAJOR >= 4
     if (!NIL_P(options)) {
 	bdb_txn_set_timeout(txnv, opt.timeout);
@@ -256,31 +318,31 @@ bdb_env_begin(argc, argv, obj)
 	bdb_txn_set_lock_timeout(txnv, opt.lock_timeout);
     }
 #endif
-    if (rb_block_given_p()) {
-	VALUE result;
-	txnst->status = 1;
-	result = rb_catch("__bdb__begin", bdb_catch, (b == Qnil)?txnv:rb_assoc_new(txnv, b));
-	if (rb_obj_is_kind_of(result, bdb_cTxnCatch)) {
-	    bdb_TXN *txn1;
-	    Data_Get_Struct(result, bdb_TXN, txn1);
-	    if (txn1 == txnst)
-		return Qnil;
-	    else
-		rb_throw("__bdb__begin", result);
+    {
+	VALUE tmp;
+	if (b == Qnil) {
+	    tmp = txnv;
 	}
-	txnst->status = 0;
-	if (txnst->txnid) {
-	    if (commit)
-		bdb_txn_commit(0, 0, txnv);
-	    else
-		bdb_txn_abort(txnv);
+	else {
+	    tmp = rb_assoc_new(txnv, b);
+	    rb_funcall2(tmp, rb_intern("flatten!"), 0, 0);
 	}
-	return Qnil;
+	if (rb_block_given_p()) {
+	    if (txnst->mutex != Qnil) {
+		return rb_ensure(bdb_txn_lock, tmp, bdb_txn_unlock, txnv);
+	    }
+	    else {
+		return bdb_txn_lock(tmp);
+	    }
+	}
+	return tmp;
     }
-    if (b == Qnil)
-        return txnv;
-    else
-        return rb_assoc_new(txnv, b);
+}
+
+static VALUE
+bdb_env_begin(int argc, VALUE *argv, VALUE obj)
+{
+    return bdb_env_rslbl_begin(Qfalse, argc, argv, obj);
 }
 
 static VALUE
@@ -574,6 +636,7 @@ void bdb_init_transaction()
 {
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);
     bdb_cTxnCatch = rb_define_class_under(bdb_mDb, "DBTxnCatch", bdb_cTxn);
+    rb_undef_method(CLASS_OF(bdb_cTxn), "allocate");
     rb_undef_method(CLASS_OF(bdb_cTxn), "new");
     rb_define_method(bdb_cEnv, "begin", bdb_env_begin, -1);
     rb_define_method(bdb_cEnv, "txn_begin", bdb_env_begin, -1);

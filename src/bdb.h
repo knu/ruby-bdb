@@ -1,7 +1,12 @@
 #include <ruby.h>
+#include <version.h>
 #include <rubysig.h>
 #include <db.h>
 #include <errno.h>
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 #define BDB_MARSHAL 1
 #define BDB_TXN 2
@@ -10,12 +15,14 @@
 #define BDB_BT_PREFIX  16
 #define BDB_DUP_COMPARE 32
 #define BDB_H_HASH 64
+#define BDB_FUNCTION (BDB_BT_COMPARE|BDB_BT_PREFIX|BDB_DUP_COMPARE|BDB_H_HASH)
 
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
 #define BDB_ERROR_PRIVATE 44444
 #endif
 
 #define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
+#define BDB_INIT_LOMP (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_LOG)
 #define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH)
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
@@ -51,6 +58,10 @@ extern ID id_current_db;
 
 extern VALUE bdb_deleg_to_orig _((VALUE));
 
+#if DB_VERSION_MAJOR >= 4
+extern VALUE bdb_env_s_rslbl _((int, VALUE *, VALUE, DB_ENV *));
+#endif
+
 typedef struct  {
     int no_thread;
     int flags27;
@@ -69,14 +80,26 @@ typedef struct  {
 #endif
 } bdb_ENV;
 
+#if DB_VERSION_MAJOR >= 4
+
+struct txn_rslbl {
+    DB_TXN *txn;
+    void *txn_cxx;
+};
+
+#endif
+
 typedef struct {
-    int status;
-    VALUE marshal;
+    int status, commit;
+    VALUE marshal, mutex;
     int flags27;
     VALUE db_ary;
     VALUE env;
     DB_TXN *txnid;
     DB_TXN *parent;
+#if DB_VERSION_MAJOR >= 4
+    void *txn_cxx;
+#endif
 } bdb_TXN;
 
 #define FILTER_KEY 0
@@ -180,63 +203,6 @@ struct dblsnst {
     }									\
 }
 
-#define test_dump(obj, key, a, type_kv)					\
-{									\
-    bdb_DB *dbst;							\
-    int _bdb_is_nil = 0;						\
-    VALUE _bdb_tmp_ = a;						\
-    Data_Get_Struct(obj, bdb_DB, dbst);					\
-    if (dbst->filter[type_kv]) {					\
-	if (FIXNUM_P(dbst->filter[type_kv])) {				\
-	    _bdb_tmp_ = rb_funcall(obj,					\
-				   NUM2INT(dbst->filter[type_kv]),	\
-                                   1, a);				\
-	}								\
-	else {								\
-	    _bdb_tmp_ = rb_funcall(dbst->filter[type_kv],		\
-				   bdb_id_call, 1, a);			\
-	}								\
-    }									\
-    if (dbst->marshal) {						\
-        if (rb_obj_is_kind_of(_bdb_tmp_, bdb_cDelegate)) {		\
-	    _bdb_tmp_ = bdb_deleg_to_orig(_bdb_tmp_);			\
-        }								\
-        _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, _bdb_tmp_);	\
-        if (TYPE(_bdb_tmp_) != T_STRING) {				\
-	    rb_raise(rb_eTypeError, "dump() must return String");	\
-	}								\
-    }									\
-    else {								\
-        _bdb_tmp_ = rb_obj_as_string(_bdb_tmp_);			\
-        if (a == Qnil)							\
-            _bdb_is_nil = 1;						\
-        else if (dbst->filter[type_kv]) {				\
-            a = rb_obj_as_string(a);					\
-        }								\
-        else								\
-	    a = _bdb_tmp_;						\
-    }									\
-    (key).data = ALLOCA_N(char,						\
-			  RSTRING(_bdb_tmp_)->len + _bdb_is_nil + 1);	\
-    MEMCPY((key).data, RSTRING(_bdb_tmp_)->ptr, char,			\
-			  RSTRING(_bdb_tmp_)->len + _bdb_is_nil + 1);	\
-    (key).flags &= ~DB_DBT_MALLOC;					\
-    (key).size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;			\
-}
-
-#define test_recno(obj, key, recno, a)		\
-{						\
-    bdb_DB *dbst;				\
-    Data_Get_Struct(obj, bdb_DB, dbst);		\
-    if (RECNUM_TYPE(dbst)) {			\
-        recno = NUM2INT(a) + dbst->array_base;	\
-        key.data = &recno;			\
-        key.size = sizeof(db_recno_t);		\
-    }						\
-    else {					\
-        test_dump(obj, key, a, FILTER_KEY);	\
-    }						\
-}
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
 
@@ -298,6 +264,13 @@ struct dblsnst {
     (data).dlen = db->dlen;			\
     (data).doff = db->doff;
 
+#define GetTxnDB(obj, txnst)				\
+{							\
+    Data_Get_Struct(obj, bdb_TXN, txnst);		\
+    if (txnst->txnid == 0)				\
+        rb_raise(bdb_eFatal, "closed transaction");	\
+}
+
 #if DB_VERSION_MAJOR < 3
 #define test_init_lock(dbst) (((dbst)->flags27 & DB_INIT_LOCK)?DB_RMW:0)
 #else
@@ -314,6 +287,7 @@ struct dblsnst {
 #define BDB_ST_REJECT 8
 #define BDB_ST_DUP    32
 #define BDB_ST_ONE    64
+#define BDB_ST_SELECT 128
 
 extern VALUE bdb_errstr;
 extern int bdb_errcall;
@@ -327,6 +301,9 @@ extern ID bdb_id_call;
 extern char *db_strerror _((int));
 #endif
 
+extern VALUE bdb_test_recno _((VALUE, DBT *, db_recno_t *, VALUE));
+extern VALUE bdb_test_dump _((VALUE, DBT *, VALUE, int));
+extern VALUE bdb_test_ret _((VALUE, VALUE, VALUE, int));
 extern void bdb_mark _((bdb_DB *));
 extern VALUE bdb_assoc _((VALUE, DBT, DBT));
 extern VALUE bdb_assoc3 _((VALUE, DBT, DBT, DBT));
@@ -354,6 +331,7 @@ extern VALUE bdb_s_new _((int, VALUE *, VALUE));
 extern VALUE bdb_test_load _((VALUE, DBT, int));
 extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
 extern VALUE bdb_tree_stat _((int, VALUE *, VALUE));
+extern VALUE bdb_init _((int, VALUE *, VALUE));
 extern void bdb_init_env _((void));
 extern void bdb_init_common _((void));
 extern void bdb_init_recnum _((void));
@@ -363,3 +341,8 @@ extern void bdb_init_lock _((void));
 extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
 extern VALUE MakeLsn _((VALUE));
+extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
+
+#if defined(__cplusplus)
+}
+#endif

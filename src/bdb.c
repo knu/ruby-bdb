@@ -140,7 +140,7 @@ Init_bdb()
     VALUE version;
 
     if (rb_const_defined_at(rb_cObject, rb_intern("BDB"))) {
-	rb_raise(rb_eNameError, "class already defined");
+	rb_raise(rb_eNameError, "module already defined");
     }
     version = rb_tainted_str_new2(db_version(&major, &minor, &patch));
     if (major != DB_VERSION_MAJOR || minor != DB_VERSION_MINOR
@@ -265,6 +265,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "INIT_MPOOL", INT2FIX(DB_INIT_MPOOL));
     rb_define_const(bdb_mDb, "INIT_TXN", INT2FIX(DB_INIT_TXN));
     rb_define_const(bdb_mDb, "INIT_TRANSACTION", INT2FIX(BDB_INIT_TRANSACTION));
+    rb_define_const(bdb_mDb, "INIT_LOMP", INT2FIX(BDB_INIT_LOMP));
 #ifdef DB_JOINENV
     rb_define_const(bdb_mDb, "JOINENV", INT2FIX(DB_JOINENV));
 #endif

@@ -449,12 +449,14 @@ void bdb_init_lock()
     rb_define_method(bdb_cEnv, "lock_stat", bdb_env_lockstat, -1);
     rb_define_method(bdb_cEnv, "lock_detect", bdb_env_lockdetect, -1);
     bdb_cLockid = rb_define_class_under(bdb_mDb, "Lockid", rb_cObject);
+    rb_undef_method(CLASS_OF(bdb_cLockid), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLockid), "new");
     rb_define_method(bdb_cLockid, "lock_get", bdb_lockid_get, -1);
     rb_define_method(bdb_cLockid, "get", bdb_lockid_get, -1);
     rb_define_method(bdb_cLockid, "lock_vec", bdb_lockid_vec, -1);
     rb_define_method(bdb_cLockid, "vec", bdb_lockid_vec, -1);
     bdb_cLock = rb_define_class_under(bdb_cLockid, "Lock", rb_cObject);
+    rb_undef_method(CLASS_OF(bdb_cLock), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLock), "new");
     rb_define_method(bdb_cLock, "put", bdb_lock_put, 0);
     rb_define_method(bdb_cLock, "lock_put", bdb_lock_put, 0);

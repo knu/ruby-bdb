@@ -222,6 +222,7 @@ class TestBtree < Inh::TestCase
       assert_equal("ABuQ", $bdb["green"], "<partial get>")
       assert_equal("XYZXYZ", $bdb["blue"], "<partial get>")
       assert_equal("KLMTU", $bdb["yellow"], "<partial get>")
+      $bdb.close
    end
    def test_11_recnum
       assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("tmp/aa", nil, "w",
@@ -245,7 +246,8 @@ class TestBtree < Inh::TestCase
    def test_12_unknown
       $bdb.close
       $bdb = nil
-      assert_kind_of(BDB::Btree, BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
+      assert_kind_of(BDB::Btree, unknown = BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
+      unknown.close
    end
    def test_13_env
       clean
@@ -311,6 +313,7 @@ class TestBtree < Inh::TestCase
       end
       assert_equal(6, $bdb.size, "<size after commit>")
       assert_equal(nil, $bdb.close, "<close>")
+      $env.close
    end
 
    def test_18_btree_delete
@@ -376,7 +379,7 @@ class TestBtree < Inh::TestCase
 	    assert($hash.key?(k), "<key>")
 	 end
 	 $hash.each_key do |k|
-	    assert($bdb.key?(k), "<key>")
+	    assert(!!$bdb.key?(k), "<key>")
 	 end
       end
    end

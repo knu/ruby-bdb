@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/ruby -I../src
 require 'bdb'
 module BDB
    class Bcomp < Btree

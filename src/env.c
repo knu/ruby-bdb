@@ -6,14 +6,6 @@ struct db_stoptions {
     int lg_max, lg_bsize;
 };
 
-VALUE
-bdb_obj_init(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
-{
-    return Qtrue;
-}
-
 #if DB_VERSION_MAJOR >= 4
 
 static int
@@ -406,32 +398,51 @@ bdb_env_i_options(obj, db_stobj)
     return Qnil;
 }
 
-#if DB_VERSION_MAJOR < 3
-#define env_close(envst)			\
-    bdb_test_error(db_appexit(envst->dbenvp));	\
-    free(envst->dbenvp);			\
-    envst->dbenvp = NULL;
-#else
-#define env_close(envst)					\
-    bdb_test_error(envst->dbenvp->close(envst->dbenvp, 0));	\
-    envst->dbenvp = NULL;
-#endif
-
 static void
-bdb_env_free(dbenvst)
+bdb_final(dbenvst)
     bdb_ENV *dbenvst;
 {
     VALUE db;
 
-    if (dbenvst->dbenvp) {
+    if (dbenvst->db_ary) {
 	while ((db = rb_ary_pop(dbenvst->db_ary)) != Qnil) {
 	    if (TYPE(db) == T_DATA) {
 		bdb_close(0, 0, db);
 	    }
 	}
-	env_close(dbenvst);
+	dbenvst->db_ary = 0;
     }
+    if (dbenvst->dbenvp) {
+#if DB_VERSION_MAJOR < 3
+	db_appexit(dbenvst->dbenvp);
+	free(dbenvst->dbenvp);
+#else
+	dbenvst->dbenvp->close(dbenvst->dbenvp, 0);
+#endif
+	dbenvst->dbenvp = NULL;
+    }
+}
+
+static void
+bdb_env_free(dbenvst)
+    bdb_ENV *dbenvst;
+{
+    bdb_final(dbenvst);
     free(dbenvst);
+}
+
+static VALUE
+bdb_env_close(obj)
+    VALUE obj;
+{
+    bdb_ENV *dbenvst;
+    VALUE db;
+
+    if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4)
+	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
+    GetEnvDB(obj, dbenvst);
+    bdb_final(dbenvst);
+    return Qtrue;
 }
 
 static void
@@ -442,7 +453,7 @@ bdb_env_mark(dbenvst)
 #if DB_VERSION_MAJOR >= 4
     if (dbenvst->rep_transport) rb_gc_mark(dbenvst->rep_transport);
 #endif
-    rb_gc_mark(dbenvst->db_ary);
+    if (dbenvst->db_ary) rb_gc_mark(dbenvst->db_ary);
     rb_gc_mark(dbenvst->home);
 }
 
@@ -485,26 +496,7 @@ bdb_env_open_db(argc, argv, obj)
     else {
 	rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("txn"), obj);
     }
-    return bdb_s_new(argc, argv, cl);
-}
-
-static VALUE
-bdb_env_close(obj)
-    VALUE obj;
-{
-    bdb_ENV *dbenvst;
-    VALUE db;
-
-    if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4)
-	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
-    GetEnvDB(obj, dbenvst);
-    while ((db = rb_ary_pop(dbenvst->db_ary)) != Qnil) {
-	if (TYPE(db) == T_DATA) {
-	    bdb_close(0, 0, db);
-	}
-    }
-    env_close(dbenvst);
-    return Qtrue;
+    return rb_funcall2(cl, rb_intern("new"), argc, argv);
 }
 
 void
@@ -514,18 +506,6 @@ bdb_env_errcall(errpfx, msg)
 {
     bdb_errcall = 1;
     bdb_errstr = rb_tainted_str_new2(msg);
-}
-
-static VALUE
-bdb_env_each_failed(dbenvst)
-    bdb_ENV *dbenvst;
-{
-    VALUE d;
-
-    free(dbenvst->dbenvp);
-    free(dbenvst);
-    d = rb_obj_as_string(rb_gv_get("$!"));
-    rb_raise(bdb_eFatal, "%.*s", RSTRING(d)->len, RSTRING(d)->ptr);
 }
 
 #ifndef NT
@@ -585,15 +565,15 @@ bdb_set_func(dbenvst)
 }
 
 static VALUE
-bdb_env_each_options(args)
-    VALUE *args;
+bdb_env_each_options(opt, stobj)
+    VALUE opt, stobj;
 {
     VALUE res;
     DB_ENV *dbenvp;
     struct db_stoptions *db_st;
 
-    res = rb_iterate(rb_each, args[0], bdb_env_i_options, args[1]);
-    Data_Get_Struct(args[1], struct db_stoptions, db_st);
+    res = rb_iterate(rb_each, opt, bdb_env_i_options, stobj);
+    Data_Get_Struct(stobj, struct db_stoptions, db_st);
     dbenvp = db_st->env->dbenvp;
 #if DB_VERSION_MAJOR >= 3
     if (db_st->lg_bsize) {
@@ -611,14 +591,58 @@ bdb_env_each_options(args)
 }
 
 static VALUE
-bdb_env_s_new(argc, argv, obj)
+bdb_env_s_alloc(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    bdb_ENV *dbenvst;
+    VALUE res;
+
+    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    dbenvst->dbenvp = ALLOC(DB_ENV);
+    MEMZERO(dbenvst->dbenvp, DB_ENV, 1);
+    dbenvst->dbenvp->db_errpfx = "BDB::";
+    dbenvst->dbenvp->db_errcall = bdb_env_errcall;
+#else
+    bdb_test_error(db_env_create(&(dbenvst->dbenvp), 0));
+    dbenvst->dbenvp->set_errpfx(dbenvst->dbenvp, "BDB::");
+    dbenvst->dbenvp->set_errcall(dbenvst->dbenvp, bdb_env_errcall);
+#if DB_VERSION_MINOR >= 3 || DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->set_alloc(dbenvst->dbenvp, malloc, realloc, free));
+#endif
+#endif
+    return res;
+}
+
+#if DB_VERSION_MAJOR >= 4
+
+VALUE 
+bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
+{
+    bdb_ENV *dbenvst;
+    VALUE res;
+
+    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, dbenvst);
+    dbenvst->dbenvp = env;
+    dbenvst->dbenvp->set_errpfx(dbenvst->dbenvp, "BDB::");
+    dbenvst->dbenvp->set_errcall(dbenvst->dbenvp, bdb_env_errcall);
+    bdb_test_error(dbenvst->dbenvp->set_alloc(dbenvst->dbenvp, malloc, realloc, free));
+    return res;
+}
+
+#endif
+
+static VALUE
+bdb_env_init(argc, argv, obj)
     int argc;
     VALUE *argv;
     VALUE obj;
 {
     DB_ENV *dbenvp;
     bdb_ENV *dbenvst;
-    VALUE a, c, d, options, retour;
+    VALUE a, c, d;
     char *db_home, **db_config;
     int ret, mode, flags;
     VALUE st_config;
@@ -627,23 +651,18 @@ bdb_env_s_new(argc, argv, obj)
     envid = 0;
     st_config = 0;
     db_config = 0;
-    options = Qnil;
     mode = flags = 0;
-#if DB_VERSION_MAJOR < 3
-    dbenvp = ALLOC(DB_ENV);
-    MEMZERO(dbenvp, DB_ENV, 1);
-    dbenvp->db_errpfx = "BDB::";
-    dbenvp->db_errcall = bdb_env_errcall;
-#else
-    bdb_test_error(db_env_create(&dbenvp, 0));
-    dbenvp->set_errpfx(dbenvp, "BDB::");
-    dbenvp->set_errcall(dbenvp, bdb_env_errcall);
-#if DB_VERSION_MINOR >= 3
-    bdb_test_error(dbenvp->set_alloc(dbenvp, malloc, realloc, free));
-#endif
-#endif
+    Data_Get_Struct(obj, bdb_ENV, dbenvst);
+    dbenvp = dbenvst->dbenvp;
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
-	options = argv[argc - 1];
+	VALUE db_stobj;
+	struct db_stoptions *db_st;
+
+	st_config = rb_ary_new();
+	db_stobj = Data_Make_Struct(rb_cObject, struct db_stoptions, 0, free, db_st);
+	db_st->env = dbenvst;
+	db_st->config = st_config;
+	bdb_env_each_options(argv[argc - 1], db_stobj);
 	argc--;
     }
     rb_scan_args(argc, argv, "12", &a, &c, &d);
@@ -656,22 +675,6 @@ bdb_env_s_new(argc, argv, obj)
 	flags = NUM2INT(c);
         break;
     }
-    dbenvst = ALLOC(bdb_ENV);
-    MEMZERO(dbenvst, bdb_ENV, 1);
-    dbenvst->dbenvp = dbenvp;
-    if (!NIL_P(options)) {
-	VALUE subargs[2], db_stobj;
-	struct db_stoptions *db_st;
-
-	st_config = rb_ary_new();
-	db_stobj = Data_Make_Struct(rb_cObject, struct db_stoptions, 0, free, db_st);
-	db_st->env = dbenvst;
-	db_st->config = st_config;
-
-	subargs[0] = options;
-	subargs[1] = db_stobj;
-	rb_rescue(bdb_env_each_options, (VALUE)subargs, bdb_env_each_failed, (VALUE)dbenvst);
-    }
     if (flags & DB_CREATE) {
 	rb_secure(4);
     }
@@ -680,14 +683,12 @@ bdb_env_s_new(argc, argv, obj)
     }
 #ifndef BDB_NO_THREAD
     if (!dbenvst->no_thread) {
-	rb_rescue(bdb_set_func, (VALUE)dbenvst, bdb_env_each_failed, (VALUE)dbenvst);
+	bdb_set_func(dbenvst);
 	flags |= DB_THREAD;
     }
 #endif
 #if DB_VERSION_MAJOR < 3
     if ((ret = db_appinit(db_home, db_config, dbenvp, flags)) != 0) {
-        free(dbenvp);
-        free(dbenvst);
         if (bdb_errcall) {
             bdb_errcall = 0;
             rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
@@ -697,12 +698,13 @@ bdb_env_s_new(argc, argv, obj)
     }
 #else
 #if DB_VERSION_MAJOR >= 4
-    if (dbenvst->rep_transport == 0 && rb_method_boundp(obj, rb_intern("bdb_rep_transport"), 0) == Qtrue) {
-	if (!rb_const_defined(obj, rb_intern("ENVID"))) {
+    if (dbenvst->rep_transport == 0 && rb_respond_to(obj, rb_intern("bdb_rep_transport")) == Qtrue) {
+	if (!rb_const_defined(CLASS_OF(obj), rb_intern("ENVID"))) {
 	    rb_raise(bdb_eFatal, "ENVID must be defined to use rep_transport");
 	}
-	envid = rb_const_get(obj, rb_intern("ENVID"));
-	bdb_test_error(dbenvp->set_rep_transport(dbenvp, NUM2INT(envid), bdb_env_rep_transport));
+	envid = rb_const_get(CLASS_OF(obj), rb_intern("ENVID"));
+	bdb_test_error(dbenvp->set_rep_transport(dbenvp, NUM2INT(envid),
+						 bdb_env_rep_transport));
     }
 #endif
 #if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
@@ -721,7 +723,7 @@ bdb_env_s_new(argc, argv, obj)
     if ((ret = dbenvp->open(dbenvp, db_home, db_config, flags, mode)) != 0) {
 #endif
         dbenvp->close(dbenvp, 0);
-        free(dbenvst);
+	dbenvst->dbenvp = NULL;
         if (bdb_errcall) {
             bdb_errcall = 0;
             rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
@@ -734,14 +736,25 @@ bdb_env_s_new(argc, argv, obj)
     dbenvst->flags27 = flags;
     dbenvst->home = rb_tainted_str_new2(db_home);
     OBJ_FREEZE(dbenvst->home);
-    retour = Data_Wrap_Struct(obj, bdb_env_mark, bdb_env_free, dbenvst);
 #if DB_VERSION_MAJOR >= 4
     if (envid != 0 || dbenvst->rep_transport != 0) {
-	rb_thread_local_aset(rb_thread_current(), rb_intern("bdb_current_env"), retour);
+	rb_thread_local_aset(rb_thread_current(), rb_intern("bdb_current_env"), obj);
     }
 #endif
-    rb_obj_call_init(retour, NIL_P(options)?argc:argc+1, argv);
-    return retour;
+    return obj;
+}
+
+static VALUE
+bdb_env_s_open(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    VALUE res = rb_funcall2(obj, rb_intern("new"), argc, argv);
+    if (rb_block_given_p()) {
+	return rb_ensure(rb_yield, res, bdb_env_close, res);
+    }
+    return res;
 }
 
 static VALUE
@@ -863,10 +876,11 @@ bdb_thread_init(argc, argv, obj)
 void bdb_init_env()
 {
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
-    rb_define_private_method(bdb_cEnv, "initialize", bdb_obj_init, -1);
-    rb_define_singleton_method(bdb_cEnv, "new", bdb_env_s_new, -1);
-    rb_define_singleton_method(bdb_cEnv, "create", bdb_env_s_new, -1);
-    rb_define_singleton_method(bdb_cEnv, "open", bdb_env_s_new, -1);
+    rb_define_private_method(bdb_cEnv, "initialize", bdb_env_init, -1);
+    rb_define_singleton_method(bdb_cEnv, "allocate", bdb_env_s_alloc, -1);
+    rb_define_singleton_method(bdb_cEnv, "new", bdb_s_new, -1);
+    rb_define_singleton_method(bdb_cEnv, "create", bdb_s_new, -1);
+    rb_define_singleton_method(bdb_cEnv, "open", bdb_env_s_open, -1);
     rb_define_singleton_method(bdb_cEnv, "remove", bdb_env_s_remove, -1);
     rb_define_singleton_method(bdb_cEnv, "unlink", bdb_env_s_remove, -1);
     rb_define_method(bdb_cEnv, "open_db", bdb_env_open_db, -1);

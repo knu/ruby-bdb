@@ -166,7 +166,8 @@ class TestQueue < Inh::TestCase
    def test_11_unknown
       $bdb.close
       $bdb = nil
-      assert_kind_of(BDB::Queue, BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
+      assert_kind_of(BDB::Queue, unknown = BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
+      unknown.close
    end
    def test_12_env
       Dir.foreach('tmp') do |x|

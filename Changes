@@ -165,3 +165,14 @@
    - test suite : specification of assert was changed
 * tests for RUNIT/Test::Unit
 * filter function like P language (bdb_{store,fetch}_{key,value})
+
+-- 0.3.2
+
+* stupid bug with GC
+* Common#select (1.7.2)
+* switch on model allocate/initialize (IDLI)
+* ::open == ::new + block
+* 1.7.2 Recnum#map, #insert
+* first modifications for xdb
+* patch for tests (Thanks "WATANABE Hirofumi" <eban@os.rim.or.jp>)
+* flatten! ===> txn.begin(a, b, c) {|t, a1, b1, c1| }
