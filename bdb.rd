@@ -34,10 +34,14 @@ Berkeley DB environment is an encapsulation of one or more databases,
 log files and shared information about the database environment such
 as shared memory buffer cache pages.
 
-((<Acces Methods|URL:docs/access.html>))
+Acces Methods
    
-These are the common methods for BDB::Btree, BDB::Hash, BDB::Recno,
-BDB::Queue and BDB::Unknown
+    * ((<Hash like interface|URL:docs/hashlike.html>))
+      these are the common methods for BDB::Btree,
+      BDB::Hash, BDB::Recno, BDB::Queue
+
+    * ((<Array like interface|URL:docs/arraylike.html>))
+      methods for BDB::Recnum
 
 ((<Transaction Manager|URL:docs/transaction.html>))
 

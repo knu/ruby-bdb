@@ -64,3 +64,8 @@
 * error BDB::LockError, BDB::LockHeld, BDB::LockGranted, BDB::LockDead
 
 
+-- 0.1.8
+
+* protected env against GC for Log, Lock
+* added BDB::Recnum
+

@@ -47,7 +47,7 @@ class TestRecno < RUNIT::TestCase
    def test_03_delete
       size = $bdb.size
       i = 0
-      $bdb.each do |key, value|
+      $bdb.each_index do |key|
 	 assert_equal($bdb, $bdb.delete(key), "<delete value>")
 	 i  += 1
       end

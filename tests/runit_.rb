@@ -5,7 +5,11 @@ module RUNIT
    module Assert
       def assert_error(error, string, message = nil)
 	 begin
-	    eval string
+	    if block_given?
+	       yield
+	    else
+	       eval string
+	    end
 	 rescue error
 	    assert(true, message)
 	 rescue

@@ -1,0 +1,200 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>arraylike.rd</TITLE>
+</HEAD>
+<BODY>
+<H2><A NAME="label:0">Acces Methods
+</A></H2><!-- RDLabel: "Acces Methods" -->
+<P>
+These are the methods for <VAR>BDB::Recnum</VAR>
+</P>
+<P>
+Don't mix these methods with methods of <VAR>BDB::Cursor</VAR>
+</P>
+<H3><A NAME="label:1">Class Methods
+</A></H3><!-- RDLabel: "Class Methods" -->
+<DL>
+<DT><A NAME="create"><CODE>create([<var>name</var>, <var>subname</var>, <var>flags</var>, <var>mode</var>, <var>options</var>])</CODE></A><!-- RDLabel: "create" -->
+<DT><A NAME="new"><CODE>new([<var>name</var>, <var>subname</var>, <var>flags</var>, <var>mode</var>, <var>options</var>])</CODE></A><!-- RDLabel: "new" -->
+<DT><A NAME="open"><CODE>open([<var>name</var>, <var>subname</var>, <var>flags</var>, <var>mode</var>, <var>options</var>])</CODE></A><!-- RDLabel: "open" -->
+<DD>
+<P>
+open the database
+</P>
+
+<PRE>
+BDB::Recnum.open(name, subname, flags, mode)
+
+is equivalent to
+
+BDB::Recno.open(name, subname, flags, mode,
+                "set_flags" =&gt; BDB::RENUMBER,
+                "set_array_base" =&gt; 0)
+</PRE>
+</DD>
+<DT><A NAME="db_remove"><CODE>db_remove(<var>name</var> [, <var>subname</var>])</CODE></A><!-- RDLabel: "db_remove" -->
+<DT><A NAME="remove"><CODE>remove(<var>name</var> [, <var>subname</var>])</CODE></A><!-- RDLabel: "remove" -->
+<DT><A NAME="unlink"><CODE>unlink(<var>name</var> [,<var>subname</var>])</CODE></A><!-- RDLabel: "unlink" -->
+<DD>
+<P>
+Removes the database (or subdatabase) represented by the
+name and subname combination.
+</P>
+
+<P>
+If no subdatabase is specified, the physical file represented by name
+is removed, incidentally removing all subdatabases that it contained.
+</P>
+</DD>
+<DT><A NAME="db_upgrade"><CODE>db_upgrade(<var>name</var>)</CODE></A><!-- RDLabel: "db_upgrade" -->
+<DT><A NAME="upgrade"><CODE>upgrade(<var>name</var>)</CODE></A><!-- RDLabel: "upgrade" -->
+<DD>
+<P>
+Upgrade the database
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:2">Methods
+</A></H3><!-- RDLabel: "Methods" -->
+<P>
+<EM>All this methods has the same syntax than for the class <VAR>Array</VAR></EM>
+</P>
+<P>
+self[nth] 
+</P>
+<P>
+self[start..end] 
+</P>
+<P>
+self[start, length] 
+</P>
+<P>
+self[nth] = val 
+</P>
+<P>
+self[start..end] = val 
+</P>
+<P>
+self[start, length] = val 
+</P>
+<P>
+self + other 
+</P>
+<P>
+self * times 
+</P>
+<P>
+self - other 
+</P>
+<P>
+self &amp; other 
+</P>
+<P>
+self | other 
+</P>
+<P>
+self &lt;&lt; obj 
+</P>
+<P>
+self &lt;=&gt; other 
+</P>
+<P>
+clear 
+</P>
+<P>
+concat(other) 
+</P>
+<P>
+delete(val) 
+</P>
+<P>
+delete_at(pos) 
+</P>
+<P>
+delete_if {...} 
+</P>
+<P>
+reject!{|x|...} 
+</P>
+<P>
+each {...} 
+</P>
+<P>
+each_index {...} 
+</P>
+<P>
+empty? 
+</P>
+<P>
+fill(val) 
+</P>
+<P>
+fill(val, start[, length]) 
+</P>
+<P>
+fill(val, start..end) 
+</P>
+<P>
+filter{|item| ..} 
+</P>
+<P>
+freeze 
+</P>
+<P>
+frozen 
+</P>
+<P>
+include?(val) 
+</P>
+<P>
+index(val) 
+</P>
+<P>
+indexes(index_1,..., index_n) 
+</P>
+<P>
+indices(index_1,..., index_n) 
+</P>
+<P>
+join([sep]) 
+</P>
+<P>
+length
+</P>
+<P>
+size 
+</P>
+<P>
+nitems 
+</P>
+<P>
+pop 
+</P>
+<P>
+push(obj...) 
+</P>
+<P>
+replace(other) 
+</P>
+<P>
+reverse 
+</P>
+<P>
+reverse! 
+</P>
+<P>
+reverse_each {...} 
+</P>
+<P>
+rindex(val) 
+</P>
+<P>
+shift 
+</P>
+<P>
+unshift(obj) 
+</P>
+
+</BODY>
+</HTML>
