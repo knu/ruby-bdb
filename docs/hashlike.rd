@@ -122,7 +122,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
                   end
                end
             end
- 
+
 --- db_remove(name [, subname]) 
 --- remove(name [, subname]) 
 --- unlink(name [,subname]) 
@@ -206,6 +206,10 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- db_cursor()
     Open a new cursor.
 
+--- database()
+--- subname()
+    Return the subname
+ 
 --- delete(key)
 --- db_del(key)
       Removes the association from the key. 
@@ -256,6 +260,9 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
 --- empty?() 
        Returns true if the database is empty. 
+
+--- filename()
+       Return the name of the file
 
 --- has_key?(key) 
 --- key?(key) 
@@ -337,6 +344,10 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
        
 --- values 
        Returns the array of the values in the database.
+
+--- verify([file [, flags]])
+       Verify the integrity of the DB file, and optionnally output the
+       key/data to ((|file|)) (file must respond to #to_io)
 
 === Methods specific to BDB::Recno and BDB::Queue
 

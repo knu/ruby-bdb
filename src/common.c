@@ -1,4 +1,5 @@
 #include "bdb.h"
+#include <rubyio.h>
 
 static ID id_bt_compare, id_bt_prefix, id_dup_compare, id_h_hash, id_proc_call;
 
@@ -94,7 +95,6 @@ bdb_bt_compare(a, b)
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
     a->flags = b->flags = 0;
-//	rb_warn("icu %d %s", a->size, a->data);
     av = bdb_test_load(dbst, *a);
     bv = bdb_test_load(dbst, *b);
     if (dbst->bt_compare == 0)
@@ -419,6 +419,8 @@ bdb_mark(dbst)
     if (dbst->bt_prefix) rb_gc_mark(dbst->bt_prefix);
     if (dbst->dup_compare) rb_gc_mark(dbst->dup_compare);
     if (dbst->h_hash) rb_gc_mark(dbst->h_hash);
+    if (dbst->filename) rb_gc_mark(dbst->filename);
+    if (dbst->database) rb_gc_mark(dbst->database);
 }
 
 static VALUE
@@ -634,6 +636,7 @@ bdb_open_common(argc, argv, obj)
 	    Data_Get_Struct(txnst->env, bdb_ENV, dbenvst);
 	    dbenvp = dbenvst->dbenvp;
 	    flags27 = dbenvst->flags27;
+	    dbst->no_thread = dbenvst->no_thread;
 	    dbst->marshal = txnst->marshal;
 	}
 	else if ((v = rb_hash_aref(f, rb_str_new2("env"))) != RHASH(f)->ifnone) {
@@ -644,6 +647,7 @@ bdb_open_common(argc, argv, obj)
 	    dbst->env = v;
 	    dbenvp = dbenvst->dbenvp;
 	    flags27 = dbenvst->flags27;
+	    dbst->no_thread = dbenvst->no_thread;
 	    dbst->marshal = dbenvst->marshal;
 	}
     }
@@ -721,8 +725,9 @@ bdb_open_common(argc, argv, obj)
     }
 #endif
 #ifndef BDB_NO_THREAD
-    if (!(dbst->options & BDB_RE_SOURCE))
+    if (!dbst->no_thread && !(dbst->options & BDB_RE_SOURCE)) {
 	flags |= DB_THREAD;
+    }
 #endif
     if (dbst->options & BDB_NEED_CURRENT) {
 	rb_thread_local_aset(rb_thread_current(), id_current_db, res);
@@ -801,11 +806,33 @@ bdb_open_common(argc, argv, obj)
 	MEMCPY(dbst1, dbst, bdb_DB, 1);
 	dbst1->dbp = dbp;
 	dbst1->flags27 = flags27;
+	dbst1->filename = dbst1->database = Qnil;
+	if (name) {
+	    dbst1->filename = rb_tainted_str_new2(name);
+	    OBJ_FREEZE(dbst1->filename);
+	}
+#if DB_VERSION_MAJOR >= 3
+	if (subname) {
+	    dbst1->database = rb_tainted_str_new2(subname);
+	    OBJ_FREEZE(dbst1->database);
+	}
+#endif
 	return res1;
     }
     else {
 	dbst->dbp = dbp;
 	dbst->flags27 = flags27;
+	dbst->filename = dbst->database = Qnil;
+	if (name) {
+	    dbst->filename = rb_tainted_str_new2(name);
+	    OBJ_FREEZE(dbst->filename);
+	}
+#if DB_VERSION_MAJOR >= 3
+	if (subname) {
+	    dbst->database = rb_tainted_str_new2(subname);
+	    OBJ_FREEZE(dbst->database);
+	}
+#endif
 	dbst->len = -2;
 	if (rb_obj_is_kind_of(res, bdb_cRecnum)) {
 	    long count;
@@ -2335,18 +2362,24 @@ bdb_sync(obj)
 
 #if DB_VERSION_MAJOR >= 3
 static VALUE
-bdb_hash_stat(obj)
-    VALUE obj;
+bdb_hash_stat(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
 {
     bdb_DB *dbst;
     DB_HASH_STAT *bdb_stat;
-    VALUE hash;
+    VALUE hash, flagv;
     int ret;
+    int flags = 0;
+
+    if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
+	flags = NUM2INT(flagv);
+    }
     GetDB(obj, dbst);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 3
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, flags));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, flags));
 #endif
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("hash_magic"), INT2NUM(bdb_stat->hash_magic));
@@ -2379,19 +2412,24 @@ bdb_hash_stat(obj)
 #endif
 
 VALUE
-bdb_tree_stat(obj)
-    VALUE obj;
+bdb_tree_stat(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
 {
     bdb_DB *dbst;
     DB_BTREE_STAT *bdb_stat;
-    VALUE hash;
+    VALUE hash, flagv;
     char pad;
+    int flags = 0;
 
+    if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
+	flags = NUM2INT(flagv);
+    }
     GetDB(obj, dbst);
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, flags));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, flags));
 #endif
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("bt_magic"), INT2NUM(bdb_stat->bt_magic));
@@ -2424,19 +2462,24 @@ bdb_tree_stat(obj)
 
 #if DB_VERSION_MAJOR >= 3
 static VALUE
-bdb_queue_stat(obj)
-    VALUE obj;
+bdb_queue_stat(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
 {
     bdb_DB *dbst;
     DB_QUEUE_STAT *bdb_stat;
-    VALUE hash;
+    VALUE hash, flagv;
     char pad;
+    int flags = 0;
 
+    if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
+	flags = NUM2INT(flagv);
+    }
     GetDB(obj, dbst);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 3
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, flags));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, flags));
 #endif
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("qs_magic"), INT2NUM(bdb_stat->qs_magic));
@@ -2869,6 +2912,65 @@ bdb_associate(argc, argv, obj)
 
 #endif
 
+static VALUE
+bdb_filename(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+    GetDB(obj, dbst);
+    return dbst->filename;
+}
+
+static VALUE
+bdb_database(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+    GetDB(obj, dbst);
+    return dbst->database;
+}
+
+#if DB_VERSION_MAJOR >= 4 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3)
+static VALUE
+bdb_verify(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    bdb_DB *dbst;
+    char *file, *database;
+    VALUE flagv, iov;
+    int flags = 0;
+    OpenFile *fptr;
+    FILE *io = NULL;
+
+    rb_secure(4);
+    file = database = NULL;
+    switch(rb_scan_args(argc, argv, "02", iov, flagv)) {
+    case 2:
+	flags = NUM2INT(flagv);
+    case 1:
+	if (!NIL_P(iov)) {
+	    iov = rb_convert_type(iov, T_FILE, "IO", "to_io");
+	    GetOpenFile(iov, fptr);
+	    rb_io_check_writable(fptr);
+	    io = GetWriteFile(fptr);
+	}
+	break;
+    case 0:
+	break;
+    }
+    GetDB(obj, dbst);
+    if (!NIL_P(dbst->filename)) {
+	file = RSTRING(dbst->filename)->ptr;
+    }
+    if (!NIL_P(dbst->database)) {
+	database = RSTRING(dbst->database)->ptr;
+    }
+    bdb_test_error(dbst->dbp->verify(dbst->dbp, file, database, io, flags));
+    return Qnil;
+}
+#endif
+
 void bdb_init_common()
 {
     id_bt_compare = rb_intern("bdb_bt_compare");
@@ -2889,6 +2991,12 @@ void bdb_init_common()
     rb_define_singleton_method(bdb_cCommon, "bdb_upgrade", bdb_s_upgrade, -1);
     rb_define_singleton_method(bdb_cCommon, "rename", bdb_s_rename, -1);
     rb_define_singleton_method(bdb_cCommon, "bdb_rename", bdb_s_rename, -1);
+    rb_define_method(bdb_cCommon, "filename", bdb_filename, 0);
+    rb_define_method(bdb_cCommon, "subname", bdb_database, 0);
+    rb_define_method(bdb_cCommon, "database", bdb_database, 0);
+#if DB_VERSION_MAJOR >= 4 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3)
+    rb_define_method(bdb_cCommon, "verify", bdb_verify, -1);
+#endif
     rb_define_method(bdb_cCommon, "close", bdb_close, -1);
     rb_define_method(bdb_cCommon, "db_close", bdb_close, -1);
     rb_define_method(bdb_cCommon, "put", bdb_put, -1);
@@ -2970,7 +3078,7 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "associate", bdb_associate, -1);
 #endif
     bdb_cBtree = rb_define_class_under(bdb_mDb, "Btree", bdb_cCommon);
-    rb_define_method(bdb_cBtree, "stat", bdb_tree_stat, 0);
+    rb_define_method(bdb_cBtree, "stat", bdb_tree_stat, -1);
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
     bdb_sKeyrange = rb_struct_define("Keyrange", "less", "equal", "greater", 0);
     rb_global_variable(&bdb_sKeyrange);
@@ -2978,14 +3086,14 @@ void bdb_init_common()
 #endif
     bdb_cHash = rb_define_class_under(bdb_mDb, "Hash", bdb_cCommon);
 #if DB_VERSION_MAJOR >= 3
-    rb_define_method(bdb_cHash, "stat", bdb_hash_stat, 0);
+    rb_define_method(bdb_cHash, "stat", bdb_hash_stat, -1);
 #endif
     bdb_cRecno = rb_define_class_under(bdb_mDb, "Recno", bdb_cCommon);
     rb_define_method(bdb_cRecno, "each_index", bdb_each_key, -1);
     rb_define_method(bdb_cRecno, "unshift", bdb_unshift, -1);
     rb_define_method(bdb_cRecno, "<<", bdb_append, 1);
     rb_define_method(bdb_cRecno, "push", bdb_append_m, -1);
-    rb_define_method(bdb_cRecno, "stat", bdb_tree_stat, 0);
+    rb_define_method(bdb_cRecno, "stat", bdb_tree_stat, -1);
 #if DB_VERSION_MAJOR >= 3
     bdb_cQueue = rb_define_class_under(bdb_mDb, "Queue", bdb_cCommon);
     rb_define_singleton_method(bdb_cQueue, "new", bdb_queue_s_new, -1);

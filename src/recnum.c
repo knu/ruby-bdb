@@ -944,7 +944,7 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecnum, "flatten!", bdb_sary_flatten_bang, 0);
 */
     rb_define_method(bdb_cRecnum, "nitems", bdb_sary_nitems, 0);
-    rb_define_method(bdb_cRecnum, "stat", bdb_tree_stat, 0);
+    rb_define_method(bdb_cRecnum, "stat", bdb_tree_stat, -1);
     rb_define_method(bdb_cRecnum, "to_a", bdb_sary_to_a, 0);
     rb_define_method(bdb_cRecnum, "to_ary", bdb_sary_to_a, 0);
     /* RECNO */

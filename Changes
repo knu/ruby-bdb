@@ -143,3 +143,14 @@
 * stupid bug with free()
 * added -R for Solaris 2 (Thanks Amos Gouaux <amos+ruby@utdallas.edu>)
 
+-- 0.3.0
+
+* added --with-uniquename to extconf.rb 
+       (Thanks Matt Armstrong <matt@lickey.com>)
+* rep_process_message return [code, cdata, envid]
+* added Common#filename, Common#database (Common#subname), Env#home
+* example for replication
+* txn_begin (argv++)
+* add flags to Common#stat
+* add Common#verify (>= 3.3.11)
+* corrected no_thread for Common::open

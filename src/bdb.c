@@ -443,6 +443,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "REP_NEWSITE", INT2FIX(DB_REP_NEWSITE));
     rb_define_const(bdb_mDb, "REP_OUTDATED", INT2FIX(DB_REP_OUTDATED));
     rb_define_const(bdb_mDb, "REP_PERMANENT", INT2FIX(DB_REP_PERMANENT));
+    rb_define_const(bdb_mDb, "REP_UNAVAIL", INT2FIX(DB_REP_UNAVAIL));
     rb_define_const(bdb_mDb, "EID_BROADCAST", INT2FIX(DB_EID_BROADCAST));
     rb_define_const(bdb_mDb, "EID_INVALID", INT2FIX(DB_EID_INVALID));
     rb_define_const(bdb_mDb, "SET_LOCK_TIMEOUT", INT2FIX(DB_SET_LOCK_TIMEOUT));

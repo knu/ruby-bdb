@@ -1,4 +1,5 @@
 #include <ruby.h>
+#include <rubysig.h>
 #include <db.h>
 #include <errno.h>
 
@@ -55,6 +56,7 @@ typedef struct  {
     int flags27;
     VALUE marshal;
     VALUE db_ary;
+    VALUE home;
     DB_ENV *dbenvp;
 #if DB_VERSION_MAJOR < 3 || 					\
     (DB_VERSION_MAJOR == 3 &&					\
@@ -83,6 +85,7 @@ typedef struct {
     int flags27;
     DBTYPE type;
     VALUE env, orig, secondary;
+    VALUE filename, database;
     VALUE bt_compare, bt_prefix, dup_compare, h_hash;
     DB *dbp;
     bdb_TXN *txn;
@@ -328,7 +331,7 @@ extern VALUE bdb_put _((int, VALUE *, VALUE));
 extern VALUE bdb_s_new _((int, VALUE *, VALUE));
 extern VALUE bdb_test_load _((bdb_DB *, DBT));
 extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
-extern VALUE bdb_tree_stat _((VALUE));
+extern VALUE bdb_tree_stat _((int, VALUE *, VALUE));
 extern void bdb_init_env _((void));
 extern void bdb_init_common _((void));
 extern void bdb_init_recnum _((void));

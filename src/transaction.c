@@ -196,7 +196,7 @@ bdb_env_begin(argc, argv, obj)
     options = Qnil;
     if (argc > 0 && TYPE(argv[argc - 1]) == T_HASH) {
 	options = argv[argc - 1];
-	argc--; argv++;
+	argc--;
 	opt.flags = 0;
 	opt.timeout = opt.txn_timeout = opt.lock_timeout = Qnil;
 	rb_iterate(rb_each, options, bdb_txn_i_options, (VALUE)&opt);

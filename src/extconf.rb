@@ -19,8 +19,14 @@ if libdir = with_config("db-lib-dir")
 end
 
 test = enable_config("test")
-unless (!test && (have_library("db4", "db_version") ||
-		  have_library("db3", "db_version") ||
+unique = if with_config("uniquename")
+	    "_" + with_config("uniquename")
+	 else
+	    ""
+	 end
+unless (!test && (have_library("db-4", "db_version#{unique}") ||
+		  have_library("db4", "db_version#{unique}") ||
+		  have_library("db3", "db_version#{unique}") ||
 		  have_library("db2", "db_version")) ||
 	have_library("db", "db_version"))
     raise "libdb.a not found"
@@ -29,8 +35,6 @@ create_makefile("bdb")
 begin
    make = open("Makefile", "a")
    make.print <<-EOF
-
-DLDFLAGS = #{$LDFLAGS} #{$DLDFLAGS}
 
 unknown: $(DLLIB)
 \t@echo "main() {}" > /tmp/a.c

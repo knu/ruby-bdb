@@ -124,6 +124,9 @@ environment can then be identified by the name of that directory.
 --- close()
      close the environnement
 
+--- home()
+     return the name of the directory
+
 --- lock()
 --- lock_id()
      Acquire a locker ID
