@@ -9,11 +9,11 @@ static void lockid_mark(dblockid)
 static void lockid_free(dblockid)
     bdb_LOCKID *dblockid;
 {
-#if DB_VERSION_MAJOR >= 4
-    bdb_ENV *dbenvst;
+#if BDB_VERSION >= 40000
+    bdb_ENV *envst;
 
-    GetEnvDB(dblockid->env, dbenvst);
-    bdb_test_error(dbenvst->dbenvp->lock_id_free(dbenvst->dbenvp, dblockid->lock));
+    GetEnvDB(dblockid->env, envst);
+    bdb_test_error(envst->envp->lock_id_free(envst->envp, dblockid->lock));
 #endif
 }
 
@@ -22,21 +22,21 @@ bdb_env_lockid(obj)
     VALUE obj;
 {
     unsigned int idp;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     bdb_LOCKID *dblockid;
     VALUE a;
 
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lk_info) {
+    GetEnvDB(obj, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
-    bdb_test_error(lock_id(dbenvst->dbenvp->lk_info, &idp));
+    bdb_test_error(lock_id(envst->envp->lk_info, &idp));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->lock_id(dbenvst->dbenvp, &idp));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->lock_id(envst->envp, &idp));
 #else
-    bdb_test_error(lock_id(dbenvst->dbenvp, &idp));
+    bdb_test_error(lock_id(envst->envp, &idp));
 #endif
 #endif
     a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, lockid_mark, lockid_free, dblockid);
@@ -52,7 +52,7 @@ bdb_env_lockdetect(argc, argv, obj)
     VALUE obj;
 {
     VALUE a, b;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     int flags, atype, aborted;
 
     flags = atype = aborted = 0;
@@ -60,17 +60,17 @@ bdb_env_lockdetect(argc, argv, obj)
 	flags = NUM2INT(b);
     }
     atype = NUM2INT(a);
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lk_info) {
+    GetEnvDB(obj, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
-    bdb_test_error(lock_detect(dbenvst->dbenvp->lk_info, flags, atype));
+    bdb_test_error(lock_detect(envst->envp->lk_info, flags, atype));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->lock_detect(dbenvst->dbenvp, flags, atype, &aborted));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->lock_detect(envst->envp, flags, atype, &aborted));
 #else
-    bdb_test_error(lock_detect(dbenvst->dbenvp, flags, atype, &aborted));
+    bdb_test_error(lock_detect(envst->envp, flags, atype, &aborted));
 #endif
 #endif
     return INT2NUM(aborted);
@@ -81,20 +81,20 @@ bdb_env_lockstat(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     DB_LOCK_STAT *statp;
     VALUE a, b;
     int flags;
 
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lk_info) {
+    GetEnvDB(obj, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
-    bdb_test_error(lock_stat(dbenvst->dbenvp->lk_info, &statp, 0));
+    bdb_test_error(lock_stat(envst->envp->lk_info, &statp, 0));
     a = rb_hash_new();
     rb_hash_aset(a, rb_tainted_str_new2("st_magic"), INT2NUM(statp->st_magic));
     rb_hash_aset(a, rb_tainted_str_new2("st_version"), INT2NUM(statp->st_version));
@@ -110,14 +110,14 @@ bdb_env_lockstat(argc, argv, obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
 #else
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     flags = 0;
     if (rb_scan_args(argc, argv, "01", &b) == 1) {
 	flags = NUM2INT(b);
     }
-    bdb_test_error(dbenvst->dbenvp->lock_stat(dbenvst->dbenvp, &statp, flags));
+    bdb_test_error(envst->envp->lock_stat(envst->envp, &statp, flags));
     a = rb_hash_new();
-#if DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_id));
 #else
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
@@ -146,10 +146,10 @@ bdb_env_lockstat(argc, argv, obj)
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
-#if DB_VERSION_MINOR < 3
-    bdb_test_error(lock_stat(dbenvst->dbenvp, &statp, 0));
+#if BDB_VERSION < 30300
+    bdb_test_error(lock_stat(envst->envp, &statp, 0));
 #else
-    bdb_test_error(lock_stat(dbenvst->dbenvp, &statp));
+    bdb_test_error(lock_stat(envst->envp, &statp));
 #endif
     a = rb_hash_new();
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
@@ -169,20 +169,20 @@ bdb_env_lockstat(argc, argv, obj)
     return a;
 }
 
-#if DB_VERSION_MAJOR < 3
-#define GetLockid(obj, lockid, dbenvst)		\
+#if BDB_VERSION < 30000
+#define GetLockid(obj, lockid, envst)		\
 {						\
     Data_Get_Struct(obj, bdb_LOCKID, lockid);	\
-    GetEnvDB(lockid->env, dbenvst);		\
-    if (dbenvst->dbenvp->lk_info == 0) {	\
+    GetEnvDB(lockid->env, envst);		\
+    if (envst->envp->lk_info == 0) {	\
         rb_raise(bdb_eLock, "closed lockid");	\
     }						\
 }
 #else
-#define GetLockid(obj, lockid, dbenvst)		\
+#define GetLockid(obj, lockid, envst)		\
 {						\
     Data_Get_Struct(obj, bdb_LOCKID, lockid);	\
-    GetEnvDB(lockid->env, dbenvst);		\
+    GetEnvDB(lockid->env, envst);		\
 }
 #endif
 
@@ -197,13 +197,13 @@ static void
 lock_free(lock)
     bdb_LOCK *lock;
 {
-#if DB_VERSION_MAJOR < 3
-    bdb_ENV *dbenvst;
+#if BDB_VERSION < 30000
+    bdb_ENV *envst;
 
-    GetEnvDB(lock->env, dbenvst);
-    if (dbenvst->dbenvp->lk_info) {
-	lock_close(dbenvst->dbenvp->lk_info);
-	dbenvst->dbenvp->lk_info = NULL;
+    GetEnvDB(lock->env, envst);
+    if (envst->envp->lk_info) {
+	lock_close(envst->envp->lk_info);
+	envst->envp->lk_info = NULL;
     }
 #endif
     free(lock);
@@ -216,7 +216,7 @@ bdb_lockid_get(argc, argv, obj)
     VALUE obj;
 {
     bdb_LOCKID *lockid;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     DB_LOCK lock;
     bdb_LOCK *lockst;
     DBT objet;
@@ -239,25 +239,25 @@ bdb_lockid_get(argc, argv, obj)
     objet.data = RSTRING(a)->ptr;
     objet.size = RSTRING(a)->len;
     lock_mode = NUM2INT(b);
-    GetLockid(obj, lockid, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lk_info) {
+    GetLockid(obj, lockid, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
-    bdb_test_error(lock_get(dbenvst->dbenvp->lk_info, lockid->lock, flags,
-			&objet, lock_mode, &lock));
+    bdb_test_error(lock_get(envst->envp->lk_info, lockid->lock, flags,
+			    &objet, lock_mode, &lock));
 #else
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 
-    bdb_test_error(dbenvst->dbenvp->lock_get(dbenvst->dbenvp, lockid->lock,
-					     flags, &objet, lock_mode, &lock));
+    bdb_test_error(envst->envp->lock_get(envst->envp, lockid->lock,
+					 flags, &objet, lock_mode, &lock));
 #else
-    bdb_test_error(lock_get(dbenvst->dbenvp, lockid->lock, flags,
-			&objet, lock_mode, &lock));
+    bdb_test_error(lock_get(envst->envp, lockid->lock, flags,
+			    &objet, lock_mode, &lock));
 #endif
 #endif
     res = Data_Make_Struct(bdb_cLock, bdb_LOCK, lock_mark, lock_free, lockst);
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     lockst->lock = lock;
 #else
     lockst->lock = ALLOC(DB_LOCK);
@@ -267,19 +267,19 @@ bdb_lockid_get(argc, argv, obj)
     return res;
 } 
 
-#if DB_VERSION_MAJOR < 3
-#define GetLock(obj, lock, dbenvst)		\
+#if BDB_VERSION < 30000
+#define GetLock(obj, lock, envst)		\
 {						\
     Data_Get_Struct(obj, bdb_LOCK, lock);	\
-    GetEnvDB(lock->env, dbenvst);		\
-    if (dbenvst->dbenvp->lk_info == 0)		\
+    GetEnvDB(lock->env, envst);			\
+    if (envst->envp->lk_info == 0)		\
         rb_raise(bdb_eLock, "closed lock");	\
 }
 #else
-#define GetLock(obj, lock, dbenvst)		\
+#define GetLock(obj, lock, envst)		\
 {						\
     Data_Get_Struct(obj, bdb_LOCK, lock);	\
-    GetEnvDB(lock->env, dbenvst);		\
+    GetEnvDB(lock->env, envst);			\
 }
 #endif
 
@@ -293,7 +293,7 @@ bdb_lockid_each(obj, listobj)
 {
     VALUE key, value;
     DB_LOCKREQ *list;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct lockreq *listst;
     char *options;
 
@@ -322,14 +322,14 @@ bdb_lockid_each(obj, listobj)
 	if (!rb_obj_is_kind_of(value, bdb_cLock)) {
 	    rb_raise(bdb_eFatal, "BDB::Lock expected");
 	}
-	GetLock(value, lockst, dbenvst);
-#if DB_VERSION_MAJOR < 3
+	GetLock(value, lockst, envst);
+#if BDB_VERSION < 30000
 	list->lock = lockst->lock;
 #else
 	MEMCPY(&list->lock, lockst->lock, DB_LOCK, 1);
 #endif
     }
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     else if (strcmp(options, "timeout") == 0) {
 	list->timeout = rb_Integer(value);
     }
@@ -346,7 +346,7 @@ bdb_lockid_vec(argc, argv, obj)
     DB_LOCKREQ *list;
     bdb_LOCKID *lockid;
     bdb_LOCK *lockst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     unsigned int flags;
     VALUE a, b, c, res;
     int i, n, err;
@@ -372,19 +372,19 @@ bdb_lockid_vec(argc, argv, obj)
 	listst->list = &list[i];
 	rb_iterate(rb_each, b, bdb_lockid_each, listobj);
     }
-    GetLockid(obj, lockid, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lk_info) {
+    GetLockid(obj, lockid, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
-    err = lock_vec(dbenvst->dbenvp->lk_info, lockid->lock, flags,
+    err = lock_vec(envst->envp->lk_info, lockid->lock, flags,
 		   list, RARRAY(a)->len, NULL);
 #else
-#if DB_VERSION_MAJOR >= 4
-    err = dbenvst->dbenvp->lock_vec(dbenvst->dbenvp, lockid->lock, flags,
-		   list, RARRAY(a)->len, NULL);
+#if BDB_VERSION >= 40000
+    err = envst->envp->lock_vec(envst->envp, lockid->lock, flags,
+				list, RARRAY(a)->len, NULL);
 #else    
-    err = lock_vec(dbenvst->dbenvp, lockid->lock, flags,
+    err = lock_vec(envst->envp, lockid->lock, flags,
 		   list, RARRAY(a)->len, NULL);
 #endif
 #endif
@@ -406,7 +406,7 @@ bdb_lockid_vec(argc, argv, obj)
     for (i = 0; i < RARRAY(a)->len; i++) {
 	if (list[i].op == DB_LOCK_GET) {
 	    c = Data_Make_Struct(bdb_cLock, bdb_LOCK, lock_mark, lock_free, lockst);
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
 	    lockst->lock = list[i].lock;
 #else
 	    lockst->lock = ALLOC(DB_LOCK);
@@ -428,19 +428,19 @@ bdb_lock_put(obj)
     VALUE obj;
 {
     bdb_LOCK *lockst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
-    GetLock(obj, lockst, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lk_info) {
+    GetLock(obj, lockst, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
-    bdb_test_error(lock_put(dbenvst->dbenvp->lk_info, lockst->lock));
+    bdb_test_error(lock_put(envst->envp->lk_info, lockst->lock));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->lock_put(dbenvst->dbenvp, lockst->lock));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->lock_put(envst->envp, lockst->lock));
 #else
-    bdb_test_error(lock_put(dbenvst->dbenvp, lockst->lock));
+    bdb_test_error(lock_put(envst->envp, lockst->lock));
 #endif
 #endif
     return Qnil;

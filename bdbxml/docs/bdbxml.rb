@@ -346,11 +346,11 @@ end
 
 #Iterate over the result of a query
 #
-#<em>returntype</em> can have the values <em>BDB::XML::Content::Document</em>
-#or <em>BDB::XML::Content::Values</em>
+#<em>returntype</em> can have the values <em>BDB::XML::Context::Document</em>
+#or <em>BDB::XML::Context::Values</em>
 #
 #the query is evaluated lazily
-def  search(xpath, returntype = BDB::XML::Content::Document) 
+def  search(xpath, returntype = BDB::XML::Context::Document) 
 yield doc
 end
 end

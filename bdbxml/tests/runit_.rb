@@ -21,7 +21,6 @@ rescue LoadError
    end
 end
 
-
 if RUBY_VERSION > "1.7"
    class Array
       alias indices select

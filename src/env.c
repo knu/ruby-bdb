@@ -2,13 +2,15 @@
 
 ID bdb_id_call;
 
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
 static ID id_feedback;
 #endif
 
+static VALUE bdb_env_internal_ary;
+
 ID bdb_id_current_env;
 
-#if DB_VERSION_MAJOR == 4 & DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
 static ID id_app_dispatch;
 #endif
 
@@ -18,31 +20,31 @@ struct db_stoptions {
     int lg_max, lg_bsize;
 };
 
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 
 static int
-bdb_env_rep_transport(dbenv, control, rec, envid, flags)
-    DB_ENV *dbenv;
+bdb_env_rep_transport(env, control, rec, envid, flags)
+    DB_ENV *env;
     const DBT *control;
     const DBT *rec;
     int envid;
     u_int32_t flags;
 {
     VALUE obj, av, bv, res;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
     if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env)) == Qnil) {
 	rb_raise(bdb_eFatal, "BUG : current_env not set");
     }
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     av = rb_tainted_str_new(control->data, control->size);
     bv = rb_tainted_str_new(rec->data, rec->size);
-    if (dbenvst->rep_transport == 0) {
+    if (envst->rep_transport == 0) {
 	res = rb_funcall(obj, rb_intern("bdb_rep_transport"), 4, av, bv,
 			 INT2FIX(envid), INT2FIX(flags));
     }
     else {
-	res = rb_funcall(dbenvst->rep_transport, bdb_id_call, 4, 
+	res = rb_funcall(envst->rep_transport, bdb_id_call, 4, 
 			 av, bv, INT2FIX(envid), INT2FIX(flags));
     }
     return NUM2INT(res);
@@ -52,13 +54,12 @@ static VALUE
 bdb_env_rep_elect(env, nb, pri, ti)
     VALUE env, nb, pri, ti;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     int envid = 0;
 
-    GetEnvDB(env, dbenvst);
-    bdb_test_error(dbenvst->dbenvp->rep_elect(dbenvst->dbenvp, NUM2INT(nb),
-					      NUM2INT(pri), NUM2INT(ti),
-					      &envid));
+    GetEnvDB(env, envst);
+    bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb),
+					  NUM2INT(pri), NUM2INT(ti), &envid));
     return INT2NUM(envid);
 }
 
@@ -66,12 +67,12 @@ static VALUE
 bdb_env_rep_process_message(env, av, bv, ev)
     VALUE env, av, bv, ev;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     DBT control, rec;
     int ret, envid;
     VALUE result;
 
-    GetEnvDB(env, dbenvst);
+    GetEnvDB(env, envst);
     av = rb_str_to_str(av);
     bv = rb_str_to_str(bv);
     MEMZERO(&control, DBT, 1);
@@ -81,9 +82,7 @@ bdb_env_rep_process_message(env, av, bv, ev)
     rec.size = RSTRING(bv)->len;
     rec.data = RSTRING(bv)->ptr;
     envid = NUM2INT(ev);
-    ret = dbenvst->dbenvp->rep_process_message(dbenvst->dbenvp,
-					       &control, &rec,
-					       &envid);
+    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, &envid);
     if (ret == DB_RUNRECOVERY) {
 	bdb_test_error(ret);
     }
@@ -98,33 +97,34 @@ static VALUE
 bdb_env_rep_start(env, ident, flags)
     VALUE env, ident, flags;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     DBT cdata;
 
-    GetEnvDB(env, dbenvst);
+    GetEnvDB(env, envst);
     if (!NIL_P(ident)) {
 	ident = rb_str_to_str(ident);
 	MEMZERO(&cdata, DBT, 1);
 	cdata.size = RSTRING(ident)->len;
 	cdata.data = RSTRING(ident)->ptr;
     }
-    bdb_test_error(dbenvst->dbenvp->rep_start(dbenvst->dbenvp, 
-					      NIL_P(ident)?NULL:&cdata,
-					      NUM2INT(flags)));
+    bdb_test_error(envst->envp->rep_start(envst->envp, 
+					  NIL_P(ident)?NULL:&cdata,
+					  NUM2INT(flags)));
     return Qnil;
 }
 
-#if DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
+
 static VALUE
 bdb_env_rep_limit(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     VALUE a, b;
     u_int32_t gbytes, bytes;
 
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     gbytes = bytes = 0;
     switch(rb_scan_args(argc, argv, "11", &a, &b)) {
     case 1:
@@ -144,44 +144,43 @@ bdb_env_rep_limit(argc, argv, obj)
 	bytes = NUM2UINT(b);
 	break;
     }
-    bdb_test_error(dbenvst->dbenvp->set_rep_limit(dbenvst->dbenvp,
-						  gbytes, bytes));
+    bdb_test_error(envst->envp->set_rep_limit(envst->envp, gbytes, bytes));
     return obj;
 }
 #endif
  
 #endif
 
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
 static void
 bdb_env_feedback(DB_ENV *envp, int opcode, int pct)
 {
     VALUE obj;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env)) == Qnil) {
 	rb_raise(bdb_eFatal, "BUG : current_env not set");
     }
-    Data_Get_Struct(obj, bdb_ENV, dbenvst);
-    if (NIL_P(dbenvst->feedback)) {
+    Data_Get_Struct(obj, bdb_ENV, envst);
+    if (NIL_P(envst->feedback)) {
 	return;
     }
-    if (dbenvst->feedback == 0) {
+    if (envst->feedback == 0) {
 	rb_funcall(obj, id_feedback, 2, INT2NUM(opcode), INT2NUM(pct));
     }
     else {
-	rb_funcall(dbenvst->feedback, bdb_id_call, 2, INT2NUM(opcode), INT2NUM(pct));
+	rb_funcall(envst->feedback, bdb_id_call, 2, INT2NUM(opcode), INT2NUM(pct));
     }
 }
 
 #endif
 
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
 
 static int
 bdb_env_app_dispatch(DB_ENV *envp, DBT *log_rec, DB_LSN *lsn, db_recops op)
 {
     VALUE obj, lsnobj, logobj, res;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct dblsnst *lsnst;
 
     if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env)) == Qnil) {
@@ -191,11 +190,11 @@ bdb_env_app_dispatch(DB_ENV *envp, DBT *log_rec, DB_LSN *lsn, db_recops op)
     Data_Get_Struct(lsnobj, struct dblsnst, lsnst);
     MEMCPY(lsnst->lsn, lsn, DB_LSN, 1);
     logobj = rb_str_new(log_rec->data, log_rec->size);
-    if (dbenvst->app_dispatch == 0) {
+    if (envst->app_dispatch == 0) {
 	res = rb_funcall(obj, id_app_dispatch, 3, logobj, lsnobj, INT2NUM(op));
     }
     else {
-	res = rb_funcall(dbenvst->app_dispatch, bdb_id_call, 3, logobj, lsnobj, INT2NUM(op));
+	res = rb_funcall(envst->app_dispatch, bdb_id_call, 3, logobj, lsnobj, INT2NUM(op));
     }
     return NUM2INT(res);
 }
@@ -207,100 +206,110 @@ bdb_env_i_options(obj, db_stobj)
     VALUE obj, db_stobj;
 {
     char *options;
-    DB_ENV *dbenvp;
+    DB_ENV *envp;
     VALUE key, value;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct db_stoptions *db_st;
 
     Data_Get_Struct(db_stobj, struct db_stoptions, db_st);
-    dbenvst = db_st->env;
+    envst = db_st->env;
 
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
-    dbenvp = dbenvst->dbenvp;
+    envp = envst->envp;
     key = rb_obj_as_string(key);
     options = RSTRING(key)->ptr;
     if (strcmp(options, "set_cachesize") == 0) {
-#if DB_VERSION_MAJOR < 3
-        dbenvp->mp_size = NUM2INT(value);
+	switch (TYPE(value)) {
+	case T_FIXNUM:
+	case T_FLOAT:
+	case T_BIGNUM:
+#if BDB_VERSION < 30000
+	    envp->mp_size = NUM2INT(value);
 #else
-        Check_Type(value, T_ARRAY);
-        if (RARRAY(value)->len < 3)
-            rb_raise(bdb_eFatal, "expected 3 values for cachesize");
-        bdb_test_error(dbenvp->set_cachesize(dbenvp, 
-                                      NUM2INT(RARRAY(value)->ptr[0]),
-                                      NUM2INT(RARRAY(value)->ptr[1]),
-                                      NUM2INT(RARRAY(value)->ptr[2])));
+	    bdb_test_error(envp->set_cachesize(envp, 0, NUM2UINT(value), 0));
 #endif
+	    break;
+	default:
+	    Check_Type(value, T_ARRAY);
+	    if (RARRAY(value)->len < 3) {
+		rb_raise(bdb_eFatal, "expected 3 values for cachesize");
+	    }
+#if BDB_VERSION < 30000
+	    envp->mp_size = NUM2INT(RARRAY(value)->ptr[1]);
+#else
+	    bdb_test_error(envp->set_cachesize(envp, 
+					       NUM2UINT(RARRAY(value)->ptr[0]),
+					       NUM2UINT(RARRAY(value)->ptr[1]),
+					       NUM2INT(RARRAY(value)->ptr[2])));
+#endif
+	    break;
+	}
     }
 #if DB_VERSION_MAJOR == 3
     else if (strcmp(options, "set_region_init") == 0) {
-#if DB_VERSION_MAJOR == 3 && \
-    ((DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14) || \
-      DB_VERSION_MINOR >= 2)
-        bdb_test_error(db_env_set_region_init(NUM2INT(value)));
+#if BDB_VERSION < 30114
+        bdb_test_error(envp->set_region_init(envp, NUM2INT(value)));
 #else
-        bdb_test_error(dbenvp->set_region_init(dbenvp, NUM2INT(value)));
+        bdb_test_error(db_env_set_region_init(NUM2INT(value)));
 #endif
     }
 #endif
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     else if (strcmp(options, "set_tas_spins") == 0) {
-#if DB_VERSION_MAJOR == 3 && \
-    ((DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14) || \
-      DB_VERSION_MINOR >= 2)
-        bdb_test_error(db_env_set_tas_spins(NUM2INT(value)));
+#if BDB_VERSION < 30114 || BDB_VERSION >= 40000
+        bdb_test_error(envp->set_tas_spins(envp, NUM2INT(value)));
 #else
-        bdb_test_error(dbenvp->set_tas_spins(dbenvp, NUM2INT(value)));
+        bdb_test_error(db_env_set_tas_spins(NUM2INT(value)));
 #endif
     }
     else if (strcmp(options, "set_tx_max") == 0) {
-        bdb_test_error(dbenvp->set_tx_max(dbenvp, NUM2INT(value)));
+        bdb_test_error(envp->set_tx_max(envp, NUM2INT(value)));
     }
-#if DB_VERSION_MAJOR >= 4 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
+#if BDB_VERSION >= 30100
     else if (strcmp(options, "set_tx_timestamp") == 0) {
 	time_t ti;
 	value = rb_Integer(value);
 	ti = (time_t)NUM2INT(value);
-        bdb_test_error(dbenvp->set_tx_timestamp(dbenvp, &ti));
+        bdb_test_error(envp->set_tx_timestamp(envp, &ti));
     }
 #endif
 #endif
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     else if  (strcmp(options, "set_verbose") == 0) {
-        dbenvp->db_verbose = NUM2INT(value);
+        envp->db_verbose = NUM2INT(value);
     }
 #else
     else if (strcmp(options, "set_verb_chkpoint") == 0) {
-        bdb_test_error(dbenvp->set_verbose(dbenvp, DB_VERB_CHKPOINT, NUM2INT(value)));
+        bdb_test_error(envp->set_verbose(envp, DB_VERB_CHKPOINT, NUM2INT(value)));
     }
     else if (strcmp(options, "set_verb_deadlock") == 0) {
-        bdb_test_error(dbenvp->set_verbose(dbenvp, DB_VERB_DEADLOCK, NUM2INT(value)));
+        bdb_test_error(envp->set_verbose(envp, DB_VERB_DEADLOCK, NUM2INT(value)));
     }
     else if (strcmp(options, "set_verb_recovery") == 0) {
-        bdb_test_error(dbenvp->set_verbose(dbenvp, DB_VERB_RECOVERY, NUM2INT(value)));
+        bdb_test_error(envp->set_verbose(envp, DB_VERB_RECOVERY, NUM2INT(value)));
     }
     else if (strcmp(options, "set_verb_waitsfor") == 0) {
-        bdb_test_error(dbenvp->set_verbose(dbenvp, DB_VERB_WAITSFOR, NUM2INT(value)));
+        bdb_test_error(envp->set_verbose(envp, DB_VERB_WAITSFOR, NUM2INT(value)));
     }
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     else if (strcmp(options, "set_verb_replication") == 0) {
-        bdb_test_error(dbenvp->set_verbose(dbenvp, DB_VERB_REPLICATION, NUM2INT(value)));
+        bdb_test_error(envp->set_verbose(envp, DB_VERB_REPLICATION, NUM2INT(value)));
     }
 #endif
 #endif
     else if (strcmp(options, "set_lk_detect") == 0) {
-#if DB_VERSION_MAJOR < 3
-	dbenvp->lk_detect = NUM2INT(value);
+#if BDB_VERSION < 30000
+	envp->lk_detect = NUM2INT(value);
 #else
-        bdb_test_error(dbenvp->set_lk_detect(dbenvp, NUM2INT(value)));
+        bdb_test_error(envp->set_lk_detect(envp, NUM2INT(value)));
 #endif
     }
     else if (strcmp(options, "set_lk_max") == 0) {
-#if DB_VERSION_MAJOR < 3
-	dbenvp->lk_max = NUM2INT(value);
+#if BDB_VERSION < 30000
+	envp->lk_max = NUM2INT(value);
 #else
-        bdb_test_error(dbenvp->set_lk_max(dbenvp, NUM2INT(value)));
+        bdb_test_error(envp->set_lk_max(envp, NUM2INT(value)));
 #endif
     }
     else if (strcmp(options, "set_lk_conflicts") == 0) {
@@ -329,28 +338,29 @@ bdb_env_i_options(obj, db_stobj)
 		*p = (unsigned char)v;
 	    }
 	}
-#if DB_VERSION_MAJOR < 3
-	dbenvp->lk_modes = l;
-	dbenvp->lk_conflicts = conflits;
+#if BDB_VERSION < 30000
+	envp->lk_modes = l;
+	envp->lk_conflicts = conflits;
 #else
-        bdb_test_error(dbenvp->set_lk_conflicts(dbenvp, conflits, l));
+        bdb_test_error(envp->set_lk_conflicts(envp, conflits, l));
 #endif
     }
     else if (strcmp(options, "set_lg_max") == 0) {
 	db_st->lg_max = NUM2INT(value);
     }
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     else if (strcmp(options, "set_lg_bsize") == 0) {
 	db_st->lg_bsize = NUM2INT(value);
     }
+#endif
     else if (strcmp(options, "set_data_dir") == 0) {
 	char *tmp;
 
 	Check_SafeStr(value);
-#if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
-	bdb_test_error(dbenvp->set_data_dir(dbenvp, RSTRING(value)->ptr));
+#if BDB_VERSION >= 30100
+	bdb_test_error(envp->set_data_dir(envp, RSTRING(value)->ptr));
 #else
-	tmp = ALLOCA_N(char, strlen("set_data_dir") + strlen(RSTRING(value)->ptr) + 2);
+	tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + strlen(RSTRING(value)->ptr) + 2);
 	sprintf(tmp, "DB_DATA_DIR %s", RSTRING(value)->ptr);
 	rb_ary_push(db_st->config, rb_str_new2(tmp));
 #endif
@@ -359,10 +369,10 @@ bdb_env_i_options(obj, db_stobj)
 	char *tmp;
 
 	Check_SafeStr(value);
-#if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
-	bdb_test_error(dbenvp->set_lg_dir(dbenvp, RSTRING(value)->ptr));
+#if BDB_VERSION >= 30100
+	bdb_test_error(envp->set_lg_dir(envp, RSTRING(value)->ptr));
 #else
-	tmp = ALLOCA_N(char, strlen("set_lg_dir") + strlen(RSTRING(value)->ptr) + 2);
+	tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + strlen(RSTRING(value)->ptr) + 2);
 	sprintf(tmp, "DB_LOG_DIR %s", RSTRING(value)->ptr);
 	rb_ary_push(db_st->config, rb_str_new2(tmp));
 #endif
@@ -371,15 +381,15 @@ bdb_env_i_options(obj, db_stobj)
 	char *tmp;
 
 	Check_SafeStr(value);
-#if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
-	bdb_test_error(dbenvp->set_tmp_dir(dbenvp, RSTRING(value)->ptr));
+#if BDB_VERSION >= 30100
+	bdb_test_error(envp->set_tmp_dir(envp, RSTRING(value)->ptr));
 #else
-	tmp = ALLOCA_N(char, strlen("set_tmp_dir") + strlen(RSTRING(value)->ptr) + 2);
+	tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + strlen(RSTRING(value)->ptr) + 2);
 	sprintf(tmp, "DB_TMP_DIR %s", RSTRING(value)->ptr);
 	rb_ary_push(db_st->config, rb_str_new2(tmp));
 #endif
     }
-#if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30100
     else if (strcmp(options, "set_server") == 0 ||
 	strcmp(options, "set_rpc_server") == 0) {
 	char *host;
@@ -414,42 +424,40 @@ bdb_env_i_options(obj, db_stobj)
 	    rb_raise(bdb_eFatal, "Invalid type for \"set_server\"");
 	    break;
 	}
-#if DB_VERSION_MINOR >= 3 || DB_VERSION_MAJOR >= 4
-	bdb_test_error(dbenvp->set_rpc_server(dbenvp, NULL, host, cl_timeout, sv_timeout, flags));
+#if BDB_VERSION >= 30300
+	bdb_test_error(envp->set_rpc_server(envp, NULL, host, cl_timeout, sv_timeout, flags));
 #else
-	bdb_test_error(dbenvp->set_server(dbenvp, host, cl_timeout, sv_timeout, flags));
+	bdb_test_error(envp->set_server(envp, host, cl_timeout, sv_timeout, flags));
 #endif
     }
 #endif
-
-#endif
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2) || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30200
     else if (strcmp(options, "set_flags") == 0) {
-        bdb_test_error(dbenvp->set_flags(dbenvp, NUM2UINT(value), 1));
+        bdb_test_error(envp->set_flags(envp, NUM2UINT(value), 1));
     }
 #endif
     else if (strcmp(options, "marshal") == 0) {
         switch (value) {
-        case Qtrue: dbenvst->marshal = bdb_mMarshal; break;
-        case Qfalse: dbenvst->marshal = Qfalse; break;
+        case Qtrue: envst->marshal = bdb_mMarshal; break;
+        case Qfalse: envst->marshal = Qfalse; break;
         default: 
 	    if (!rb_respond_to(value, bdb_id_load) ||
 		!rb_respond_to(value, bdb_id_dump)) {
 		rb_raise(bdb_eFatal, "marshal value must be true or false");
 	    }
-	    dbenvst->marshal = value;
+	    envst->marshal = value;
 	    break;
         }
     }
     else if (strcmp(options, "thread") == 0) {
 	if (RTEST(value)) {
-	    dbenvst->options &= ~BDB_NO_THREAD;
+	    envst->options &= ~BDB_NO_THREAD;
 	}
 	else {
-	    dbenvst->options |= BDB_NO_THREAD;
+	    envst->options |= BDB_NO_THREAD;
 	}
     }
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     else if (strcmp(options, "set_rep_transport") == 0) {
 	if (TYPE(value) != T_ARRAY || RARRAY(value)->len != 2) {
 	    rb_raise(bdb_eFatal, "expected an Array of length 2 for set_rep_transport");
@@ -460,42 +468,42 @@ bdb_env_i_options(obj, db_stobj)
 	if (!rb_respond_to(RARRAY(value)->ptr[1], bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "2nd arg must respond to #call");
 	}
-	dbenvst->rep_transport = RARRAY(value)->ptr[1];
-	bdb_test_error(dbenvst->dbenvp->set_rep_transport(dbenvst->dbenvp, NUM2INT(RARRAY(value)->ptr[0]), bdb_env_rep_transport));
-	dbenvst->options |= BDB_REP_TRANSPORT;
+	envst->rep_transport = RARRAY(value)->ptr[1];
+	bdb_test_error(envst->envp->set_rep_transport(envst->envp, NUM2INT(RARRAY(value)->ptr[0]), bdb_env_rep_transport));
+	envst->options |= BDB_REP_TRANSPORT;
     }
     else if (strcmp(options, "set_timeout") == 0) {
 	if (TYPE(value) == T_ARRAY) {
 	    if (RARRAY(value)->len >= 1 && !NIL_P(RARRAY(value)->ptr[0])) {
 
-		bdb_test_error(dbenvst->dbenvp->set_timeout(dbenvst->dbenvp, 
-							    NUM2UINT(RARRAY(value)->ptr[0]),
-							    DB_SET_TXN_TIMEOUT));
+		bdb_test_error(envst->envp->set_timeout(envst->envp, 
+							NUM2UINT(RARRAY(value)->ptr[0]),
+							DB_SET_TXN_TIMEOUT));
 	    }
 	    if (RARRAY(value)->len == 2 && !NIL_P(RARRAY(value)->ptr[1])) {
-		bdb_test_error(dbenvst->dbenvp->set_timeout(dbenvst->dbenvp, 
-							    NUM2UINT(RARRAY(value)->ptr[0]),
-							    DB_SET_LOCK_TIMEOUT));
+		bdb_test_error(envst->envp->set_timeout(envst->envp, 
+							NUM2UINT(RARRAY(value)->ptr[0]),
+							DB_SET_LOCK_TIMEOUT));
 	    }
 	}
 	else {
-	    bdb_test_error(dbenvst->dbenvp->set_timeout(dbenvst->dbenvp,
-							NUM2UINT(value),
-							 DB_SET_TXN_TIMEOUT));
+	    bdb_test_error(envst->envp->set_timeout(envst->envp,
+						    NUM2UINT(value),
+						    DB_SET_TXN_TIMEOUT));
 	}
     }
     else if (strcmp(options, "set_txn_timeout") == 0) {
-	bdb_test_error(dbenvst->dbenvp->set_timeout(dbenvst->dbenvp,
-						    NUM2UINT(value),
-						    DB_SET_TXN_TIMEOUT));
+	bdb_test_error(envst->envp->set_timeout(envst->envp,
+						NUM2UINT(value),
+						DB_SET_TXN_TIMEOUT));
     }
     else if (strcmp(options, "set_lock_timeout") == 0) {
-	bdb_test_error(dbenvst->dbenvp->set_timeout(dbenvst->dbenvp,
-						    NUM2UINT(value),
-						    DB_SET_LOCK_TIMEOUT));
+	bdb_test_error(envst->envp->set_timeout(envst->envp,
+						NUM2UINT(value),
+						DB_SET_LOCK_TIMEOUT));
     }
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     else if (strcmp(options, "set_encrypt") == 0) {
 	char *passwd;
 	int flags = DB_ENCRYPT_AES;
@@ -509,9 +517,8 @@ bdb_env_i_options(obj, db_stobj)
 	else {
 	    passwd = STR2CSTR(value);
 	}
-	bdb_test_error(dbenvst->dbenvp->set_encrypt(dbenvst->dbenvp,
-						    passwd, flags));
-	dbenvst->options |= BDB_ENV_ENCRYPT;
+	bdb_test_error(envst->envp->set_encrypt(envst->envp, passwd, flags));
+	envst->options |= BDB_ENV_ENCRYPT;
     }
     else if (strcmp(options, "set_rep_limit") == 0) {
 	u_int32_t gbytes, bytes;
@@ -526,62 +533,78 @@ bdb_env_i_options(obj, db_stobj)
 	else {
 	    bytes = NUM2UINT(RARRAY(value)->ptr[1]);
 	}
-	bdb_test_error(dbenvst->dbenvp->set_rep_limit(dbenvst->dbenvp,
-						      gbytes, bytes));
+	bdb_test_error(envst->envp->set_rep_limit(envst->envp, gbytes, bytes));
     }
 #endif
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     else if (strcmp(options, "set_feedback") == 0) {
 	if (!rb_respond_to(value, bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "arg must respond to #call");
 	}
-	dbenvst->options |= BDB_FEEDBACK;
-	dbenvst->feedback = value;
-	dbenvst->dbenvp->set_feedback(dbenvst->dbenvp, bdb_env_feedback);
+	envst->options |= BDB_FEEDBACK;
+	envst->feedback = value;
+	envst->envp->set_feedback(envst->envp, bdb_env_feedback);
     }
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     else if (strcmp(options, "set_app_dispatch") == 0) {
 	if (!rb_respond_to(value, bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "arg must respond to #call");
 	}
-	dbenvst->options |= BDB_APP_DISPATCH;
-	dbenvst->app_dispatch = value;
-	dbenvst->dbenvp->set_app_dispatch(dbenvst->dbenvp, bdb_env_app_dispatch);
+	envst->options |= BDB_APP_DISPATCH;
+	envst->app_dispatch = value;
+	envst->envp->set_app_dispatch(envst->envp, bdb_env_app_dispatch);
     }
 #endif
     return Qnil;
 }
 
+struct env_iv {
+    bdb_ENV *envst;
+    VALUE env;
+};
+
 static void
-bdb_final(dbenvst)
-    bdb_ENV *dbenvst;
+bdb_final(envst)
+    bdb_ENV *envst;
 {
     VALUE db, obj;
     bdb_ENV *thst;
 
-    if (dbenvst->db_ary) {
-	while ((db = rb_ary_pop(dbenvst->db_ary)) != Qnil) {
+    if (envst->db_ary) {
+	while ((db = rb_ary_pop(envst->db_ary)) != Qnil) {
 	    if (rb_respond_to(db, rb_intern("close"))) {
 		rb_funcall(db, rb_intern("close"), 0, 0);
 	    }
 	}
-	dbenvst->db_ary = 0;
+	envst->db_ary = 0;
     }
-    if (dbenvst->dbenvp) {
-#if DB_VERSION_MAJOR < 3
-	db_appexit(dbenvst->dbenvp);
-	free(dbenvst->dbenvp);
+    if (envst->envp) {
+	struct env_iv *eiv;
+	int i;
+
+	if (!(envst->options & BDB_ENV_NOT_OPEN)) {
+#if BDB_VERSION < 30000
+	    db_appexit(envst->envp);
+	    free(envst->envp);
 #else
-	dbenvst->dbenvp->close(dbenvst->dbenvp, 0);
+	    envst->envp->close(envst->envp, 0);
 #endif
-	dbenvst->dbenvp = NULL;
+	}
+	envst->envp = NULL;
+	for (i = 0; i < RARRAY(bdb_env_internal_ary)->len; ++i) {
+	    eiv = (struct env_iv *)DATA_PTR(RARRAY(bdb_env_internal_ary)->ptr[i]);
+	    if (eiv->envst == envst) {
+		rb_ary_delete_at(bdb_env_internal_ary, i);
+		break;
+	    }
+	}
     }
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env);
     if (obj != Qnil) {
 	Data_Get_Struct(obj, bdb_ENV, thst);
-	if (thst == dbenvst) {
+	if (thst == envst) {
 	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, Qnil);
 	}
     }
@@ -589,43 +612,58 @@ bdb_final(dbenvst)
 }
 
 static void
-bdb_env_free(dbenvst)
-    bdb_ENV *dbenvst;
+bdb_env_free(envst)
+    bdb_ENV *envst;
 {
-    bdb_final(dbenvst);
-    free(dbenvst);
+    bdb_final(envst);
+    free(envst);
 }
 
 static VALUE
 bdb_env_close(obj)
     VALUE obj;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     VALUE db;
+    int i;
 
-    if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4)
+    if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4) {
 	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
-    GetEnvDB(obj, dbenvst);
-    bdb_final(dbenvst);
+    }
+    GetEnvDB(obj, envst);
+    bdb_final(envst);
     return Qnil;
 }
 
 static void
-bdb_env_mark(dbenvst)
-    bdb_ENV *dbenvst;
+bdb_env_finalize(ary)
+    VALUE ary;
 {
-    if (dbenvst->marshal) rb_gc_mark(dbenvst->marshal);
-#if DB_VERSION_MAJOR >= 4
-    if (dbenvst->rep_transport) rb_gc_mark(dbenvst->rep_transport);
-#if DB_VERSION_MINOR >= 1
-    if (dbenvst->app_dispatch) rb_gc_mark(dbenvst->app_dispatch);
+    VALUE env;
+    struct env_iv *eiv;
+
+    while ((env = rb_ary_pop(bdb_env_internal_ary)) != Qnil) {
+	Data_Get_Struct(env, struct env_iv, eiv);
+	rb_funcall2(eiv->env, rb_intern("close"), 0, 0);
+    }
+}
+
+static void
+bdb_env_mark(envst)
+    bdb_ENV *envst;
+{
+    rb_gc_mark(envst->marshal);
+#if BDB_VERSION >= 40000
+    rb_gc_mark(envst->rep_transport);
+#if BDB_VERSION >= 40100
+    rb_gc_mark(envst->app_dispatch);
 #endif
 #endif
-#if DB_VERSION_MAJOR >= 3
-    if (dbenvst->feedback) rb_gc_mark(dbenvst->feedback);
+#if BDB_VERSION >= 30000
+    rb_gc_mark(envst->feedback);
 #endif
-    if (dbenvst->db_ary) rb_gc_mark(dbenvst->db_ary);
-    rb_gc_mark(dbenvst->home);
+    rb_gc_mark(envst->db_ary);
+    rb_gc_mark(envst->home);
 }
 
 VALUE
@@ -644,7 +682,7 @@ bdb_env_open_db(argc, argv, obj)
 	case DB_BTREE: cl = bdb_cBtree; break;
 	case DB_HASH: cl = bdb_cHash; break;
 	case DB_RECNO: cl = bdb_cRecno; break;
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
 	case DB_QUEUE: cl = bdb_cQueue; break;
 #endif
 	case DB_UNKNOWN: cl = bdb_cUnknown; break;
@@ -727,16 +765,16 @@ bdb_func_malloc(size)
 }
 
 static VALUE
-bdb_set_func(dbenvst)
-    bdb_ENV *dbenvst;
+bdb_set_func(envst)
+    bdb_ENV *envst;
 {
-#if DB_VERSION_MAJOR >= 3
-#if (DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14) || DB_VERSION_MINOR >= 2 || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30000
+#if BDB_VERSION < 30114
+    bdb_test_error(envst->envp->set_func_sleep(envst->envp, bdb_func_sleep));
+    bdb_test_error(envst->envp->set_func_yield(envst->envp, bdb_func_yield));
+#else
     bdb_test_error(db_env_set_func_sleep(bdb_func_sleep));
     bdb_test_error(db_env_set_func_yield(bdb_func_yield));
-#else
-    bdb_test_error(dbenvst->dbenvp->set_func_sleep(dbenvst->dbenvp, bdb_func_sleep));
-    bdb_test_error(dbenvst->dbenvp->set_func_yield(dbenvst->dbenvp, bdb_func_yield));
 #endif
 #else
     bdb_test_error(db_jump_set((void *)bdb_func_sleep, DB_FUNC_SLEEP));
@@ -750,22 +788,22 @@ bdb_env_each_options(opt, stobj)
     VALUE opt, stobj;
 {
     VALUE res;
-    DB_ENV *dbenvp;
+    DB_ENV *envp;
     struct db_stoptions *db_st;
 
     res = rb_iterate(rb_each, opt, bdb_env_i_options, stobj);
     Data_Get_Struct(stobj, struct db_stoptions, db_st);
-    dbenvp = db_st->env->dbenvp;
-#if DB_VERSION_MAJOR >= 3
+    envp = db_st->env->envp;
+#if BDB_VERSION >= 30000
     if (db_st->lg_bsize) {
-	bdb_test_error(dbenvp->set_lg_bsize(dbenvp, db_st->lg_bsize));
+	bdb_test_error(envp->set_lg_bsize(envp, db_st->lg_bsize));
     }
 #endif
     if (db_st->lg_max) {
-#if DB_VERSION_MAJOR < 3
-	dbenvp->lg_max = db_st->lg_max;
+#if BDB_VERSION < 30000
+	envp->lg_max = db_st->lg_max;
 #else
-	bdb_test_error(dbenvp->set_lg_max(dbenvp, db_st->lg_max));
+	bdb_test_error(envp->set_lg_max(envp, db_st->lg_max));
 #endif
     }
     return res;
@@ -800,9 +838,10 @@ bdb_env_s_alloc(obj)
     VALUE obj;
 {
     VALUE res;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
-    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, dbenvst);
+    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, envst);
+    envst->options |= BDB_ENV_NOT_OPEN;
     return res;
 }
 
@@ -812,49 +851,54 @@ bdb_env_s_new(argc, argv, obj)
     VALUE *argv;
     VALUE obj;
 {
-    bdb_ENV *dbenvst;
-    VALUE res;
+    bdb_ENV *envst;
+    struct env_iv *eiv;
+    VALUE res, final;
     int flags = 0;
 
     res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
-    Data_Get_Struct(res, bdb_ENV, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    dbenvst->dbenvp = ALLOC(DB_ENV);
-    MEMZERO(dbenvst->dbenvp, DB_ENV, 1);
-    dbenvst->dbenvp->db_errpfx = "BDB::";
-    dbenvst->dbenvp->db_errcall = bdb_env_errcall;
+    Data_Get_Struct(res, bdb_ENV, envst);
+#if BDB_VERSION < 30000
+    envst->envp = ALLOC(DB_ENV);
+    MEMZERO(envst->envp, DB_ENV, 1);
+    envst->envp->db_errpfx = "BDB::";
+    envst->envp->db_errcall = bdb_env_errcall;
 #else
-#if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30100
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
 	rb_iterate(rb_each, argv[argc - 1], bdb_env_s_i_options, (VALUE)&flags);
     }
 #endif
-    bdb_test_error(db_env_create(&(dbenvst->dbenvp), flags));
-    dbenvst->dbenvp->set_errpfx(dbenvst->dbenvp, "BDB::");
-    dbenvst->dbenvp->set_errcall(dbenvst->dbenvp, bdb_env_errcall);
-#if DB_VERSION_MINOR >= 3 || DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->set_alloc(dbenvst->dbenvp, malloc, realloc, free));
+    bdb_test_error(db_env_create(&(envst->envp), flags));
+    envst->envp->set_errpfx(envst->envp, "BDB::");
+    envst->envp->set_errcall(envst->envp, bdb_env_errcall);
+#if BDB_VERSION >= 30300
+    bdb_test_error(envst->envp->set_alloc(envst->envp, malloc, realloc, free));
 #endif
 #endif
     rb_obj_call_init(res, argc, argv);
+    final = Data_Make_Struct(rb_cData, struct env_iv, 0, free, eiv);
+    eiv->env = res;
+    eiv->envst = envst;
+    rb_ary_push(bdb_env_internal_ary, final);
     return res;
 }
 
 
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 
 VALUE 
 bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     VALUE res;
 
     res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
-    Data_Get_Struct(res, bdb_ENV, dbenvst);
-    dbenvst->dbenvp = env;
-    dbenvst->dbenvp->set_errpfx(dbenvst->dbenvp, "BDB::");
-    dbenvst->dbenvp->set_errcall(dbenvst->dbenvp, bdb_env_errcall);
-    bdb_test_error(dbenvst->dbenvp->set_alloc(dbenvst->dbenvp, malloc, realloc, free));
+    Data_Get_Struct(res, bdb_ENV, envst);
+    envst->envp = env;
+    envst->envp->set_errpfx(envst->envp, "BDB::");
+    envst->envp->set_errcall(envst->envp, bdb_env_errcall);
+    bdb_test_error(envst->envp->set_alloc(envst->envp, malloc, realloc, free));
     rb_obj_call_init(res, argc, argv);
     return res;
 }
@@ -867,8 +911,8 @@ bdb_env_init(argc, argv, obj)
     VALUE *argv;
     VALUE obj;
 {
-    DB_ENV *dbenvp;
-    bdb_ENV *dbenvst;
+    DB_ENV *envp;
+    bdb_ENV *envst;
     VALUE a, c, d;
     char *db_home, **db_config;
     int ret, mode, flags;
@@ -879,9 +923,9 @@ bdb_env_init(argc, argv, obj)
     st_config = 0;
     db_config = 0;
     mode = flags = 0;
-    Data_Get_Struct(obj, bdb_ENV, dbenvst);
-    dbenvp = dbenvst->dbenvp;
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    Data_Get_Struct(obj, bdb_ENV, envst);
+    envp = envst->envp;
+#if BDB_VERSION >= 40100
     if (rb_const_defined(CLASS_OF(obj), rb_intern("BDB_ENCRYPT"))) {
 	char *passwd;
 	int flags = DB_ENCRYPT_AES;
@@ -896,19 +940,27 @@ bdb_env_init(argc, argv, obj)
 	else {
 	    passwd = STR2CSTR(value);
 	}
-	bdb_test_error(dbenvp->set_encrypt(dbenvp, passwd, flags));
-	dbenvst->options |= BDB_ENV_ENCRYPT;
+	bdb_test_error(envp->set_encrypt(envp, passwd, flags));
+	envst->options |= BDB_ENV_ENCRYPT;
     }
 #endif
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
+	int i;
 	VALUE db_stobj;
 	struct db_stoptions *db_st;
 
 	st_config = rb_ary_new();
 	db_stobj = Data_Make_Struct(rb_cObject, struct db_stoptions, 0, free, db_st);
-	db_st->env = dbenvst;
+	db_st->env = envst;
 	db_st->config = st_config;
 	bdb_env_each_options(argv[argc - 1], db_stobj);
+	if (RARRAY(st_config)->len > 0) {
+	    db_config = ALLOCA_N(char *, RARRAY(st_config)->len + 1);
+	    for (i = 0; i < RARRAY(st_config)->len; i++) {
+		db_config[i] = RSTRING(RARRAY(st_config)->ptr[i])->ptr;
+	    }
+	    db_config[RARRAY(st_config)->len] = 0;
+	}
 	argc--;
     }
     rb_scan_args(argc, argv, "12", &a, &c, &d);
@@ -928,13 +980,17 @@ bdb_env_init(argc, argv, obj)
 	rb_secure(1);
     }
 #ifndef BDB_NO_THREAD_COMPILE
-    if (!(dbenvst->options & BDB_NO_THREAD)) {
-	bdb_set_func(dbenvst);
+    if (!(envst->options & BDB_NO_THREAD)) {
+	bdb_set_func(envst);
 	flags |= DB_THREAD;
     }
 #endif
-#if DB_VERSION_MAJOR < 3
-    if ((ret = db_appinit(db_home, db_config, dbenvp, flags)) != 0) {
+#if BDB_VERSION < 30000
+    if ((ret = db_appinit(db_home, db_config, envp, flags)) != 0) {
+	if (envst->envp) {
+	    free(envst->envp);
+	}
+	envst->envp = NULL;
         if (bdb_errcall) {
             bdb_errcall = 0;
             rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
@@ -943,46 +999,37 @@ bdb_env_init(argc, argv, obj)
             rb_raise(bdb_eFatal, "%s", db_strerror(ret));
     }
 #else
-#if DB_VERSION_MAJOR >= 4
-    if (dbenvst->rep_transport == 0 && rb_respond_to(obj, rb_intern("bdb_rep_transport")) == Qtrue) {
+#if BDB_VERSION >= 40000
+    if (envst->rep_transport == 0 && rb_respond_to(obj, rb_intern("bdb_rep_transport")) == Qtrue) {
 	if (!rb_const_defined(CLASS_OF(obj), rb_intern("ENVID"))) {
 	    rb_raise(bdb_eFatal, "ENVID must be defined to use rep_transport");
 	}
 	envid = rb_const_get(CLASS_OF(obj), rb_intern("ENVID"));
-	bdb_test_error(dbenvp->set_rep_transport(dbenvp, NUM2INT(envid),
+	bdb_test_error(envp->set_rep_transport(envp, NUM2INT(envid),
 						 bdb_env_rep_transport));
-	dbenvst->options |= BDB_REP_TRANSPORT;
+	envst->options |= BDB_REP_TRANSPORT;
     }
 #endif
-#if DB_VERSION_MAJOR >= 3
-    if (dbenvst->feedback == 0 && rb_respond_to(obj, id_feedback) == Qtrue) {
-	dbenvp->set_feedback(dbenvp, bdb_env_feedback);
-	dbenvst->options |= BDB_FEEDBACK;
+#if BDB_VERSION >= 30000
+    if (envst->feedback == 0 && rb_respond_to(obj, id_feedback) == Qtrue) {
+	envp->set_feedback(envp, bdb_env_feedback);
+	envst->options |= BDB_FEEDBACK;
     }
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
-    if (dbenvst->app_dispatch == 0 && rb_respond_to(obj, id_app_dispatch) == Qtrue) {
-	dbenvp->set_app_dispatch(dbenvp, bdb_env_app_dispatch);
-	dbenvst->options |= BDB_APP_DISPATCH;
+#if BDB_VERSION >= 40100
+    if (envst->app_dispatch == 0 && rb_respond_to(obj, id_app_dispatch) == Qtrue) {
+	envp->set_app_dispatch(envp, bdb_env_app_dispatch);
+	envst->options |= BDB_APP_DISPATCH;
     }
 #endif
-#if DB_VERSION_MINOR >= 1 || DB_VERSION_MAJOR >= 4
-    if ((ret = dbenvp->open(dbenvp, db_home, flags, mode)) != 0) {
+#if BDB_VERSION >= 30100
+    if ((ret = envp->open(envp, db_home, flags, mode)) != 0)
 #else
-    {
-	int i;
-	if (st_config && RARRAY(st_config)->len > 0) {
-	    db_config = ALLOCA_N(char *, RARRAY(st_config)->len + 1);
-	    for (i = 0; i < RARRAY(st_config)->len; i++) {
-		db_config[i] = RSTRING(RARRAY(st_config)->ptr[i])->ptr;
-	    }
-	    db_config[RARRAY(st_config)->len] = 0;
-	}
-    }
-    if ((ret = dbenvp->open(dbenvp, db_home, db_config, flags, mode)) != 0) {
+    if ((ret = envp->open(envp, db_home, db_config, flags, mode)) != 0)
 #endif
-        dbenvp->close(dbenvp, 0);
-	dbenvst->dbenvp = NULL;
+    {
+        envp->close(envp, 0);
+	envst->envp = NULL;
         if (bdb_errcall) {
             bdb_errcall = 0;
             rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
@@ -991,21 +1038,29 @@ bdb_env_init(argc, argv, obj)
             rb_raise(bdb_eFatal, "%s", db_strerror(ret));
     }
 #endif
-    dbenvst->db_ary = rb_ary_new2(0);
+    envst->options &= ~BDB_ENV_NOT_OPEN;
+    envst->db_ary = rb_ary_new2(0);
     if (flags & DB_INIT_LOCK) {
-	dbenvst->options |= BDB_INIT_LOCK;
+	envst->options |= BDB_INIT_LOCK;
     }
     if (flags & DB_INIT_TXN) {
-	dbenvst->options |= BDB_AUTO_COMMIT;
+	envst->options |= BDB_AUTO_COMMIT;
     }
-    dbenvst->home = rb_tainted_str_new2(db_home);
-    OBJ_FREEZE(dbenvst->home);
-#if DB_VERSION_MAJOR >= 3
-    if (dbenvst->options & BDB_NEED_ENV_CURRENT) {
+    envst->home = rb_tainted_str_new2(db_home);
+    OBJ_FREEZE(envst->home);
+#if BDB_VERSION >= 30000
+    if (envst->options & BDB_NEED_ENV_CURRENT) {
 	rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, obj);
     }
 #endif
     return obj;
+}
+
+static VALUE
+bdb_env_internal_close(obj)
+    VALUE obj;
+{
+    return rb_funcall2(obj, rb_intern("close"), 0, 0);
 }
 
 static VALUE
@@ -1016,7 +1071,7 @@ bdb_env_s_open(argc, argv, obj)
 {
     VALUE res = rb_funcall2(obj, rb_intern("new"), argc, argv);
     if (rb_block_given_p()) {
-	return rb_ensure(rb_yield, res, bdb_env_close, res);
+	return rb_ensure(rb_yield, res, bdb_env_internal_close, res);
     }
     return res;
 }
@@ -1026,7 +1081,7 @@ bdb_env_s_remove(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    DB_ENV *dbenvp;
+    DB_ENV *envp;
     VALUE a, b;
     char *db_home;
     int flag = 0;
@@ -1036,31 +1091,31 @@ bdb_env_s_remove(argc, argv, obj)
 	flag = NUM2INT(b);
     }
     db_home = STR2CSTR(a);
-#if DB_VERSION_MAJOR < 3
-    dbenvp = ALLOC(DB_ENV);
-    MEMZERO(dbenvp, DB_ENV, 1);
-    dbenvp->db_errpfx = "BDB::";
-    dbenvp->db_errcall = bdb_env_errcall;
-    if (lock_unlink(db_home, flag, dbenvp) == EBUSY) {
+#if BDB_VERSION < 30000
+    envp = ALLOCA_N(DB_ENV, 1);
+    MEMZERO(envp, DB_ENV, 1);
+    envp->db_errpfx = "BDB::";
+    envp->db_errcall = bdb_env_errcall;
+    if (lock_unlink(db_home, flag, envp) == EBUSY) {
 	rb_raise(bdb_eFatal, "The shared memory region was in use");
     }
-    if (log_unlink(db_home, flag, dbenvp) == EBUSY) {
+    if (log_unlink(db_home, flag, envp) == EBUSY) {
 	rb_raise(bdb_eFatal, "The shared memory region was in use");
     }
-    if (memp_unlink(db_home, flag, dbenvp) == EBUSY) {
+    if (memp_unlink(db_home, flag, envp) == EBUSY) {
 	rb_raise(bdb_eFatal, "The shared memory region was in use");
     }
-    if (txn_unlink(db_home, flag, dbenvp) == EBUSY) {
+    if (txn_unlink(db_home, flag, envp) == EBUSY) {
 	rb_raise(bdb_eFatal, "The shared memory region was in use");
     }
 #else
-    bdb_test_error(db_env_create(&dbenvp, 0));
-    dbenvp->set_errpfx(dbenvp, "BDB::");
-    dbenvp->set_errcall(dbenvp, bdb_env_errcall);
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 1
-    bdb_test_error(dbenvp->remove(dbenvp, db_home, NULL, flag));
+    bdb_test_error(db_env_create(&envp, 0));
+    envp->set_errpfx(envp, "BDB::");
+    envp->set_errcall(envp, bdb_env_errcall);
+#if BDB_VERSION < 30100
+    bdb_test_error(envp->remove(envp, db_home, NULL, flag));
 #else
-    bdb_test_error(dbenvp->remove(dbenvp, db_home, flag));
+    bdb_test_error(envp->remove(envp, db_home, flag));
 #endif
 #endif
     return Qtrue;
@@ -1071,12 +1126,12 @@ bdb_env_set_flags(argc, argv, obj)
     int argc;
     VALUE *argv, obj;
 {
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2) || DB_VERSION_MAJOR >= 4
-    bdb_ENV *dbenvst;
+#if BDB_VERSION >= 30200
+    bdb_ENV *envst;
     VALUE opt, flag;
     int state = 1;
 
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     if (rb_scan_args(argc, argv, "11", &flag, &opt)) {
 	switch (TYPE(opt)) {
 	case T_TRUE:
@@ -1092,7 +1147,7 @@ bdb_env_set_flags(argc, argv, obj)
 	    rb_raise(bdb_eFatal, "invalid value for onoff");
 	}
     }
-    bdb_test_error(dbenvst->dbenvp->set_flags(dbenvst->dbenvp, NUM2INT(flag), state));
+    bdb_test_error(envst->envp->set_flags(envst->envp, NUM2INT(flag), state));
 #endif
     return Qnil;
 }
@@ -1101,12 +1156,12 @@ static VALUE
 bdb_env_home(obj)
     VALUE obj;
 {
-    bdb_ENV *dbenvst;
-    GetEnvDB(obj, dbenvst);
-    return dbenvst->home;
+    bdb_ENV *envst;
+    GetEnvDB(obj, envst);
+    return envst->home;
 }
 
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 
 static VALUE
 bdb_env_iterate(tmp)
@@ -1138,24 +1193,24 @@ bdb_thread_init(argc, argv, obj)
 
 #endif
 
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
 
 static VALUE
 bdb_env_feedback_set(VALUE obj, VALUE a)
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     if (NIL_P(a)) {
-	dbenvst->feedback = a;
+	envst->feedback = a;
     }
     else {
 	if (!rb_respond_to(a, bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "arg must respond to #call");
 	}
-	dbenvst->feedback = a;
-	if (!(dbenvst->options & BDB_NEED_ENV_CURRENT)) {
-	    dbenvst->options |= BDB_FEEDBACK;
+	envst->feedback = a;
+	if (!(envst->options & BDB_NEED_ENV_CURRENT)) {
+	    envst->options |= BDB_FEEDBACK;
 	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, obj);
 	}
     }
@@ -1167,13 +1222,17 @@ bdb_env_feedback_set(VALUE obj, VALUE a)
 void bdb_init_env()
 {
     bdb_id_call = rb_intern("call");
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     id_feedback = rb_intern("bdb_feedback");
 #endif
     bdb_id_current_env = rb_intern("bdb_current_env");
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     id_app_dispatch = rb_intern("bdb_app_dispatch");
 #endif
+
+    bdb_env_internal_ary = rb_ary_new();
+    rb_set_end_proc(bdb_env_finalize, bdb_env_internal_ary);
+
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
     rb_define_private_method(bdb_cEnv, "initialize", bdb_env_init, -1);
 #if RUBY_VERSION_CODE >= 180
@@ -1190,7 +1249,7 @@ void bdb_init_env()
     rb_define_method(bdb_cEnv, "close", bdb_env_close, 0);
     rb_define_method(bdb_cEnv, "set_flags", bdb_env_set_flags, -1);
     rb_define_method(bdb_cEnv, "home", bdb_env_home, 0);
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     rb_define_method(bdb_cEnv, "rep_elect", bdb_env_rep_elect, 3);
     rb_define_method(bdb_cEnv, "elect", bdb_env_rep_elect, 3);
     rb_define_method(bdb_cEnv, "rep_process_message", bdb_env_rep_process_message, 3);
@@ -1200,11 +1259,11 @@ void bdb_init_env()
 	rb_alias(rb_cThread, rb_intern("__bdb_thread_init__"), rb_intern("initialize"));
 	rb_define_method(rb_cThread, "initialize", bdb_thread_init, -1);
     }
-#if DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_define_method(bdb_cEnv, "rep_limit=", bdb_env_rep_limit, -1);
 #endif
 #endif
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     rb_define_method(bdb_cEnv, "feedback=", bdb_env_feedback_set, 1);
 #endif
 }

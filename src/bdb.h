@@ -4,6 +4,13 @@
 #include <db.h>
 #include <errno.h>
 
+#if RUBY_VERSION_CODE >= 172
+#define ruby_xmalloc(x) malloc(x)
+#define ruby_xfree(x) free(x)
+#define ruby_xcalloc(x,y) calloc(x,y)
+#define ruby_realloc(x,y) realloc(x,y)
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -11,6 +18,8 @@ extern "C" {
 #ifndef DB_AUTO_COMMIT
 #define DB_AUTO_COMMIT 0
 #endif
+
+#define BDB_VERSION (10000*DB_VERSION_MAJOR+100*DB_VERSION_MINOR+DB_VERSION_PATCH)
 
 #define BDB_MARSHAL        (1<<0)
 #define BDB_NOT_OPEN       (1<<1)
@@ -31,8 +40,9 @@ extern "C" {
 #define BDB_APP_DISPATCH   (1<<0)
 #define BDB_REP_TRANSPORT  (1<<1)
 #define BDB_ENV_ENCRYPT    (1<<2)
+#define BDB_ENV_NOT_OPEN   (1<<3)
 
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30300
 #define BDB_ERROR_PRIVATE 44444
 #endif
 
@@ -42,7 +52,7 @@ extern "C" {
 
 #define BDB_NEED_ENV_CURRENT (BDB_FEEDBACK | BDB_APP_DISPATCH)
 
-#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+#if BDB_VERSION < 20600
 #define DB_RMW 0
 #endif
 
@@ -53,11 +63,11 @@ extern VALUE bdb_mDb;
 extern VALUE bdb_cCommon, bdb_cBtree, bdb_cRecnum, bdb_cHash, bdb_cRecno, bdb_cUnknown;
 extern VALUE bdb_cDelegate;
 
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30100
 extern VALUE bdb_sKeyrange;
 #endif
 
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
 extern VALUE bdb_cQueue;
 #endif
 
@@ -73,7 +83,7 @@ extern ID bdb_id_current_db, bdb_id_current_env;
 
 extern VALUE bdb_deleg_to_orig _((VALUE));
 
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
 #endif
 
@@ -82,25 +92,22 @@ typedef struct  {
     VALUE marshal;
     VALUE db_ary;
     VALUE home;
-    DB_ENV *dbenvp;
-#if DB_VERSION_MAJOR < 3 || 					\
-    (DB_VERSION_MAJOR == 3 &&					\
-       (DB_VERSION_MINOR < 1 || 				\
-        (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)))
+    DB_ENV *envp;
+#if BDB_VERSION <= 30105
     u_int32_t fidp;
 #endif
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     VALUE rep_transport;
 #endif
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     VALUE feedback;
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     VALUE app_dispatch;
 #endif
 } bdb_ENV;
 
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 
 struct txn_rslbl {
     DB_TXN *txn;
@@ -117,7 +124,7 @@ typedef struct {
     VALUE env;
     DB_TXN *txnid;
     DB_TXN *parent;
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     void *txn_cxx;
 #endif
 } bdb_TXN;
@@ -133,6 +140,7 @@ typedef struct {
     VALUE filename, database;
     VALUE bt_compare, bt_prefix, dup_compare, h_hash;
     VALUE filter[4];
+    VALUE ori_val;
     DB *dbp;
     bdb_TXN *txn;
     long len;
@@ -141,14 +149,14 @@ typedef struct {
     u_int32_t dlen;
     u_int32_t doff;
     int array_base;
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     DB_INFO *dbinfo;
 #else
     int re_len;
     char re_pad;
     VALUE feedback;
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     VALUE append_recno;
 #endif
 #ifdef DB_PRIORITY_DEFAULT
@@ -167,7 +175,7 @@ typedef struct {
 } bdb_LOCKID;
 
 typedef struct {
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     DB_LOCK lock;
 #else
     DB_LOCK *lock;
@@ -191,13 +199,13 @@ struct deleg_class {
 struct dblsnst {
     VALUE env;
     DB_LSN *lsn;
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     DB_LOGC *cursor;
     int flags;
 #endif
 };
 
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
 #define DB_QUEUE DB_RECNO
 #endif
 
@@ -211,17 +219,17 @@ struct dblsnst {
     GetDB(dbcst->db, dbst);			\
 }
 
-#define GetEnvDBErr(obj, dbenvst, id_c, eErr)			\
+#define GetEnvDBErr(obj, envst, id_c, eErr)			\
 {								\
-    Data_Get_Struct(obj, bdb_ENV, dbenvst);			\
-    if (dbenvst->dbenvp == 0)					\
+    Data_Get_Struct(obj, bdb_ENV, envst);			\
+    if (envst->envp == 0)					\
         rb_raise(eErr, "closed environment");			\
-    if (dbenvst->options & BDB_NEED_ENV_CURRENT) {		\
+    if (envst->options & BDB_NEED_ENV_CURRENT) {		\
     	rb_thread_local_aset(rb_thread_current(), id_c, obj);	\
     }								\
 }
 
-#define GetEnvDB(obj, dbenvst)	GetEnvDBErr(obj, dbenvst, bdb_id_current_env, bdb_eFatal)
+#define GetEnvDB(obj, envst)	GetEnvDBErr(obj, envst, bdb_id_current_env, bdb_eFatal)
 
 #define GetDB(obj, dbst)						   \
 {									   \
@@ -235,7 +243,7 @@ struct dblsnst {
 }
 
 
-#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+#if BDB_VERSION < 20600
 
 #define INIT_RECNO(dbst, key, recno)		\
 {						\
@@ -304,7 +312,7 @@ struct dblsnst {
 
 #define GetTxnDB(obj, txnst) GetTxnDBErr(obj, txnst, bdb_eFatal)
 
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
 #define TEST_INIT_LOCK(dbst) (((dbst)->options & BDB_INIT_LOCK)?DB_RMW:0)
 #else
 #define TEST_INIT_LOCK(dbst) (0)
@@ -330,7 +338,7 @@ extern VALUE bdb_obj_init _((int, VALUE *, VALUE));
 
 extern ID bdb_id_call;
 
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
 extern char *db_strerror _((int));
 #endif
 

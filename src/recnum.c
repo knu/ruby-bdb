@@ -127,7 +127,7 @@ bdb_intern_shift_pop(obj, depart, len)
     INIT_RECNO(dbst, key, recno);
     MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
-#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+#if BDB_VERSION < 20600
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
 #else
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
@@ -1045,7 +1045,7 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecno, "to_ary", bdb_sary_to_a, 0);
     rb_define_method(bdb_cRecno, "pop", bdb_sary_pop, 0);
     /* QUEUE */
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     rb_define_method(bdb_cQueue, "to_a", bdb_sary_to_a, 0);
     rb_define_method(bdb_cQueue, "to_ary", bdb_sary_to_a, 0);
 #endif

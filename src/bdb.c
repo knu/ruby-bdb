@@ -7,18 +7,18 @@
 VALUE bdb_cEnv;
 VALUE bdb_eFatal;
 VALUE bdb_eLock, bdb_eLockDead, bdb_eLockHeld, bdb_eLockGranted;
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 VALUE bdb_eRepUnavail;
 #endif
 VALUE bdb_mDb;
 VALUE bdb_cCommon, bdb_cBtree, bdb_cRecnum, bdb_cHash, bdb_cRecno, bdb_cUnknown;
 VALUE bdb_cDelegate;
 
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30100
 VALUE bdb_sKeyrange;
 #endif
 
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
 VALUE bdb_cQueue;
 #endif
 
@@ -35,7 +35,7 @@ ID bdb_id_current_db;
 VALUE bdb_errstr;
 int bdb_errcall = 0;
 
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
 
 char *
 db_strerror(int err)
@@ -63,7 +63,7 @@ db_strerror(int err)
         return ("DB_LOCK_NOTHELD: Lock not held by locker");
     case DB_NOTFOUND:
         return ("DB_NOTFOUND: No matching key/data pair found");
-#if DB_VERSION_MINOR >= 6
+#if BDB_VERSION >= 20600
     case DB_RUNRECOVERY:
         return ("DB_RUNRECOVERY: Fatal error, run database recovery");
 #endif
@@ -97,7 +97,7 @@ bdb_test_error(comm)
 	return comm;
         break;
 #endif
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     case DB_REP_UNAVAIL:
 	error = bdb_eRepUnavail;
 	break;
@@ -109,12 +109,12 @@ bdb_test_error(comm)
     case DB_LOCK_NOTGRANTED:
 	error = bdb_eLockGranted;
 	break;
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     case DB_LOCK_NOTHELD:
 	error = bdb_eLockHeld;
 	break;
 #endif
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 30300
     case BDB_ERROR_PRIVATE:
 	error = bdb_eFatal;
 	bdb_errcall = 1;
@@ -165,7 +165,7 @@ Init_bdb()
     bdb_eLockDead = rb_define_class_under(bdb_mDb, "LockDead", bdb_eLock);
     bdb_eLockHeld = rb_define_class_under(bdb_mDb, "LockHeld", bdb_eLock);
     bdb_eLockGranted = rb_define_class_under(bdb_mDb, "LockGranted",  bdb_eLock);
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     bdb_eRepUnavail = rb_define_class_under(bdb_mDb, "RepUnavail", bdb_eFatal);
 #endif
 /* CONSTANT */
@@ -176,7 +176,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "BTREE", INT2FIX(DB_BTREE));
     rb_define_const(bdb_mDb, "HASH", INT2FIX(DB_HASH));
     rb_define_const(bdb_mDb, "RECNO", INT2FIX(DB_RECNO));
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "QUEUE", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "QUEUE", INT2FIX(DB_QUEUE));
@@ -206,7 +206,7 @@ Init_bdb()
 #ifdef DB_CONFIG
     rb_define_const(bdb_mDb, "CONFIG", INT2FIX(DB_CONFIG));
 #endif
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "CONSUME", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "CONSUME", INT2FIX(DB_CONSUME));
@@ -226,7 +226,7 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "DBT_MALLOC", INT2FIX(DB_DBT_MALLOC));
     rb_define_const(bdb_mDb, "DBT_PARTIAL", INT2FIX(DB_DBT_PARTIAL));
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "DBT_REALLOC", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "DBT_REALLOC", INT2FIX(DB_DBT_REALLOC));
@@ -250,12 +250,12 @@ Init_bdb()
     rb_define_const(bdb_mDb, "FIXEDLEN", INT2FIX(DB_FIXEDLEN));
 #endif
     rb_define_const(bdb_mDb, "FLUSH", INT2FIX(DB_FLUSH));
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "FORCE", INT2FIX(1));
 #else
     rb_define_const(bdb_mDb, "FORCE", INT2FIX(DB_FORCE));
 #endif
-#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+#if BDB_VERSION < 20600
     rb_define_const(bdb_mDb, "GET_BOTH", INT2FIX(9));
 #else
     rb_define_const(bdb_mDb, "GET_BOTH", INT2FIX(DB_GET_BOTH));
@@ -376,7 +376,7 @@ Init_bdb()
 #ifdef DB_PAD
     rb_define_const(bdb_mDb, "PAD", INT2FIX(DB_PAD));
 #endif
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "POSITION", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "POSITION", INT2FIX(DB_POSITION));
@@ -385,7 +385,7 @@ Init_bdb()
 #ifdef DB_PREV_NODUP
     rb_define_const(bdb_mDb, "PREV_NODUP", INT2FIX(DB_PREV_NODUP));
 #endif
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "PRIVATE", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "PRIVATE", INT2FIX(DB_PRIVATE));
@@ -412,7 +412,7 @@ Init_bdb()
 #ifdef DB_STAT_CLEAR
     rb_define_const(bdb_mDb, "STAT_CLEAR", INT2FIX(DB_STAT_CLEAR));
 #endif
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "SYSTEM_MEM", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "SYSTEM_MEM", INT2FIX(DB_SYSTEM_MEM));
@@ -422,15 +422,15 @@ Init_bdb()
     rb_define_const(bdb_mDb, "ENV_THREAD", INT2FIX(DB_ENV_THREAD));
 #endif
     rb_define_const(bdb_mDb, "TRUNCATE", INT2FIX(DB_TRUNCATE));
-#if DB_VERSION_MAJOR > 3 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
+#if BDB_VERSION >= 30100
     rb_define_const(bdb_mDb, "TXN_ABORT", INT2FIX(DB_TXN_ABORT));
 #endif
     rb_define_const(bdb_mDb, "TXN_BACKWARD_ROLL", INT2FIX(DB_TXN_BACKWARD_ROLL));
     rb_define_const(bdb_mDb, "TXN_FORWARD_ROLL", INT2FIX(DB_TXN_FORWARD_ROLL));
     rb_define_const(bdb_mDb, "TXN_NOSYNC", INT2FIX(DB_TXN_NOSYNC));
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     rb_define_const(bdb_mDb, "TXN_APPLY", INT2FIX(DB_TXN_APPLY));
-#if DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_define_const(bdb_mDb, "TXN_PRINT", INT2FIX(DB_TXN_PRINT));
     rb_define_const(bdb_mDb, "TXN_WRITE_NOSYNC", INT2FIX(DB_TXN_WRITE_NOSYNC));
 #endif
@@ -440,7 +440,7 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "USE_ENVIRON", INT2FIX(DB_USE_ENVIRON));
     rb_define_const(bdb_mDb, "USE_ENVIRON_ROOT", INT2FIX(DB_USE_ENVIRON_ROOT));
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "TXN_NOWAIT", INT2FIX(0));
     rb_define_const(bdb_mDb, "TXN_SYNC", INT2FIX(0));
     rb_define_const(bdb_mDb, "VERB_CHKPOINT", INT2FIX(1));
@@ -456,7 +456,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(DB_VERB_RECOVERY));
     rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(DB_VERB_WAITSFOR));
     rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(DB_WRITECURSOR));
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     rb_define_const(bdb_mDb, "VERB_REPLICATION", INT2FIX(DB_VERB_REPLICATION));
 #endif
 #endif
@@ -476,7 +476,7 @@ Init_bdb()
 #ifdef DB_AUTO_COMMIT
     rb_define_const(bdb_mDb, "AUTO_COMMIT", INT2FIX(DB_AUTO_COMMIT));
 #endif
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     rb_define_const(bdb_mDb, "REP_CLIENT", INT2FIX(DB_REP_CLIENT));
     rb_define_const(bdb_mDb, "REP_DUPMASTER", INT2FIX(DB_REP_DUPMASTER));
     rb_define_const(bdb_mDb, "REP_HOLDELECTION", INT2FIX(DB_REP_HOLDELECTION));
@@ -509,7 +509,7 @@ Init_bdb()
 #ifdef DB_DIRECT_LOG
     rb_define_const(bdb_mDb, "DIRECT_LOG", INT2FIX(DB_DIRECT_LOG));
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_define_const(bdb_mDb, "PRIORITY_VERY_LOW", INT2FIX(DB_PRIORITY_VERY_LOW));
     rb_define_const(bdb_mDb, "PRIORITY_LOW", INT2FIX(DB_PRIORITY_LOW));
     rb_define_const(bdb_mDb, "PRIORITY_DEFAULT", INT2FIX(DB_PRIORITY_DEFAULT));

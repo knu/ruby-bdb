@@ -1,5 +1,13 @@
 #!/usr/bin/ruby
 $LOAD_PATH.unshift *%w{../src . tests}
+
+$dir = Dir.pwd
+
+at_exit do
+   Dir.chdir($dir)
+   clean()
+end
+
 require 'bdbxml'
 require 'runit_'
 
@@ -17,7 +25,8 @@ $reference = {"matz" => [], "object" => [], "ruby" => []}
 
 clean
 
-print "\nVERSION of BDB is #{BDB::VERSION}\n"
+puts "\nVERSION of BDB is #{BDB::VERSION}\n"
+puts "\nVERSION of BDB::XML is #{BDB::XML::VERSION}\n"
 
 Inh = defined?(RUNIT) ? RUNIT : Test::Unit
 
@@ -61,6 +70,7 @@ class TestXML < Inh::TestCase
 	 assert_equal(content, doc.content)
 	 assert_equal(content, doc.to_s)
 	 assert_equal($time, doc['time'])
+	 assert_equal($time, doc.get('time', nil, String))
       end
    end
 
@@ -90,13 +100,13 @@ class TestXML < Inh::TestCase
       assert_equal(nil, BDB::XML::Container.dump("tmp/glossary", "tmp/dumpee"))
       assert_equal(nil, BDB::XML::Container.load("tmp/glossary", "tmp/dumpee"))
       assert_equal(nil, BDB::XML::Container.remove("tmp/glossary"))
-      clean
    end
 
    def test_06_reinit
       @flag = BDB::INIT_TRANSACTION
       @mask = "[a-m]"
       $reference = {"matz" => [], "object" => [], "ruby" => []}
+      clean
       test_00_env
       test_01_doc
       test_04_query
@@ -135,8 +145,6 @@ class TestXML < Inh::TestCase
       test_02_each
       test_03_search
       test_04_query
-      Dir.chdir("..")
-      clean
    end
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-$LOAD_PATH.unshift *%w{../src src tests}
+$LOAD_PATH.unshift(*%w{../src src tests})
 require 'bdb'
 require 'runit_'
 
@@ -238,7 +238,7 @@ class TestRecnum < Inh::TestCase
       assert_equal($bdb.to_a, $array, "<after delete_if false>")
       assert_equal($bdb.delete_if { true }, $bdb, "<delete_if true>")
       assert_equal($bdb.size, 0, "<after delete_if true>")
-      $bdb.push *$array
+      $bdb.push(*$array)
       assert_equal($bdb.to_a, $array, "<after push>")
       100.times do
 	 i = rand($bdb.size)

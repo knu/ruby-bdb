@@ -212,3 +212,8 @@
 --- 0.3.8
 
 * adapted for 1.8.0
+
+--- 0.3.9
+
+* better interface at exit
+* dbconfig for <= 2

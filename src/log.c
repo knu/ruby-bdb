@@ -11,11 +11,11 @@ static void
 free_lsn(lsnst)
     struct dblsnst *lsnst;
 {
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     if (lsnst->cursor) {
-	bdb_ENV *dbenvst;
-	Data_Get_Struct(lsnst->env, bdb_ENV, dbenvst);
-	if (dbenvst->dbenvp) {
+	bdb_ENV *envst;
+	Data_Get_Struct(lsnst->env, bdb_ENV, envst);
+	if (envst->envp) {
 	    bdb_test_error(lsnst->cursor->close(lsnst->cursor, 0));
 	}
 	lsnst->cursor = 0;
@@ -29,11 +29,11 @@ VALUE
 bdb_makelsn(env)
     VALUE env;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct dblsnst *lsnst;
     VALUE res;
 
-    GetEnvDB(env, dbenvst);
+    GetEnvDB(env, envst);
     res = Data_Make_Struct(bdb_cLsn, struct dblsnst, mark_lsn, free_lsn, lsnst);
     lsnst->env = env;
     lsnst->lsn = ALLOC(DB_LSN);
@@ -45,27 +45,27 @@ bdb_s_log_put_internal(obj, a, flag)
     VALUE obj, a;
     int flag;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     VALUE ret;
     DBT data;
     struct dblsnst *lsnst;
 
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     if (TYPE(a) != T_STRING) a = rb_str_to_str(a);
     ret = bdb_makelsn(obj);
     Data_Get_Struct(ret, struct dblsnst, lsnst);
     data.data = RSTRING(a)->ptr;
     data.size = RSTRING(a)->len;
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_put(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flag));
+    bdb_test_error(log_put(envst->envp->lg_info, lsnst->lsn, &data, flag));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->log_put(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->log_put(envst->envp, lsnst->lsn, &data, flag));
 #else
-    bdb_test_error(log_put(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+    bdb_test_error(log_put(envst->envp, lsnst->lsn, &data, flag));
 #endif
 #endif
     return ret;
@@ -109,20 +109,20 @@ bdb_s_log_flush(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
     if (argc == 0) {
-	GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-	if (!dbenvst->dbenvp->lg_info) {
+	GetEnvDB(obj, envst);
+#if BDB_VERSION < 30000
+	if (!envst->envp->lg_info) {
 	    rb_raise(bdb_eFatal, "log region not open");
 	}
-	bdb_test_error(log_flush(dbenvst->dbenvp->lg_info, NULL));
+	bdb_test_error(log_flush(envst->envp->lg_info, NULL));
 #else
-#if DB_VERSION_MAJOR >= 4
-	bdb_test_error(dbenvst->dbenvp->log_flush(dbenvst->dbenvp, NULL));
+#if BDB_VERSION >= 40000
+	bdb_test_error(envst->envp->log_flush(envst->envp, NULL));
 #else
-	bdb_test_error(log_flush(dbenvst->dbenvp, NULL));
+	bdb_test_error(log_flush(envst->envp, NULL));
 #endif
 #endif
 	return obj;
@@ -154,34 +154,34 @@ bdb_env_log_stat(argc, argv, obj)
     VALUE obj, *argv;
 {
     DB_LOG_STAT *bdb_stat;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     VALUE res, b;
     int flags;
 
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+    GetEnvDB(obj, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
-    bdb_test_error(log_stat(dbenvst->dbenvp->lg_info, &bdb_stat, 0));
+    bdb_test_error(log_stat(envst->envp->lg_info, &bdb_stat, 0));
 #else
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     flags = 0;
     if (rb_scan_args(argc, argv, "01", &b) == 1) {
 	flags = NUM2INT(b);
     }
-    bdb_test_error(dbenvst->dbenvp->log_stat(dbenvst->dbenvp, &bdb_stat, flags));
+    bdb_test_error(envst->envp->log_stat(envst->envp, &bdb_stat, flags));
 #else
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
-#if DB_VERSION_MINOR < 3
-    bdb_test_error(log_stat(dbenvst->dbenvp, &bdb_stat, 0));
+#if BDB_VERSION < 30300
+    bdb_test_error(log_stat(envst->envp, &bdb_stat, 0));
 #else
-    bdb_test_error(log_stat(dbenvst->dbenvp, &bdb_stat));
+    bdb_test_error(log_stat(envst->envp, &bdb_stat));
 #endif
 #endif
 #endif
@@ -190,12 +190,12 @@ bdb_env_log_stat(argc, argv, obj)
     rb_hash_aset(res, rb_tainted_str_new2("st_version"), INT2NUM(bdb_stat->st_version));
     rb_hash_aset(res, rb_tainted_str_new2("st_regsize"), INT2NUM(bdb_stat->st_regsize));
     rb_hash_aset(res, rb_tainted_str_new2("st_mode"), INT2NUM(bdb_stat->st_mode));
-#if DB_VERSION_MAJOR < 3
+#if BDB_VERSION < 30000
     rb_hash_aset(res, rb_tainted_str_new2("st_refcnt"), INT2NUM(bdb_stat->st_refcnt));
 #else
     rb_hash_aset(res, rb_tainted_str_new2("st_lg_bsize"), INT2NUM(bdb_stat->st_lg_bsize));
 #endif
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_hash_aset(res, rb_tainted_str_new2("st_lg_size"), INT2NUM(bdb_stat->st_lg_size));
     rb_hash_aset(res, rb_tainted_str_new2("st_lg_max"), INT2NUM(bdb_stat->st_lg_size));
 #else
@@ -206,7 +206,7 @@ bdb_env_log_stat(argc, argv, obj)
     rb_hash_aset(res, rb_tainted_str_new2("st_wc_mbytes"), INT2NUM(bdb_stat->st_wc_mbytes));
     rb_hash_aset(res, rb_tainted_str_new2("st_wc_bytes"), INT2NUM(bdb_stat->st_wc_bytes));
     rb_hash_aset(res, rb_tainted_str_new2("st_wcount"), INT2NUM(bdb_stat->st_wcount));
-#if DB_VERSION_MAJOR >= 3
+#if BDB_VERSION >= 30000
     rb_hash_aset(res, rb_tainted_str_new2("st_wcount_fill"), INT2NUM(bdb_stat->st_wcount_fill));
 #endif
     rb_hash_aset(res, rb_tainted_str_new2("st_scount"), INT2NUM(bdb_stat->st_scount));
@@ -214,10 +214,10 @@ bdb_env_log_stat(argc, argv, obj)
     rb_hash_aset(res, rb_tainted_str_new2("st_cur_offset"), INT2NUM(bdb_stat->st_cur_offset));
     rb_hash_aset(res, rb_tainted_str_new2("st_region_wait"), INT2NUM(bdb_stat->st_region_wait));
     rb_hash_aset(res, rb_tainted_str_new2("st_region_nowait"), INT2NUM(bdb_stat->st_region_nowait));
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     rb_hash_aset(res, rb_tainted_str_new2("st_disk_file"), INT2NUM(bdb_stat->st_disk_file));
     rb_hash_aset(res, rb_tainted_str_new2("st_disk_offset"), INT2NUM(bdb_stat->st_disk_offset));
-#if DB_VERSION_MINOR < 1
+#if BDB_VERSION < 40100
     rb_hash_aset(res, rb_tainted_str_new2("st_flushcommit"), INT2NUM(bdb_stat->st_flushcommit));
 #endif
     rb_hash_aset(res, rb_tainted_str_new2("st_maxcommitperflush"), INT2NUM(bdb_stat->st_maxcommitperflush));
@@ -227,31 +227,31 @@ bdb_env_log_stat(argc, argv, obj)
     return res;
 }
 
-#if DB_VERSION_MAJOR < 4
+#if BDB_VERSION < 40000
 
 static VALUE
 bdb_env_log_get(obj, a)
     VALUE obj, a;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     DBT data;
     struct dblsnst *lsnst;
     VALUE res, lsn;
     int ret, flag;
 
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     flag = NUM2INT(a);
     MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
     lsn = bdb_makelsn(obj);
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    ret = bdb_test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flag));
+    ret = bdb_test_error(log_get(envst->envp->lg_info, lsnst->lsn, &data, flag));
 #else
-    ret = bdb_test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+    ret = bdb_test_error(log_get(envst->envp, lsnst->lsn, &data, flag));
 #endif
     if (ret == DB_NOTFOUND) {
 	return Qnil;
@@ -263,7 +263,7 @@ bdb_env_log_get(obj, a)
 
 #endif
 
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 static VALUE bdb_log_cursor _((VALUE));
 #endif
 
@@ -272,14 +272,14 @@ bdb_i_each_log_get(obj, flag)
     VALUE obj;
     int flag;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct dblsnst *lsnst;
     DBT data;
     VALUE lsn, res;
     int ret, init, flags;
 
-#if DB_VERSION_MAJOR < 4
-    GetEnvDB(obj, dbenvst);
+#if BDB_VERSION < 40000
+    GetEnvDB(obj, envst);
 #else
     lsn = obj;
     Data_Get_Struct(obj, struct dblsnst, lsnst);
@@ -291,7 +291,7 @@ bdb_i_each_log_get(obj, flag)
 
     init = 0; /* strange ??? */
     do {
-#if DB_VERSION_MAJOR < 4
+#if BDB_VERSION < 40000
 	lsn = bdb_makelsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 #endif
@@ -303,16 +303,16 @@ bdb_i_each_log_get(obj, flag)
 	}
 	else
 	    flags = flag;
-#if DB_VERSION_MAJOR < 3
-	if (!dbenvst->dbenvp->lg_info) {
+#if BDB_VERSION < 30000
+	if (!envst->envp->lg_info) {
 	    rb_raise(bdb_eFatal, "log region not open");
 	}
-	ret = bdb_test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flags));
+	ret = bdb_test_error(log_get(envst->envp->lg_info, lsnst->lsn, &data, flags));
 #else
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
 	ret = bdb_test_error(lsnst->cursor->get(lsnst->cursor, lsnst->lsn, &data, flags));
 #else
-	ret = bdb_test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flags));
+	ret = bdb_test_error(log_get(envst->envp, lsnst->lsn, &data, flags));
 #endif
 #endif
 	if (ret == DB_NOTFOUND) {
@@ -325,7 +325,7 @@ bdb_i_each_log_get(obj, flag)
     return Qnil;
 }
 
-#if DB_VERSION_MAJOR < 4
+#if BDB_VERSION < 40000
  
 static VALUE
 bdb_env_log_each(obj) 
@@ -361,12 +361,12 @@ static VALUE
 bdb_log_cursor(lsn)
     VALUE lsn;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct dblsnst *lsnst;
 
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
-    GetEnvDB(lsnst->env, dbenvst);
-    bdb_test_error(dbenvst->dbenvp->log_cursor(dbenvst->dbenvp, &lsnst->cursor, 0));
+    GetEnvDB(lsnst->env, envst);
+    bdb_test_error(envst->envp->log_cursor(envst->envp, &lsnst->cursor, 0));
     return lsn;
 }
     
@@ -381,13 +381,13 @@ static VALUE
 bdb_log_i_get(obj)
     VALUE obj;
 {
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     struct dblsnst *lsnst;
 
     bdb_log_cursor_close(obj);
     Data_Get_Struct(obj, struct dblsnst, lsnst);
-    GetEnvDB(lsnst->env, dbenvst);
-    bdb_test_error(dbenvst->dbenvp->log_cursor(dbenvst->dbenvp, &lsnst->cursor, 0));
+    GetEnvDB(lsnst->env, envst);
+    bdb_test_error(envst->envp->log_cursor(envst->envp, &lsnst->cursor, 0));
     return bdb_i_each_log_get(obj, lsnst->flags);
 }
 
@@ -447,29 +447,29 @@ bdb_env_log_archive(argc, argv, obj)
     VALUE *argv, obj;
 {
     char **list, **file;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     int flag;
     VALUE res;
 
-    GetEnvDB(obj, dbenvst);
+    GetEnvDB(obj, envst);
     flag = 0;
     list = NULL;
     if (rb_scan_args(argc, argv, "01", &res)) {
 	flag = NUM2INT(res);
     }
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_archive(dbenvst->dbenvp->lg_info, &list, flag, NULL));
+    bdb_test_error(log_archive(envst->envp->lg_info, &list, flag, NULL));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->log_archive(dbenvst->dbenvp, &list, flag));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->log_archive(envst->envp, &list, flag));
 #else
-#if DB_VERSION_MINOR < 3
-    bdb_test_error(log_archive(dbenvst->dbenvp, &list, flag, NULL));
+#if BDB_VERSION < 30300
+    bdb_test_error(log_archive(envst->envp, &list, flag, NULL));
 #else
-    bdb_test_error(log_archive(dbenvst->dbenvp, &list, flag));
+    bdb_test_error(log_archive(envst->envp, &list, flag));
 #endif
 #endif
 #endif
@@ -481,10 +481,10 @@ bdb_env_log_archive(argc, argv, obj)
     return res;
 }
 
-#define GetLsn(obj, lsnst, dbenvst)			\
+#define GetLsn(obj, lsnst, envst)			\
 {							\
     Data_Get_Struct(obj, struct dblsnst, lsnst);	\
-    GetEnvDB(lsnst->env, dbenvst);			\
+    GetEnvDB(lsnst->env, envst);			\
 }
 
 static VALUE
@@ -492,8 +492,8 @@ bdb_lsn_env(obj)
     VALUE obj;
 {
     struct dblsnst *lsnst;
-    bdb_ENV *dbenvst;
-    GetLsn(obj, lsnst, dbenvst);
+    bdb_ENV *envst;
+    GetLsn(obj, lsnst, envst);
     return lsnst->env;
 }
 
@@ -502,20 +502,20 @@ bdb_lsn_log_file(obj)
     VALUE obj;
 {
     struct dblsnst *lsnst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     char name[2048];
 
-    GetLsn(obj, lsnst, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+    GetLsn(obj, lsnst, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_file(dbenvst->dbenvp->lg_info, lsnst->lsn, name, 2048));
+    bdb_test_error(log_file(envst->envp->lg_info, lsnst->lsn, name, 2048));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->log_file(dbenvst->dbenvp, lsnst->lsn, name, 2048));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->log_file(envst->envp, lsnst->lsn, name, 2048));
 #else
-    bdb_test_error(log_file(dbenvst->dbenvp, lsnst->lsn, name, 2048));
+    bdb_test_error(log_file(envst->envp, lsnst->lsn, name, 2048));
 #endif
 #endif
     return rb_tainted_str_new2(name);
@@ -526,19 +526,19 @@ bdb_lsn_log_flush(obj)
     VALUE obj;
 {
     struct dblsnst *lsnst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
-    GetLsn(obj, lsnst, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+    GetLsn(obj, lsnst, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_flush(dbenvst->dbenvp->lg_info, lsnst->lsn));
+    bdb_test_error(log_flush(envst->envp->lg_info, lsnst->lsn));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->log_flush(dbenvst->dbenvp, lsnst->lsn));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->log_flush(envst->envp, lsnst->lsn));
 #else
-    bdb_test_error(log_flush(dbenvst->dbenvp, lsnst->lsn));
+    bdb_test_error(log_flush(envst->envp, lsnst->lsn));
 #endif
 #endif
     return obj;
@@ -549,13 +549,13 @@ bdb_lsn_log_compare(obj, a)
     VALUE obj, a;
 {
     struct dblsnst *lsnst1, *lsnst2;
-    bdb_ENV *dbenvst1, *dbenvst2;
+    bdb_ENV *envst1, *envst2;
 
     if (!rb_obj_is_kind_of(a, bdb_cLsn)) {
 	rb_raise(bdb_eFatal, "invalid argument for <=>");
     }
-    GetLsn(obj, lsnst1, dbenvst1);
-    GetLsn(a, lsnst2, dbenvst2);
+    GetLsn(obj, lsnst1, envst1);
+    GetLsn(a, lsnst2, envst2);
     return INT2NUM(log_compare(lsnst1->lsn, lsnst2->lsn));
 }
 
@@ -565,7 +565,7 @@ bdb_lsn_log_get(argc, argv, obj)
     VALUE obj, *argv;
 {
     struct dblsnst *lsnst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
     DBT data;
     VALUE res, a;
     int ret, flags;
@@ -574,8 +574,8 @@ bdb_lsn_log_get(argc, argv, obj)
     if (rb_scan_args(argc, argv, "01", &a) == 1) {
 	flags = NUM2INT(a);
     }
-#if DB_VERSION_MAJOR < 4
-    GetLsn(obj, lsnst, dbenvst);
+#if BDB_VERSION < 40000
+    GetLsn(obj, lsnst, envst);
 #else
     Data_Get_Struct(obj, struct dblsnst, lsnst);
     if (lsnst->cursor == 0) {
@@ -584,16 +584,16 @@ bdb_lsn_log_get(argc, argv, obj)
 #endif
     MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    ret = bdb_test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flags));
+    ret = bdb_test_error(log_get(envst->envp->lg_info, lsnst->lsn, &data, flags));
 #else
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     ret = bdb_test_error(lsnst->cursor->get(lsnst->cursor, lsnst->lsn, &data, flags));
 #else
-    ret = bdb_test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flags));
+    ret = bdb_test_error(log_get(envst->envp, lsnst->lsn, &data, flags));
 #endif
 #endif
     if (ret == DB_NOTFOUND) {
@@ -608,12 +608,12 @@ static VALUE
 bdb_log_register(obj, a)
     VALUE obj, a;
 {
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_warn("log_register is obsolete");
     return Qnil;
 #else
     bdb_DB *dbst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
     if (TYPE(a) != T_STRING) {
 	rb_raise(bdb_eFatal, "Need a filename");
@@ -622,20 +622,20 @@ bdb_log_register(obj, a)
 	rb_raise(bdb_eFatal, "Database must be open in an Env");
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
-    Data_Get_Struct(dbst->env, bdb_ENV, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+    Data_Get_Struct(dbst->env, bdb_ENV, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_register(dbenvst->dbenvp->lg_info, dbst->dbp, RSTRING(a)->ptr, dbst->type, &dbenvst->fidp));
+    bdb_test_error(log_register(envst->envp->lg_info, dbst->dbp, RSTRING(a)->ptr, dbst->type, &envst->fidp));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->log_register(envst->envp, dbst->dbp, RSTRING(a)->ptr));
 #else
-#if DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
-    bdb_test_error(log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr, &dbenvst->fidp));
+#if BDB_VERSION <= 30105
+    bdb_test_error(log_register(envst->envp, dbst->dbp, RSTRING(a)->ptr, &envst->fidp));
 #else
-    bdb_test_error(log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr));
+    bdb_test_error(log_register(envst->envp, dbst->dbp, RSTRING(a)->ptr));
 #endif
 #endif
 #endif
@@ -647,31 +647,31 @@ static VALUE
 bdb_log_unregister(obj)
     VALUE obj;
 {
-#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+#if BDB_VERSION >= 40100
     rb_warn("log_unregister is obsolete");
     return Qnil;
 #else
     bdb_DB *dbst;
-    bdb_ENV *dbenvst;
+    bdb_ENV *envst;
 
     if (bdb_has_env(obj) == Qfalse) {
 	rb_raise(bdb_eFatal, "Database must be open in an Env");
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
-    Data_Get_Struct(dbst->env, bdb_ENV, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    if (!dbenvst->dbenvp->lg_info) {
+    Data_Get_Struct(dbst->env, bdb_ENV, envst);
+#if BDB_VERSION < 30000
+    if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_unregister(dbenvst->dbenvp->lg_info, dbenvst->fidp));
+    bdb_test_error(log_unregister(envst->envp->lg_info, envst->fidp));
 #else
-#if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->log_unregister(dbenvst->dbenvp, dbst->dbp));
+#if BDB_VERSION >= 40000
+    bdb_test_error(envst->envp->log_unregister(envst->envp, dbst->dbp));
 #else
-#if DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
-    bdb_test_error(log_unregister(dbenvst->dbenvp, dbenvst->fidp));
+#if BDB_VERSION <= 30105
+    bdb_test_error(log_unregister(envst->envp, envst->fidp));
 #else
-    bdb_test_error(log_unregister(dbenvst->dbenvp, dbst->dbp));
+    bdb_test_error(log_unregister(envst->envp, dbst->dbp));
 #endif
 #endif
 #endif
@@ -687,7 +687,7 @@ void bdb_init_log()
     rb_define_method(bdb_cEnv, "log_flush", bdb_s_log_flush, -1);
     rb_define_method(bdb_cEnv, "log_stat", bdb_env_log_stat, -1);
     rb_define_method(bdb_cEnv, "log_archive", bdb_env_log_archive, -1);
-#if DB_VERSION_MAJOR < 4
+#if BDB_VERSION < 40000 
     rb_define_method(bdb_cEnv, "log_get", bdb_env_log_get, 1);
 #else
     rb_define_method(bdb_cEnv, "log_cursor", bdb_env_log_cursor, 0);
@@ -701,7 +701,7 @@ void bdb_init_log()
     rb_undef_method(CLASS_OF(bdb_cLsn), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLsn), "new");
     rb_define_method(bdb_cLsn, "env", bdb_lsn_env, 0);
-#if DB_VERSION_MAJOR >= 4
+#if BDB_VERSION >= 40000
     rb_define_method(bdb_cLsn, "log_cursor", bdb_log_cursor, 0);
     rb_define_method(bdb_cLsn, "cursor", bdb_log_cursor, 0);
     rb_define_method(bdb_cLsn, "log_close", bdb_log_cursor_close, 0);

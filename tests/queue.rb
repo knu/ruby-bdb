@@ -1,6 +1,13 @@
 #!/usr/bin/ruby
 $LOAD_PATH.unshift *%w{../src src tests}
 require 'bdb'
+
+print "\nVERSION of BDB is #{BDB::VERSION}\n"
+if BDB::VERSION_MAJOR < 3
+   print "\t\tno test for this version\n"
+   exit
+end
+
 require 'runit_'
 
 def clean
@@ -13,12 +20,6 @@ end
 
 $bdb, $env = nil, nil
 clean
-
-print "\nVERSION of BDB is #{BDB::VERSION}\n"
-if BDB::VERSION_MAJOR < 3
-   print "\t\tno test for this version\n"
-   exit
-end
 
 Inh = defined?(RUNIT) ? RUNIT : Test::Unit
 
