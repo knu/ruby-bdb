@@ -20,7 +20,7 @@ env.begin(doc, bdb) do |txn, doc1, bdb1|
       doc1.push("<bk><ttl id='#{i+2}'>title nb #{i+2}</ttl></bk>")
    end
    puts "========================================="
-   doc1.search("//ttl[@id < 12]", BDB::XML::Context::Values) {|x| p x }
+   doc1.search("//ttl[@id < 12]", BDB::XML::Context::Values) {|x| p x}
    bdb1.each {|k,v| p "#{k} -- #{v}" }
 end
 puts "========================================="

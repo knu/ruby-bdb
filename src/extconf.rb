@@ -1,32 +1,26 @@
 #!/usr/bin/ruby
+ARGV.collect! {|x| x.sub(/^--with-db-prefix=/, "--with-db-dir=") }
+
 require 'mkmf'
 
-stat_lib = if CONFIG.key?("LIBRUBYARG_STATIC")
-	      $LDFLAGS += " -L#{CONFIG['libdir']}"
-	      CONFIG["LIBRUBYARG_STATIC"]
-	   else
-	      "-lruby"
-	   end
+def resolve(key)
+   name = key.dup
+   true while name.gsub!(/\$\((\w+)\)/) { CONFIG[$1] }
+   name
+end
 
-if prefix = with_config("db-prefix")
-   $CFLAGS += " -I#{prefix}/include"
-   $LDFLAGS += " -L#{prefix}/lib"
-   case Config::CONFIG["arch"]
-   when /solaris2/
-      $LDFLAGS += " -R#{prefix}/lib"
-   end
+if ! find_library(resolve(CONFIG["LIBRUBY"]).sub(/^lib(.*)\.\w+\z/, '\\1'), 
+                  "ruby_init", resolve(CONFIG["archdir"]))
+   raise "can't find -lruby"
 end
+
+_,lib_dir = dir_config("db", "/usr")
+case Config::CONFIG["arch"]
+when /solaris2/
+   $DLDFLAGS += " -R#{lib_dir}"
+end
+
 $CFLAGS += " -DBDB_NO_THREAD_COMPILE" if enable_config("thread") == false
-if incdir = with_config("db-include-dir")
-   $CFLAGS += " -I#{incdir}" 
-end
-if libdir = with_config("db-lib-dir")
-   $LDFLAGS += " -L#{libdir}" 
-   case Config::CONFIG["arch"]
-   when /solaris2/
-      $LDFLAGS += " -R#{libdir}"
-   end
-end
 
 unique = if with_config("uniquename")
 	    "_" + with_config("uniquename")
@@ -58,7 +52,7 @@ begin
 
 unknown: $(DLLIB)
 \t@echo "main() {}" > /tmp/a.c
-\t$(CC) -static /tmp/a.c $(OBJS) $(CPPFLAGS) $(DLDFLAGS) #{stat_lib} #{CONFIG["LIBS"]} $(LIBS) $(LOCAL_LIBS)
+\t$(CC) -static /tmp/a.c $(OBJS) $(CPPFLAGS) $(DLDFLAGS) #{CONFIG["LIBS"]} -L#{lib_dir} $(LIBS) $(LOCAL_LIBS)
 \t@-rm /tmp/a.c a.out
    EOF
 ensure

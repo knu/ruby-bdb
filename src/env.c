@@ -564,6 +564,16 @@ struct env_iv {
     VALUE env;
 };
 
+#if BDB_VERSION >= 30000
+
+static VALUE
+bdb_env_aref()
+{
+    return rb_thread_local_aref(rb_thread_current(), bdb_id_current_env);
+}
+
+#endif
+
 static void
 bdb_final(envst)
     bdb_ENV *envst;
@@ -601,11 +611,15 @@ bdb_final(envst)
 	}
     }
 #if BDB_VERSION >= 30000
-    obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env);
-    if (obj != Qnil) {
-	Data_Get_Struct(obj, bdb_ENV, thst);
-	if (thst == envst) {
-	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, Qnil);
+    {
+	int status;
+
+	obj = rb_protect(bdb_env_aref, 0, &status);
+	if (!status && !NIL_P(obj)) {
+	    Data_Get_Struct(obj, bdb_ENV, thst);
+	    if (thst == envst) {
+		rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, Qnil);
+	    }
 	}
     }
 #endif

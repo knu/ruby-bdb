@@ -704,17 +704,24 @@ bdb_i_close(dbst, flags)
     dbst->dbp = NULL;
 }
 
+static VALUE
+bdb_local_aref()
+{
+    return rb_thread_local_aref(rb_thread_current(), bdb_id_current_db);
+}
+
 static void
 bdb_free(dbst)
     bdb_DB *dbst;
 {
     VALUE obj;
     bdb_DB *thst;
+    int status;
 
     bdb_i_close(dbst, 0);
     free(dbst);
-    obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db);
-    if (obj != Qnil) {
+    obj = rb_protect(bdb_local_aref, 0, &status);
+    if (!status && !NIL_P(obj)) {
 	Data_Get_Struct(obj, bdb_DB, thst);
 	if (thst == dbst) {
 	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);
@@ -804,7 +811,7 @@ bdb_close(argc, argv, obj)
     VALUE opt, db_ary;
     bdb_DB *dbst, *thst;
     bdb_ENV *envst;
-    int flags = 0, i;
+    int flags = 0, i, status;
 
     if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4) {
 	rb_raise(rb_eSecurityError, "Insecure: can't close the database");
@@ -816,8 +823,8 @@ bdb_close(argc, argv, obj)
 	}
 	bdb_i_close(dbst, flags);
     }
-    obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db);
-    if (obj != Qnil) {
+    obj = rb_protect(bdb_local_aref, 0, &status);
+    if (!status && !NIL_P(obj)) {
 	Data_Get_Struct(obj, bdb_DB, thst);
 	if (thst == dbst) {
 	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);

@@ -18,6 +18,7 @@ def addld(key, path, lib)
       end
    end
    $stderr.puts "\t#{key}\tusing ... #{libs}"
+   $DLDFLAGS += " #{libs}"
    $LDFLAGS += " #{libs}"
 end
 

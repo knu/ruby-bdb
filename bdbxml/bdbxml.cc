@@ -987,8 +987,6 @@ xb_con_s_new(int argc, VALUE *argv, VALUE obj)
 	VALUE v, f = argv[argc - 1];
 
 	if ((v = rb_hash_aref(f, rb_str_new2("txn"))) != RHASH(f)->ifnone) {
-	    bdb_TXN *txnst;
-
 	    if (!rb_obj_is_kind_of(v, xb_cTxn)) {
 		rb_raise(xb_eFatal, "argument of txn must be a transaction");
 	    }
