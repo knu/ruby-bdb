@@ -37,7 +37,7 @@ bdb_test_load(dbst, a)
 }
 
 static VALUE 
-test_load_dyna(obj, key, val)
+test_load_dyna1(obj, key, val)
     VALUE obj;
     DBT key, val;
 {
@@ -60,6 +60,18 @@ test_load_dyna(obj, key, val)
 	delegst->key = rb_funcall(dbst->marshal, id_load, 1, tmp);
 	delegst->obj = res;
 	res = del;
+    }
+    return res;
+}
+
+static VALUE
+test_load_dyna(obj, key, val)
+    VALUE obj;
+    DBT key, val;
+{
+    VALUE res = test_load_dyna1(obj, key, val);
+    if (key.flags & DB_DBT_MALLOC) {
+	free(key.data);
     }
     return res;
 }
@@ -1101,8 +1113,11 @@ bdb_assoc_dyna(obj, key, data)
     DBT key, data;
 {
     bdb_DB *dbst;
+    VALUE v;
+
     GetDB(obj, dbst);
-    return rb_assoc_new(test_load_key(dbst, key), test_load_dyna(obj, key, data));
+    v = test_load_dyna1(obj, key, data);
+    return rb_assoc_new(test_load_key(dbst, key), v);
 }
 
 static VALUE

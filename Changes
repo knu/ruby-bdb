@@ -137,3 +137,9 @@
 * accept 'extend Marshal'
 * corrected bug with gc (test_dump)
 * protected against old class
+
+-- 0.2.9
+
+* stupid bug with free()
+* added -R for Solaris 2 (Thanks Amos Gouaux <amos+ruby@utdallas.edu>)
+
