@@ -1,15 +1,35 @@
 #include <ruby.h>
 #include <version.h>
 #include <rubysig.h>
+#include <rubyio.h>
+
 #include <db.h>
 #include <errno.h>
 
-#if RUBY_VERSION_CODE < 180
+#ifndef StringValue
 #define StringValue(x) do { 				\
     if (TYPE(x) != T_STRING) x = rb_str_to_str(x); 	\
 } while (0)
+#endif
+
+#ifndef StringValuePtr
 #define StringValuePtr(x) STR2CSTR(x)
+#endif
+
+#ifndef SafeStringValue
 #define SafeStringValue(x) Check_SafeStr(x)
+#endif
+
+#ifdef close
+#undef close
+#endif
+
+#ifdef stat
+#undef stat
+#endif
+
+#ifdef rename
+#undef rename
 #endif
 
 #if defined(__cplusplus)
@@ -42,7 +62,7 @@ extern "C" {
 #define BDB_REP_TRANSPORT  (1<<1)
 #define BDB_ENV_ENCRYPT    (1<<2)
 #define BDB_ENV_NOT_OPEN   (1<<3)
-
+ 
 #if BDB_VERSION >= 30300
 #define BDB_ERROR_PRIVATE 44444
 #endif
@@ -88,10 +108,15 @@ extern VALUE bdb_deleg_to_orig _((VALUE));
 extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
 #endif
 
+struct ary_st {
+    int len, total;
+    VALUE *ptr;
+};
+
 typedef struct  {
     int options;
     VALUE marshal;
-    VALUE db_ary;
+    struct ary_st db_ary;
     VALUE home;
     DB_ENV *envp;
 #if BDB_VERSION <= 30105
@@ -120,8 +145,8 @@ struct txn_rslbl {
 typedef struct {
     int status, options;
     VALUE marshal, mutex;
-    VALUE db_ary;
-    VALUE db_assoc;
+    struct ary_st db_ary;
+    struct ary_st db_assoc;
     VALUE env;
     DB_TXN *txnid;
     DB_TXN *parent;
@@ -338,6 +363,46 @@ extern VALUE bdb_errstr;
 extern int bdb_errcall;
 
 extern int bdb_test_error _((int));
+
+#ifdef DB_INCOMPLETE
+
+#define bdb_cache_error(commande_, correction_, result_) do {	\
+    result_ = commande_;					\
+								\
+    switch (result_) {						\
+    case 0:							\
+    case DB_NOTFOUND:						\
+    case DB_KEYEMPTY:						\
+    case DB_KEYEXIST:						\
+        break;							\
+    case DB_INCOMPLETE:						\
+	result_ = 0;						\
+        break;							\
+    default:							\
+        correction_;						\
+        bdb_test_error(result_);				\
+    }								\
+} while (0);
+
+#else
+
+#define bdb_cache_error(commande_, correction_, result_) do {	\
+    result_ = commande_;					\
+								\
+    switch (result_) {						\
+    case 0:							\
+    case DB_NOTFOUND:						\
+    case DB_KEYEMPTY:						\
+    case DB_KEYEXIST:						\
+        break;							\
+    default:							\
+        correction_;						\
+        bdb_test_error(result_);				\
+    }								\
+} while (0);
+
+#endif
+
 extern VALUE bdb_obj_init _((int, VALUE *, VALUE));
 
 extern ID bdb_id_call;
@@ -346,6 +411,7 @@ extern ID bdb_id_call;
 extern char *db_strerror _((int));
 #endif
 
+extern VALUE bdb_local_aref _(());
 extern VALUE bdb_test_recno _((VALUE, DBT *, db_recno_t *, VALUE));
 extern VALUE bdb_test_dump _((VALUE, DBT *, VALUE, int));
 extern VALUE bdb_test_ret _((VALUE, VALUE, VALUE, int));
@@ -386,6 +452,9 @@ extern void bdb_clean_env _((VALUE, VALUE));
 extern VALUE bdb_makelsn _((VALUE));
 extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
 extern VALUE bdb_return_err _((void));
+extern void bdb_ary_push _((struct ary_st *, VALUE));
+extern void bdb_ary_unshift _((struct ary_st *, VALUE));
+extern VALUE bdb_ary_delete _((struct ary_st *, VALUE));
 
 #if defined(__cplusplus)
 }

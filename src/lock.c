@@ -12,18 +12,8 @@ bdb_clean_env(env, obj)
     VALUE env, obj;
 {
     bdb_ENV *envst;
-    int i;
-
-    if (BDB_VALID(env, T_DATA)) {
-	Data_Get_Struct(env, bdb_ENV, envst);
-	if (BDB_VALID(envst->db_ary, T_ARRAY)) {
-	    for (i = 0; i < RARRAY(envst->db_ary)->len; ++i) {
-		if (RARRAY(envst->db_ary)->ptr[i] == obj) {
-		    rb_ary_delete_at(envst->db_ary, i);
-		}
-	    }
-	}
-    }
+    Data_Get_Struct(env, bdb_ENV, envst);
+    bdb_ary_delete(&envst->db_ary, obj);
 }
     
 static void 
@@ -33,12 +23,10 @@ lockid_free(dblockid)
 #if BDB_VERSION >= 40000
     bdb_ENV *envst;
 
-    if (BDB_VALID(dblockid->env, T_DATA)) {
-	bdb_clean_env(dblockid->env, dblockid->self);
-	Data_Get_Struct(dblockid->env, bdb_ENV, envst);
-	if (envst->envp) {
-	    envst->envp->lock_id_free(envst->envp, dblockid->lock);
-	}
+    bdb_clean_env(dblockid->env, dblockid->self);
+    Data_Get_Struct(dblockid->env, bdb_ENV, envst);
+    if (envst->envp) {
+	envst->envp->lock_id_free(envst->envp, dblockid->lock);
     }
 #endif
     free(dblockid);
@@ -71,7 +59,7 @@ bdb_env_lockid(obj)
     dblockid->env = obj;
     dblockid->self = a;
 #if BDB_VERSION >= 40000
-    rb_ary_push(envst->db_ary, a);
+    bdb_ary_push(&envst->db_ary, a);
 #endif
     return a;
 }
@@ -84,16 +72,15 @@ bdb_env_lockid_close(obj)
     bdb_LOCKID *dblockid;
 
     Data_Get_Struct(obj, bdb_LOCKID, dblockid);
-    if (BDB_VALID(dblockid->env, T_DATA)) { 
-	bdb_clean_env(dblockid->env, obj);
+    bdb_clean_env(dblockid->env, obj);
 #if BDB_VERSION >= 40000
-	GetEnvDB(dblockid->env, envst);
-	if (envst->envp) {
-	    bdb_test_error(envst->envp->lock_id_free(envst->envp, dblockid->lock));
-	}
-#endif
-	dblockid->env = 0;
+    GetEnvDB(dblockid->env, envst);
+    RDATA(obj)->dfree = free;
+    if (envst->envp) {
+	bdb_test_error(envst->envp->lock_id_free(envst->envp, dblockid->lock));
     }
+#endif
+    dblockid->env = 0;
     return Qnil;
 }
 
@@ -252,10 +239,10 @@ lock_free(lock)
 #if BDB_VERSION < 30000
     bdb_ENV *envst;
 
-    GetEnvDB(lock->env, envst);
-    if (envst->envp->lk_info) {
+    Data_Get_Struct(lock->env, bdb_ENV, envst);			\
+    if (envst->envp && envst->envp->lk_info) {
 	lock_close(envst->envp->lk_info);
-	envst->envp->lk_info = NULL;
+	envst->envp = NULL;
     }
 #endif
     free(lock);
@@ -506,14 +493,18 @@ void bdb_init_lock()
     rb_define_method(bdb_cEnv, "lock_stat", bdb_env_lockstat, -1);
     rb_define_method(bdb_cEnv, "lock_detect", bdb_env_lockdetect, -1);
     bdb_cLockid = rb_define_class_under(bdb_mDb, "Lockid", rb_cObject);
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    rb_undef_alloc_func(bdb_cLockid);
+#else
     rb_undef_method(CLASS_OF(bdb_cLockid), "allocate");
+#endif
     rb_undef_method(CLASS_OF(bdb_cLockid), "new");
     rb_define_method(bdb_cLockid, "lock_get", bdb_lockid_get, -1);
     rb_define_method(bdb_cLockid, "get", bdb_lockid_get, -1);
     rb_define_method(bdb_cLockid, "lock_vec", bdb_lockid_vec, -1);
     rb_define_method(bdb_cLockid, "vec", bdb_lockid_vec, -1);
     rb_define_method(bdb_cLockid, "close", bdb_env_lockid_close, 0);
-    bdb_cLock = rb_define_class_under(bdb_cLockid, "Lock", rb_cObject);
+    bdb_cLock = rb_define_class_under(bdb_mDb, "Lock", rb_cObject);
     rb_undef_method(CLASS_OF(bdb_cLock), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLock), "new");
     rb_define_method(bdb_cLock, "put", bdb_lock_put, 0);

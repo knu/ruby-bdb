@@ -29,7 +29,13 @@ class TestLog < Inh::TestCase
 	 assert_kind_of(BDB::Lsn, lsn = $env.log_put("test #{i}"), "<lsn>")
 	 $lsn.push lsn
       end
+      assert_equal($env, $env.log_flush, "<log flush>")
       assert_equal(100, $lsn.size, "lsn size")
+      assert_equal($env, $lsn[0].env, "<env>")
+      log = Dir["tmp/log*"][0].sub(/\Atmp./,'')
+      assert_equal([log], $env.log_archive(BDB::ARCH_LOG), "<log archive>")
+      assert_equal("tmp/#{log}", $lsn[0].file, "<log file>")
+      assert_equal($lsn[0], $lsn[0].flush, "<lsn flush>")
    end
 
    def test_03_each
@@ -39,6 +45,7 @@ class TestLog < Inh::TestCase
 	 assert_equal("test #{i}", r, "value ==")
 	 i += 1
       end
+      assert_equal(100, i, "<end each>")
    end
 
    def test_04_reverse_each
@@ -48,17 +55,45 @@ class TestLog < Inh::TestCase
 	 assert_equal("test #{i}", r, "value == reverse")
 	 i -= 1
       end
+      assert_equal(-1, i, "<end reverse each>")
+   end
+ 
+   def test_05_each
+      if $lsn[0].respond_to?(:each)
+	 i = 24
+	 $lsn[24].log_each do |r, l|
+	    assert_equal($lsn[i], l, "lsn ==")
+	    assert_equal("test #{i}", r, "value ==")
+	    i += 1
+	 end
+	 assert_equal(100, i, "<end each>")
+     end
    end
 
-   def test_05_random
-      1000.times do
-	 nb = rand($lsn.size)
-	 assert_equal($lsn[nb].log_get,"test #{nb}", "<log_get>")
+   def test_06_reverse_each
+      if $lsn[0].respond_to?(:reverse_each)
+	 i = 55
+	 $lsn[55].log_reverse_each do |r, l|
+	    assert_equal($lsn[i], l, "lsn == reverse")
+	    assert_equal("test #{i}", r, "value == reverse")
+	    i -= 1
+	 end
+	 assert_equal(-1, i, "<end reverse each>")
       end
-      $env.close
+   end
+ 
+   def test_07_random
+      begin
+	 1000.times do
+	    nb = rand($lsn.size)
+	    assert_equal("test #{nb}", $lsn[nb].log_get, "<log_get>")
+	 end
+      ensure
+	 $env.close
+      end
    end
 
-   def test_06_reinit
+   def test_08_reinit
       clean
       assert_kind_of(BDB::Env, 
 		     $env = BDB::Env.open("tmp",  BDB::CREATE | BDB::INIT_LOG | BDB::INIT_TXN,
@@ -68,7 +103,7 @@ class TestLog < Inh::TestCase
 		     "<open>")
    end
 
-   def test_07_put
+   def test_09_put
       $lsn = []
       $rec = []
       500.times do |i|
@@ -80,7 +115,7 @@ class TestLog < Inh::TestCase
       end
    end
 
-   def test_08_log_get
+   def test_10_log_get
       l = nil
       $lsn.each_with_index do |ls, i|
 	 if l
@@ -91,7 +126,7 @@ class TestLog < Inh::TestCase
       end
    end
 
-   def test_09_file
+   def test_11_file
       if BDB::VERSION_MAJOR < 4
 	 log_file = Dir.glob("tmp/*")
 	 $lsn.each do |ls|
@@ -100,7 +135,7 @@ class TestLog < Inh::TestCase
       end
    end
 
-   def test_10_end
+   def test_12_end
       $env.close
       clean
    end

@@ -1,8 +1,10 @@
 #!/usr/bin/ruby
-require '../src/bdb'
+require './clean.rb'
 if BDB::VERSION_MAJOR == 2 && BDB::VERSION_MINOR < 6
       raise "join exist only with db >= 2.6"
 end
+
+BDB::Env.cleanup("tmp", true)
 
 module BDB
    class Btree
@@ -34,12 +36,12 @@ sec2 = {
 
 env = BDB::Env.open "tmp", BDB::INIT_MPOOL | BDB::CREATE | BDB::INIT_LOCK
 
-p = BDB::Btree.open "primary", nil, BDB::CREATE | BDB::TRUNCATE, "env" => env
+p = BDB::Btree.open "primary", nil, BDB::CREATE, "env" => env
 primary.each do |k, v|
    p[k] = v
 end
 
-s1 = env.open_db BDB::Btree, "sec1", nil, "w",
+s1 = env.open_db BDB::Btree, "sec1", nil, BDB::CREATE,
    "set_flags" => BDB::DUP | BDB::DUPSORT
 sec1.each do |k, v|
    v.each do |v1|
@@ -47,7 +49,7 @@ sec1.each do |k, v|
    end
 end
 
-s2 = BDB::Btree.open "sec2", nil, "w", "env" => env,
+s2 = BDB::Btree.open "sec2", nil, BDB::CREATE, "env" => env,
    "set_flags" => BDB::DUP | BDB::DUPSORT
 sec2.each do |k, v|
    v.each do |v2|

@@ -32,3 +32,8 @@
 * added --with-bdb-objs for Mac OS X 
    (Thanks Richard Kilmer <rich@infoether.com>)
 * correected b.rb
+
+--- adapted for 1.1.1 (1.2.0)
+
+* removed List, it return now Node
+* Document::query(Xpath)

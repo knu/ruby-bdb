@@ -13,8 +13,6 @@ void
 bdb_deleg_mark(delegst)
     struct deleg_class *delegst;
 {
-    bdb_DB *dbst;
-
     if (delegst->db) rb_gc_mark(delegst->db);
     if (delegst->key) rb_gc_mark(delegst->key);
     if (delegst->obj) rb_gc_mark(delegst->obj);
@@ -140,9 +138,7 @@ bdb_deleg_load(obj, str)
 {
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
+    obj = bdb_local_aref();
     Data_Get_Struct(obj, bdb_DB, dbst);
     return rb_funcall(dbst->marshal, bdb_id_load, 1, str);
 }

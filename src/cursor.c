@@ -102,7 +102,7 @@ bdb_cursor_dup(argc, argv, obj)
     VALUE *argv;
     VALUE obj;
 {
-    int ret, flags = 0;
+    int flags = 0;
     VALUE a, b;
     bdb_DBC *dbcst, *dbcstdup;
     bdb_DB *dbst;
@@ -127,8 +127,6 @@ bdb_cursor_count(obj)
 #if BDB_VERSION < 20600
     rb_raise(bdb_eFatal, "DB_NEXT_DUP needs Berkeley DB 2.6 or later");
 #else
-    int ret;
-
 #if BDB_VERSION < 30100
     DBT key, data;
     DBT key_o, data_o;
@@ -136,6 +134,7 @@ bdb_cursor_count(obj)
     bdb_DBC *dbcst;
     bdb_DB *dbst;
     db_recno_t count;
+    int ret;
 
     GetCursorDB(obj, dbcst, dbst);
 #if BDB_VERSION >= 30100
@@ -417,7 +416,11 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCommon, "db_write_cursor", bdb_write_cursor, 0);
     rb_define_method(bdb_cCommon, "write_cursor", bdb_write_cursor, 0);
     bdb_cCursor = rb_define_class_under(bdb_mDb, "Cursor", rb_cObject);
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    rb_undef_alloc_func(bdb_cCursor);
+#else
     rb_undef_method(CLASS_OF(bdb_cCursor), "allocate");
+#endif
     rb_undef_method(CLASS_OF(bdb_cCursor), "new");
     rb_define_method(bdb_cCursor, "close", bdb_cursor_close, 0);
     rb_define_method(bdb_cCursor, "c_close", bdb_cursor_close, 0);

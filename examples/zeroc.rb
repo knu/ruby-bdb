@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-require '../src/bdb'
+require './clean.rb'
+
+BDB::Env.cleanup("tmp", true)
+
 module ZeroC
    def bdb_fetch_value(a)
       a.sub(/\0$/, '')

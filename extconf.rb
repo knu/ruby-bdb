@@ -56,7 +56,7 @@ test: $(DLLIB)
    Dir.foreach('tests') do |x|
       next if /^\./ =~ x || /(_\.rb|~)$/ =~ x
       next if FileTest.directory?(x)
-      make.print "\t#{CONFIG['RUBY_INSTALL_NAME']} tests/#{x}\n"
+      make.print "\t-#{CONFIG['RUBY_INSTALL_NAME']} tests/#{x}\n"
    end
 ensure
    make.close

@@ -136,13 +136,14 @@ bdb_intern_shift_pop(obj, depart, len)
     flags = TEST_INIT_LOCK(dbst);
     res = rb_ary_new2(len);
     for (i = 0; i < len; i++) {
-	ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, depart | flags));
+	bdb_cache_error(dbcp->c_get(dbcp, &key, &data, depart | flags),
+			dbcp->c_close(dbcp), ret);
 	if (ret == DB_NOTFOUND) break;
 	rb_ary_push(res, bdb_test_load(obj, &data, FILTER_VALUE));
-	bdb_test_error(dbcp->c_del(dbcp, 0));
+	bdb_cache_error(dbcp->c_del(dbcp, 0), dbcp->c_close(dbcp), ret);
 	if (dbst->len > 0) dbst->len--;
     }
-    bdb_test_error(dbcp->c_close(dbcp));
+    dbcp->c_close(dbcp);
     if (RARRAY(res)->len == 0) return Qnil;
     else if (RARRAY(res)->len == 1) return RARRAY(res)->ptr[0];
     else return res;
@@ -426,7 +427,6 @@ bdb_sary_s_create(argc, argv, obj)
     VALUE obj;
 {
     VALUE res;
-    int i;
 
     res = rb_funcall2(obj, rb_intern("new"), 0, 0);
     if (argc < 0) {
@@ -629,9 +629,6 @@ bdb_sary_indexes(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    VALUE indexes;
-    int i;
-
 #if RUBY_VERSION_CODE >= 172
     rb_warn("Recnum#%s is deprecated; use Recnum#values_at",
 	    rb_id2name(rb_frame_last_func()));
@@ -751,7 +748,7 @@ bdb_sary_clear(argc, argv, obj)
 {
     bdb_DB *dbst;
     VALUE g;
-    int flags;
+    int flags = 0;
 
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
 	VALUE f = argv[argc - 1];
@@ -815,7 +812,7 @@ static VALUE
 bdb_sary_cmp(obj, obj2)
     VALUE obj, obj2;
 {
-    bdb_DB *dbst, *dbst2;
+    bdb_DB *dbst, *dbst2 = 0;
     VALUE a, a2, tmp, ary;
     long i, len;
 

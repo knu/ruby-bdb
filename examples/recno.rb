@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-require '../src/bdb'
+require './clean.rb'
+
+BDB::Env.cleanup("tmp", true)
+
 out = open("tmp/recno.rb", "w")
 File.foreach("recno.rb") do |line|
    out.print line

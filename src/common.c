@@ -1,6 +1,4 @@
 #include "bdb.h"
-#include <rubyio.h>
-#include <version.h>
 
 static ID id_bt_compare, id_bt_prefix, id_dup_compare, id_h_hash;
 #if BDB_VERSION >= 40100
@@ -10,6 +8,74 @@ static ID id_append_recno;
 #if BDB_VERSION >= 30000
 static ID id_feedback;
 #endif
+
+static void bdb_mark _((bdb_DB *));
+
+#define GetIdDb(obj, dbst) do {						  \
+    (obj) = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db); \
+    if (TYPE(obj) != T_DATA ||						  \
+	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_mark) {		  \
+	rb_raise(bdb_eFatal, "BUG : current_db not set");		  \
+    }									  \
+    Data_Get_Struct(obj, bdb_DB, dbst);					  \
+} while (0)
+
+void
+bdb_ary_push(db_ary, obj)
+    struct ary_st *db_ary;
+    VALUE obj;
+{
+    if (db_ary->len == db_ary->total) {
+	if (db_ary->total) {
+	    REALLOC_N(db_ary->ptr, VALUE, db_ary->total + 5);
+	}
+	else {
+	    db_ary->ptr = ALLOC_N(VALUE, 5);
+	}
+	db_ary->total += 5;
+    }
+    db_ary->ptr[db_ary->len] = obj;
+    db_ary->len++;
+}
+
+void
+bdb_ary_unshift(db_ary, obj)
+    struct ary_st *db_ary;
+    VALUE obj;
+{
+    if (db_ary->len == db_ary->total) {
+	if (db_ary->total) {
+	    REALLOC_N(db_ary->ptr, VALUE, db_ary->total + 5);
+	}
+	else {
+	    db_ary->ptr = ALLOC_N(VALUE, 5);
+	}
+	db_ary->total += 5;
+    }
+    MEMMOVE(db_ary->ptr + 1, db_ary->ptr, VALUE, db_ary->len);
+    db_ary->len++;
+    db_ary->ptr[0] = obj;
+}
+
+VALUE
+bdb_ary_delete(db_ary, val)
+    struct ary_st *db_ary;
+    VALUE val;
+{
+    int i, pos;
+
+    if (!db_ary->ptr) return Qfalse;
+    for (pos = 0; pos < db_ary->len; pos++) {
+	if (db_ary->ptr[pos] == val) {
+	    for (i = pos + 1; i < db_ary->len; i++, pos++) {
+		db_ary->ptr[pos] = db_ary->ptr[i];
+	    }
+	    db_ary->len = pos;
+	    return Qtrue;
+	}
+    }
+    return Qfalse;
+}
 
 VALUE
 bdb_test_dump(obj, key, a, type_kv)
@@ -213,10 +279,7 @@ bdb_bt_compare(a, b)
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     a->flags = b->flags = 0;
     av = bdb_test_load(obj, a, FILTER_VALUE);
     bv = bdb_test_load(obj, b, FILTER_VALUE);
@@ -240,10 +303,7 @@ bdb_bt_prefix(a, b)
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     a->flags = b->flags = 0;
     av = bdb_test_load(obj, a, FILTER_VALUE);
     bv = bdb_test_load(obj, b, FILTER_VALUE);
@@ -267,10 +327,7 @@ bdb_dup_compare(a, b)
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     a->flags = b->flags = 0;
     av = bdb_test_load(obj, a, FILTER_VALUE);
     bv = bdb_test_load(obj, b, FILTER_VALUE);
@@ -296,10 +353,7 @@ bdb_h_hash(bytes, length)
     VALUE obj, st, res;
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     st = rb_tainted_str_new((char *)bytes, length);
     if (dbst->h_hash == 0)
 	res = rb_funcall(obj, id_h_hash, 1, st);
@@ -316,10 +370,7 @@ bdb_append_recno(DB *dbp, DBT *data, db_recno_t recno)
     VALUE res, obj, av, rec;
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     data->flags = 0;
     av = bdb_test_load(obj, data, FILTER_VALUE);
     rec = INT2NUM(recno - dbst->array_base);
@@ -343,10 +394,7 @@ bdb_feedback(DB *dbp, int opcode, int pct)
     VALUE obj;
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     if (NIL_P(dbst->feedback)) {
 	return;
     }
@@ -658,59 +706,46 @@ struct bdb_eiv {
     bdb_DB *dbst;
 };
 
-static VALUE bdb_internal_ary;
-
 static void
 bdb_i_close(dbst, flags)
     bdb_DB *dbst;
     int flags;
 {
-    VALUE db_ary;
     bdb_ENV *envst;
-    int i;
 
-    if (dbst->dbp && !(dbst->options & BDB_NOT_OPEN)) {
-	db_ary = 0;
+    if (dbst->dbp) {
 	if (RTEST(dbst->txn)) {
 	    bdb_TXN *txnst;
 	    Data_Get_Struct(dbst->txn, bdb_TXN, txnst);
-	    db_ary = txnst->db_ary;
+	    if (!bdb_ary_delete(&txnst->db_ary, dbst->ori_val)) {
+		bdb_ary_delete(&txnst->db_assoc, dbst->ori_val);
+	    }
+	    if (txnst->options & BDB_TXN_COMMIT) {
+		rb_funcall2(dbst->txn, rb_intern("commit"), 0, 0);
+	    }
+	    else {
+		rb_funcall2(dbst->txn, rb_intern("abort"), 0, 0);
+	    }
 	}
 	else if (dbst->env) {
 	    Data_Get_Struct(dbst->env, bdb_ENV, envst);
-	    db_ary = envst->db_ary;
+	    bdb_ary_delete(&envst->db_ary, dbst->ori_val);
 	}
-	if (BDB_VALID(db_ary, T_ARRAY)) {
-	    for (i = 0; i < RARRAY(db_ary)->len; ++i) {
-		if (RARRAY(db_ary)->ptr[i] == dbst->ori_val) {
-		    rb_ary_delete_at(db_ary, i);
-		    break;
-		}
-	    }
+	if (!(dbst->options & BDB_NOT_OPEN)) {
+	    bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
 	}
-	else if (BDB_VALID(bdb_internal_ary, T_ARRAY)) {
-	    struct bdb_eiv *biv;
-
-	    for (i = 0; i < RARRAY(bdb_internal_ary)->len; ++i) {
-		if (BDB_VALID(RARRAY(bdb_internal_ary)->ptr[i], T_DATA)) {
-		    Data_Get_Struct(RARRAY(bdb_internal_ary)->ptr[i], 
-				    struct bdb_eiv, biv);
-		    if (biv->dbst == dbst) {
-			rb_ary_delete_at(bdb_internal_ary, i);
-			break;
-		    }
-		}
-	    }
-	}
-	bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
     }
     dbst->dbp = NULL;
 }
 
-static VALUE
+VALUE
 bdb_local_aref()
 {
-    return rb_thread_local_aref(rb_thread_current(), bdb_id_current_db);
+    bdb_DB *dbst;
+    VALUE obj;
+
+    GetIdDb(obj, dbst);
+    return obj;
 }
 
 static void
@@ -724,7 +759,7 @@ bdb_free(dbst)
     bdb_i_close(dbst, 0);
     free(dbst);
     obj = rb_protect(bdb_local_aref, 0, &status);
-    if (!status && !NIL_P(obj)) {
+    if (!status) {
 	Data_Get_Struct(obj, bdb_DB, thst);
 	if (thst == dbst) {
 	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);
@@ -779,7 +814,7 @@ bdb_env_p(obj)
     bdb_DB *dbst;
 
     GetDB(obj, dbst);
-    return RTEST(dbst->env);
+    return (RTEST(dbst->env)?Qtrue:Qfalse);
 }
 
 static VALUE
@@ -802,7 +837,7 @@ bdb_txn_p(obj)
     bdb_DB *dbst;
 
     GetDB(obj, dbst);
-    return RTEST(dbst->txn);
+    return (RTEST(dbst->txn)?Qtrue:Qfalse);
 }
 
 static VALUE
@@ -813,8 +848,7 @@ bdb_close(argc, argv, obj)
 {
     VALUE opt;
     bdb_DB *dbst, *thst;
-    bdb_ENV *envst;
-    int flags = 0, i, status;
+    int flags = 0, status;
 
     if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4) {
 	rb_raise(rb_eSecurityError, "Insecure: can't close the database");
@@ -859,12 +893,16 @@ bdb_hard_count(dbp)
     bdb_test_error(dbp->cursor(dbp, 0, &dbcp, 0));
 #endif
     do {
-        ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT));
+        bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT),
+			dbcp->c_close(dbcp), ret);
         if (ret == DB_NOTFOUND) {
-            bdb_test_error(dbcp->c_close(dbcp));
+            dbcp->c_close(dbcp);
             return count;
         }
-	if (ret == DB_KEYEMPTY) return -1;
+	if (ret == DB_KEYEMPTY)  {
+            dbcp->c_close(dbcp);
+	    return -1;
+	}
 	free(data.data);
         count++;
     } while (1);
@@ -877,7 +915,10 @@ bdb_is_recnum(dbp)
     DB *dbp;
 {
     DB_BTREE_STAT *bdb_stat;
-    long count, hard;
+    long count;
+#if BDB_VERSION < 30100
+    long hard;
+#endif
 
 #if BDB_VERSION >= 30100
 #if BDB_VERSION >= 30300
@@ -935,7 +976,11 @@ bdb_s_new(argc, argv, obj)
     bdb_DB *dbst;
     DB_ENV *envp = 0;
 
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    res = rb_obj_alloc(obj);
+#else
     res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+#endif
     Data_Get_Struct(res, bdb_DB, dbst);
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
 	VALUE v, f = argv[argc - 1];
@@ -945,13 +990,9 @@ bdb_s_new(argc, argv, obj)
 		rb_raise(bdb_eFatal, "argument of txn must be a transaction");
 	    }
 	    Data_Get_Struct(v, bdb_TXN, txnst);
-	    rb_ary_push(txnst->db_ary, res);
 	    dbst->txn = v;
 	    dbst->env = txnst->env;
 	    Data_Get_Struct(txnst->env, bdb_ENV, envst);
-	    /* #ts:
-	       rb_ary_push(envst->db_ary, res);
-	    */
 	    envp = envst->envp;
 	    dbst->options |= envst->options & BDB_NO_THREAD;
 	    dbst->marshal = txnst->marshal;
@@ -961,7 +1002,6 @@ bdb_s_new(argc, argv, obj)
 		rb_raise(bdb_eFatal, "argument of env must be an environnement");
 	    }
 	    Data_Get_Struct(v, bdb_ENV, envst);
-	    rb_ary_push(envst->db_ary, res);
 	    dbst->env = v;
 	    envp = envst->envp;
 	    dbst->options |= envst->options & BDB_NO_THREAD;
@@ -1008,19 +1048,10 @@ bdb_s_new(argc, argv, obj)
     }
     rb_obj_call_init(res, argc, argv);
     if (txnst) {
-	rb_ary_push(txnst->db_ary, res);
+	bdb_ary_push(&txnst->db_ary, res);
     }
     else if (envst) {
-	rb_ary_push(envst->db_ary, res);
-    }
-    else {
-	VALUE st;
-	struct bdb_eiv *biv;
-
-	st = Data_Make_Struct(rb_cData, struct bdb_eiv, 0, free, biv);
-	biv->bdb = res;
-	biv->dbst = dbst;
-	rb_ary_push(bdb_internal_ary, st);
+	bdb_ary_push(&envst->db_ary, res);
     }
     return res;
 }
@@ -1500,7 +1531,7 @@ bdb_queue_s_new(argc, argv, obj)
 #endif
 
 static VALUE
-bdb_append_internal(argc, argv, obj, flag)
+bdb_append_internal(argc, argv, obj, flag, retval)
     int argc, flag;
     VALUE *argv, obj;
 {
@@ -1509,7 +1540,7 @@ bdb_append_internal(argc, argv, obj, flag)
     DBT key, data;
     db_recno_t recno;
     int i;
-    VALUE *a;
+    VALUE *a, ary;
     volatile VALUE res = Qnil;
 
     rb_secure(4);
@@ -1528,6 +1559,9 @@ bdb_append_internal(argc, argv, obj, flag)
 	key.flags |= DB_DBT_MALLOC;
     }
 #endif
+    if (retval) {
+	ary = rb_ary_new();
+    }
     for (i = 0, a = argv; i < argc; i++, a++) {
 	MEMZERO(&data, DBT, 1);
 	res = bdb_test_dump(obj, &data, *a, FILTER_VALUE);
@@ -1538,6 +1572,12 @@ bdb_append_internal(argc, argv, obj, flag)
 	}
 #endif
 	bdb_test_error(dbst->dbp->put(dbst->dbp, txnid, &key, &data, flag));
+	if (retval) {
+	    rb_ary_push(ary, INT2NUM(*(db_recno_t *)key.data));
+	}
+    }
+    if (retval) {
+	return ary;
     }
     return obj;
 }
@@ -1547,14 +1587,14 @@ bdb_append_m(argc, argv, obj)
     int argc;
     VALUE *argv, obj;
 {
-    return bdb_append_internal(argc, argv, obj, DB_APPEND);
+    return bdb_append_internal(argc, argv, obj, DB_APPEND, Qtrue);
 }
 
 static VALUE
 bdb_append(obj, val)
     VALUE val, obj;
 {
-    return bdb_append_m(1, &val, obj);
+    return bdb_append_internal(1, &val, obj, DB_APPEND, Qfalse);
 }
 
 static VALUE
@@ -1573,7 +1613,7 @@ bdb_unshift(argc, argv, obj)
     else {
 	flag = DB_NOOVERWRITE;
     }
-    return bdb_append_internal(argc, argv, obj, flag);
+    return bdb_append_internal(argc, argv, obj, flag, Qtrue);
 }
 
 VALUE
@@ -1708,7 +1748,6 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
 #if BDB_VERSION < 20600
 #define DB_GET_BOTH 9
 #endif
-    DBT datas;
     int flagss;
     int ret, flags;
     db_recno_t recno;
@@ -1770,6 +1809,31 @@ bdb_get_dyna(argc, argv, obj)
     return bdb_get_internal(argc, argv, obj, Qnil, 1);
 }
 
+static VALUE
+bdb_fetch(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    VALUE key, if_none;
+    VALUE val;
+
+    rb_scan_args(argc, argv, "11", &key, &if_none);
+    val = bdb_get_internal(1, argv, obj, Qundef, 1);
+    if (val == Qundef) {
+	if (rb_block_given_p()) {
+	    if (argc > 1) {
+		rb_raise(rb_eArgError, "wrong # of arguments", argc);
+	    }
+	    return rb_yield(key);
+	}
+	if (argc == 1) {
+	    rb_raise(rb_eIndexError, "key not found");
+	}
+	return if_none;
+    }
+    return val;
+}
+
 #if BDB_VERSION >= 30300
 
 static VALUE
@@ -1780,14 +1844,13 @@ bdb_pget(argc, argv, obj)
 {
     VALUE a = Qnil;
     VALUE b = Qnil;
-    VALUE c, d;
+    VALUE c;
     bdb_DB *dbst;
     DB_TXN *txnid;
     DBT pkey, data, skey;
-    DBT datas;
     int flagss;
     int ret, flags;
-    db_recno_t srecno, precno;
+    db_recno_t srecno;
 
     INIT_TXN(txnid, obj, dbst);
     flagss = flags = 0;
@@ -1832,7 +1895,6 @@ bdb_btree_key_range(obj, a)
     bdb_DB *dbst;
     DB_TXN *txnid;
     DBT key;
-    int ret;
     db_recno_t recno;
     DB_KEY_RANGE key_range;
     volatile VALUE b = Qnil;
@@ -1849,6 +1911,7 @@ bdb_btree_key_range(obj, a)
 #endif
 
 #if BDB_VERSION >= 20600
+
 static VALUE
 bdb_count(obj, a)
     VALUE obj, a;
@@ -1870,32 +1933,35 @@ bdb_count(obj, a)
     SET_PARTIAL(dbst, data);
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
     flags27 = TEST_INIT_LOCK(dbst);
-    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_SET | flags27));
+    bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_SET | flags27),
+		    dbcp->c_close(dbcp), ret);
     if (ret == DB_NOTFOUND) {
-        bdb_test_error(dbcp->c_close(dbcp));
+        dbcp->c_close(dbcp);
         return INT2NUM(0);
     }
 #if BDB_VERSION >= 30100
-    bdb_test_error(dbcp->c_count(dbcp, &count, 0));
-    bdb_test_error(dbcp->c_close(dbcp));
+    bdb_cache_error(dbcp->c_count(dbcp, &count, 0), dbcp->c_close(dbcp), ret);
+    dbcp->c_close(dbcp);
     return INT2NUM(count);
 #else
     count = 1;
     while (1) {
-	ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT_DUP | flags27));
-	if (ret == DB_NOTFOUND) {
-	    bdb_test_error(dbcp->c_close(dbcp));
-	    return INT2NUM(count);
-	}
-	if (ret == DB_KEYEMPTY) continue;
-	FREE_KEY(dbst, key);
-	if (data.flags & DB_DBT_MALLOC)
-	    free(data.data);
-	count++;
+        bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT_DUP | flags27),
+			dbcp->c_close(dbcp), ret);
+        if (ret == DB_NOTFOUND) {
+            dbcp->c_close(dbcp);
+            return INT2NUM(count);
+        }
+        if (ret == DB_KEYEMPTY) continue;
+        FREE_KEY(dbst, key);
+        if (data.flags & DB_DBT_MALLOC)
+            free(data.data);
+        count++;
     }
     return INT2NUM(-1);
 #endif
 }
+
 #endif
 
 #if BDB_VERSION >= 30000
@@ -1919,8 +1985,9 @@ bdb_consume(obj)
     key.data = &recno;
     key.size = sizeof(db_recno_t);
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
-    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_CONSUME));
-    bdb_test_error(dbcp->c_close(dbcp));
+    bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_CONSUME),
+		    dbcp->c_close(dbcp), ret);
+    dbcp->c_close(dbcp);
     if (ret == DB_NOTFOUND) {
 	return Qnil;
     }
@@ -1966,7 +2033,8 @@ bdb_has_both_internal(obj, a, b, flag)
 #else
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
 #endif
-    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_SET));
+    bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_SET),
+		    dbcp->c_close(dbcp), ret);
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY) {
 	dbcp->c_close(dbcp);
         return (flag == Qtrue)?Qnil:Qfalse;
@@ -2002,7 +2070,8 @@ bdb_has_both_internal(obj, a, b, flag)
 	free(data.data);
 	MEMZERO(&data, DBT, 1);
 	data.flags |= DB_DBT_MALLOC;
-	ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT_DUP));
+	bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT_DUP),
+			dbcp->c_close(dbcp), ret);
 	if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY) {
 	    dbcp->c_close(dbcp);
 	    return Qfalse;
@@ -2103,14 +2172,15 @@ bdb_empty(obj)
 #endif
     SET_PARTIAL(dbst, data);
     flags = TEST_INIT_LOCK(dbst);
-    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_FIRST | flags));
+    bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_FIRST | flags),
+		    dbcp->c_close(dbcp), ret);
     if (ret == DB_NOTFOUND) {
-        bdb_test_error(dbcp->c_close(dbcp));
+        dbcp->c_close(dbcp);
         return Qtrue;
     }
     FREE_KEY(dbst, key);
     free(data.data);
-    bdb_test_error(dbcp->c_close(dbcp));
+    dbcp->c_close(dbcp);
     return Qfalse;
 }
 
@@ -2139,9 +2209,10 @@ bdb_lgth_intern(obj, delete)
     SET_PARTIAL(dbst, data);
     flags = TEST_INIT_LOCK(dbst);
     do {
-        ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT | flags));
+        bdb_cache_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT | flags),
+			dbcp->c_close(dbcp), ret);
         if (ret == DB_NOTFOUND) {
-            bdb_test_error(dbcp->c_close(dbcp));
+            dbcp->c_close(dbcp);
             return INT2NUM(value);
         }
 	if (ret == DB_KEYEMPTY) continue;
@@ -2244,8 +2315,7 @@ bdb_treat(st, pkey, key, data)
 	}
 	break;
      case BDB_ST_SELECT:
-	FREE_KEY(dbst, *key);
-	res = bdb_test_load(st->db, data, FILTER_VALUE);
+	res = bdb_assoc(st->db, key, data);
 	if (RTEST(rb_yield(res))) {
 	    rb_ary_push(st->replace, res);
 	}
@@ -2652,9 +2722,10 @@ bdb_to_type(obj, result, flag)
     SET_PARTIAL(dbst, data);
     flags = ((flag == Qnil)?DB_PREV:DB_NEXT) | TEST_INIT_LOCK(dbst);
     do {
-        ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, flags));
+        bdb_cache_error(dbcp->c_get(dbcp, &key, &data, flags),
+			dbcp->c_close(dbcp), ret);
         if (ret == DB_NOTFOUND) {
-            bdb_test_error(dbcp->c_close(dbcp));
+            dbcp->c_close(dbcp);
             return result;
         }
 	if (ret == DB_KEYEMPTY) continue;
@@ -2700,8 +2771,6 @@ static VALUE
 bdb_update_i(pair, obj)
     VALUE pair, obj;
 {
-    VALUE argv[2];
-
     Check_Type(pair, T_ARRAY);
     if (RARRAY(pair)->len < 2) {
 	rb_raise(rb_eArgError, "pair must be [key, value]");
@@ -2825,9 +2894,10 @@ bdb_kv(obj, type)
     SET_PARTIAL(dbst, data);
     flags = DB_NEXT | TEST_INIT_LOCK(dbst);
     do {
-        ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, flags));
+        bdb_cache_error(dbcp->c_get(dbcp, &key, &data, flags),
+			dbcp->c_close(dbcp), ret);
         if (ret == DB_NOTFOUND) {
-            bdb_test_error(dbcp->c_close(dbcp));
+            dbcp->c_close(dbcp);
             return ary;
         }
 	if (ret == DB_KEYEMPTY) continue;
@@ -2884,16 +2954,17 @@ bdb_internal_value(obj, a, b, sens)
     SET_PARTIAL(dbst, data);
     flags = sens | TEST_INIT_LOCK(dbst);
     do {
-        ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, flags));
+        bdb_cache_error(dbcp->c_get(dbcp, &key, &data, flags),
+			dbcp->c_close(dbcp), ret);
         if (ret == DB_NOTFOUND) {
-            bdb_test_error(dbcp->c_close(dbcp));
+            dbcp->c_close(dbcp);
             return (b == Qfalse)?Qfalse:Qnil;
         }
 	if (ret == DB_KEYEMPTY) continue;
 	if (rb_equal(a, bdb_test_load(obj, &data, FILTER_VALUE)) == Qtrue) {
 	    VALUE d;
 	    
-	    bdb_test_error(dbcp->c_close(dbcp));
+	    dbcp->c_close(dbcp);
 	    if (b == Qfalse) {
 		d = Qtrue;
 		FREE_KEY(dbst, key);
@@ -2935,8 +3006,6 @@ bdb_indexes(argc, argv, obj)
     return indexes;
 }
 
-#if RUBY_VERSION_CODE >= 172
-
 static VALUE
 bdb_values_at(argc, argv, obj)
     int argc;
@@ -2944,7 +3013,6 @@ bdb_values_at(argc, argv, obj)
     VALUE obj;
 {
     VALUE result = rb_ary_new2(argc);
-    bdb_DB *dbst;
     long i;
 
     for (i = 0; i < argc; i++) {
@@ -2970,8 +3038,6 @@ bdb_select(argc, argv, obj)
     rb_warn("Common#select(index..) is deprecated; use Common#values_at");
     return bdb_values_at(argc, argv, obj);
 }
-
-#endif
 
 VALUE
 bdb_has_value(obj, a)
@@ -3002,7 +3068,6 @@ bdb_hash_stat(argc, argv, obj)
     bdb_DB *dbst;
     DB_HASH_STAT *bdb_stat;
     VALUE hash, flagv;
-    int ret;
     int flags = 0;
 
     if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
@@ -3206,7 +3271,7 @@ bdb_i_create(obj)
     VALUE obj;
 {
     DB *dbp;
-    bdb_ENV *envst;
+    bdb_ENV *envst = 0;
     DB_ENV *envp;
     bdb_DB *dbst;
     VALUE ret, env;
@@ -3243,7 +3308,6 @@ bdb_s_upgrade(argc, argv, obj)
     VALUE a, b;
     int flags;
     VALUE val;
-    int ret;
 
     rb_secure(4);
     flags = 0;
@@ -3268,7 +3332,6 @@ bdb_s_remove(argc, argv, obj)
 {
 #if BDB_VERSION >= 30000
     bdb_DB *dbst;
-    int ret;
     VALUE a, b, c;
     char *name, *subname;
 
@@ -3300,7 +3363,6 @@ bdb_s_rename(argc, argv, obj)
 {
 #if BDB_VERSION >= 30114
     bdb_DB *dbst;
-    int ret;
     VALUE a, b, c;
     char *name, *subname, *newname;
 
@@ -3459,14 +3521,10 @@ bdb_call_secondary(secst, pkey, pdata, skey)
 {
     VALUE obj, ary, second;
     bdb_DB *dbst, *secondst;
-    VALUE key, value;
     VALUE result = Qnil;
     int i, inter;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG (secondary index) : current_db not set");
-    }
-    Data_Get_Struct(obj, bdb_DB, dbst);
+    GetIdDb(obj, dbst);
     if (!dbst->dbp || !RTEST(dbst->secondary)) return DB_DONOTINDEX;
     for (i = 0; i < RARRAY(dbst->secondary)->len; i++) {
 	ary = RARRAY(dbst->secondary)->ptr[i];
@@ -3587,14 +3645,14 @@ bdb_verify(argc, argv, obj)
 {
     bdb_DB *dbst;
     char *file, *database;
-    VALUE flagv, iov;
+    VALUE flagv = Qnil, iov = Qnil;
     int flags = 0;
     OpenFile *fptr;
     FILE *io = NULL;
 
     rb_secure(4);
     file = database = NULL;
-    switch(rb_scan_args(argc, argv, "02", iov, flagv)) {
+    switch(rb_scan_args(argc, argv, "02", &iov, &flagv)) {
     case 2:
 	flags = NUM2INT(flagv);
     case 1:
@@ -3629,11 +3687,12 @@ bdb__txn__dup(VALUE obj, VALUE a)
  
     GetDB(obj, dbp);
     GetTxnDB(a, txnst);
-    res = Data_Make_Struct(CLASS_OF(obj), bdb_DB, bdb_mark, free, dbh);
+    res = Data_Make_Struct(CLASS_OF(obj), bdb_DB, bdb_mark, bdb_free, dbh);
     MEMCPY(dbh, dbp, bdb_DB, 1);
     dbh->txn = a;
     dbh->orig = obj;
-    dbh->options |= txnst->options & BDB_INIT_LOCK;
+    dbh->ori_val = res;
+    dbh->options |= (txnst->options & BDB_INIT_LOCK) | BDB_NOT_OPEN;
     return res;
 }
 
@@ -3708,24 +3767,149 @@ bdb_feedback_set(VALUE obj, VALUE a)
 
 #endif
 
-static void
-bdb_finalize(ary)
-    VALUE ary;
-{
-    VALUE bdb;
-    struct bdb_eiv *biv;
+#if BDB_VERSION >= 40250
 
-    if (BDB_VALID(bdb_internal_ary, T_ARRAY)) {
-	while ((bdb = rb_ary_pop(bdb_internal_ary)) != Qnil) {
-	    if (BDB_VALID(bdb, T_DATA)) {
-		Data_Get_Struct(bdb, struct bdb_eiv, biv);
-		if (BDB_VALID(biv->bdb, T_DATA)) {
-		    rb_protect(bdb_protect_close, biv->bdb, 0);
-		}
-	    }
+static VALUE
+bdb_i_conf(obj, a)
+    VALUE obj, a;
+{
+    bdb_DB *dbst;
+    u_int32_t bytes, gbytes, value;
+    int intval, ncache;
+    const char *str, *filename, *dbname, *strval;
+    VALUE res;
+
+    GetDB(obj, dbst);
+    str = StringValuePtr(a);
+    if (strcmp(str, "bt_minkey") == 0) {
+	bdb_test_error(dbst->dbp->get_bt_minkey(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "cachesize") == 0) {
+	bdb_test_error(dbst->dbp->get_cachesize(dbst->dbp, &gbytes, &bytes, &ncache));
+	res = rb_ary_new2(3);
+	rb_ary_push(res, INT2NUM(gbytes));
+	rb_ary_push(res, INT2NUM(bytes));
+	rb_ary_push(res, INT2NUM(ncache));
+	return res;
+    }
+    if (strcmp(str, "dbname") == 0) {
+	bdb_test_error(dbst->dbp->get_dbname(dbst->dbp, &filename, &dbname));
+	res = rb_ary_new2(3);
+	if (filename && strlen(filename)) {
+	    rb_ary_push(res, rb_tainted_str_new2(filename));
+	}
+	else {
+	    rb_ary_push(res, Qnil);
+	}
+	if (dbname && strlen(dbname)) {
+	    rb_ary_push(res, rb_tainted_str_new2(dbname));
+	}
+	else {
+	    rb_ary_push(res, Qnil);
+	}
+	return res;
+    }
+    if (strcmp(str, "env") == 0) {
+	return bdb_env(obj);
+    }
+    if (strcmp(str, "h_ffactor") == 0) {
+	bdb_test_error(dbst->dbp->get_h_ffactor(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "h_nelem") == 0) {
+	bdb_test_error(dbst->dbp->get_h_nelem(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "lorder") == 0) {
+	bdb_test_error(dbst->dbp->get_lorder(dbst->dbp, &intval));
+	return INT2NUM(intval);
+    }
+    if (strcmp(str, "pagesize") == 0) {
+	bdb_test_error(dbst->dbp->get_pagesize(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "q_extentsize") == 0) {
+	bdb_test_error(dbst->dbp->get_q_extentsize(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "re_delim") == 0) {
+	bdb_test_error(dbst->dbp->get_re_delim(dbst->dbp, &intval));
+	return INT2NUM(intval);
+    }
+    if (strcmp(str, "re_len") == 0) {
+	bdb_test_error(dbst->dbp->get_re_len(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "re_pad") == 0) {
+	bdb_test_error(dbst->dbp->get_re_pad(dbst->dbp, &intval));
+	return INT2NUM(intval);
+    }
+    if (strcmp(str, "re_source") == 0) {
+	bdb_test_error(dbst->dbp->get_re_source(dbst->dbp, &strval));
+	if (strval && strlen(strval)) {
+	    return rb_tainted_str_new2(strval);
+	}
+	return Qnil;
+    }
+    if (strcmp(str, "flags") == 0) {
+	bdb_test_error(dbst->dbp->get_flags(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "open_flags") == 0) {
+	bdb_test_error(dbst->dbp->get_open_flags(dbst->dbp, &value));
+	return INT2NUM(value);
+    }
+    rb_raise(rb_eArgError, "Unknown option %s", str);
+    return obj;
+}
+
+static char *
+options[] = {
+    "bt_minkey", "cachesize", "dbname", "env", "h_ffactor", "h_nelem",
+    "lorder", "pagesize", "q_extentsize", "re_delim", "re_len", "re_pad",
+    "re_source", "flags", "open_flags", 0
+};
+
+struct optst {
+    VALUE obj, str;
+};
+
+static VALUE
+bdb_intern_conf(optp)
+    struct optst *optp;
+{
+    return bdb_i_conf(optp->obj, optp->str);
+}
+
+static VALUE
+bdb_conf(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    int i, state;
+    VALUE res, val;
+    struct optst opt;
+
+    if (argc > 1) {
+	rb_raise(rb_eArgError, "invalid number of arguments (%d for 1)", argc);
+    }
+    if (argc == 1) {
+	return bdb_i_conf(obj, argv[0]);
+    }
+    res = rb_hash_new();
+    opt.obj = obj;
+    for (i = 0; options[i] != NULL; i++) {
+	opt.str = rb_str_new2(options[i]);
+	val = rb_protect(bdb_intern_conf, (VALUE)&opt, &state);
+	if (state == 0) {
+	    rb_hash_aset(res, opt.str, val);
 	}
     }
+    return res;
 }
+	
+#endif
 
 void bdb_init_common()
 {
@@ -3739,13 +3923,10 @@ void bdb_init_common()
 #if BDB_VERSION >= 30000
     id_feedback = rb_intern("bdb_feedback");
 #endif
-    bdb_internal_ary = rb_ary_new();
-    rb_set_end_proc(bdb_finalize, bdb_internal_ary);
-
     bdb_cCommon = rb_define_class_under(bdb_mDb, "Common", rb_cObject);
     rb_define_private_method(bdb_cCommon, "initialize", bdb_init, -1);
     rb_include_module(bdb_cCommon, rb_mEnumerable);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_define_alloc_func(bdb_cCommon, bdb_s_alloc);
 #else
     rb_define_singleton_method(bdb_cCommon, "allocate", bdb_s_alloc, 0);
@@ -3804,7 +3985,7 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "primary_get", bdb_pget, -1);
     rb_define_method(bdb_cCommon, "db_pget", bdb_pget, -1);
 #endif
-    rb_define_method(bdb_cCommon, "fetch", bdb_get_dyna, -1);
+    rb_define_method(bdb_cCommon, "fetch", bdb_fetch, -1);
     rb_define_method(bdb_cCommon, "delete", bdb_del, 1);
     rb_define_method(bdb_cCommon, "del", bdb_del, 1);
     rb_define_method(bdb_cCommon, "db_del", bdb_del, 1);
@@ -3847,10 +4028,8 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "index", bdb_index, 1);
     rb_define_method(bdb_cCommon, "indexes", bdb_indexes, -1);
     rb_define_method(bdb_cCommon, "indices", bdb_indexes, -1);
-#if RUBY_VERSION_CODE >= 172
     rb_define_method(bdb_cCommon, "select", bdb_select, -1);
     rb_define_method(bdb_cCommon, "values_at", bdb_values_at, -1);
-#endif
     rb_define_method(bdb_cCommon, "set_partial", bdb_set_partial, 2);
     rb_define_method(bdb_cCommon, "clear_partial", bdb_clear_partial, 0);
     rb_define_method(bdb_cCommon, "partial_clear", bdb_clear_partial, 0);
@@ -3896,6 +4075,10 @@ void bdb_init_common()
     rb_define_method(bdb_cQueue, "shift", bdb_consume, 0);
     rb_define_method(bdb_cQueue, "stat", bdb_queue_stat, -1);
     rb_define_method(bdb_cQueue, "pad", bdb_queue_padlen, 0);
+#endif
+#if BDB_VERSION >= 40250
+    rb_define_method(bdb_cCommon, "configuration", bdb_conf, -1);
+    rb_define_method(bdb_cCommon, "conf", bdb_conf, -1);
 #endif
     bdb_cUnknown = rb_define_class_under(bdb_mDb, "Unknown", bdb_cCommon);
 }

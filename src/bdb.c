@@ -1,7 +1,3 @@
-#include <ruby.h>
-#include <db.h>
-#include <errno.h>
-
 #include "bdb.h"
 
 VALUE bdb_cEnv;
@@ -173,6 +169,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "VERSION_MAJOR", INT2FIX(major));
     rb_define_const(bdb_mDb, "VERSION_MINOR", INT2FIX(minor));
     rb_define_const(bdb_mDb, "VERSION_PATCH", INT2FIX(patch));
+    rb_define_const(bdb_mDb, "VERSION_NUMBER", INT2NUM(BDB_VERSION));
     rb_define_const(bdb_mDb, "BTREE", INT2FIX(DB_BTREE));
     rb_define_const(bdb_mDb, "HASH", INT2FIX(DB_HASH));
     rb_define_const(bdb_mDb, "RECNO", INT2FIX(DB_RECNO));
@@ -202,6 +199,9 @@ Init_bdb()
 #endif
 #ifdef DB_CLIENT
     rb_define_const(bdb_mDb, "CLIENT", INT2FIX(DB_CLIENT));
+#endif
+#ifdef DB_RPCCLIENT
+    rb_define_const(bdb_mDb, "RPCCLIENT", INT2FIX(DB_RPCCLIENT));
 #endif
 #ifdef DB_CONFIG
     rb_define_const(bdb_mDb, "CONFIG", INT2FIX(DB_CONFIG));
@@ -503,6 +503,12 @@ Init_bdb()
 #ifdef DB_CHKSUM_SHA1
     rb_define_const(bdb_mDb, "CHKSUM_SHA1", INT2FIX(DB_CHKSUM_SHA1));
 #endif
+#ifdef DB_CHKSUM
+    rb_define_const(bdb_mDb, "CHKSUM", INT2FIX(DB_CHKSUM));
+#ifndef DB_CHKSUM_SHA1
+    rb_define_const(bdb_mDb, "CHKSUM_SHA1", INT2FIX(DB_CHKSUM));
+#endif
+#endif
 #ifdef DB_DIRECT_DB
     rb_define_const(bdb_mDb, "DIRECT_DB", INT2FIX(DB_DIRECT_DB));
 #endif
@@ -518,6 +524,12 @@ Init_bdb()
 #endif
 #ifdef DB_GET_BOTH_RANGE
     rb_define_const(bdb_mDb, "GET_BOTH_RANGE", INT2FIX(DB_GET_BOTH_RANGE));
+#endif
+#ifdef DB_INIT_REP
+    rb_define_const(bdb_mDb, "INIT_REP", INT2FIX(DB_INIT_REP));
+#endif
+#ifdef DB_REP_NOBUFFER
+    rb_define_const(bdb_mDb, "REP_NOBUFFER", INT2FIX(DB_REP_NOBUFFER));
 #endif
     bdb_init_env();
     bdb_init_common();

@@ -5,8 +5,8 @@ require 'runit_'
 
 module BDB
    class HashRuby < Hash
-      def set_h_hash a
-	 hash a
+      def bdb_h_hash a
+	 a.hash
       end
    end
 
@@ -49,7 +49,11 @@ class TestHash < Inh::TestCase
       assert_raises(BDB::Fatal, "invalid Env") do
 	 BDB::Hash.open("tmp/aa", nil, "env" => 1)
       end
+      assert_raises(BDB::Fatal) { BDB::Hash.open("tmp/aa", nil, "set_h_hash" => "a") }
+      assert_raises(TypeError) { BDB::Hash.open("tmp/aa", nil, "set_h_ffactor" => "a") }
+      assert_raises(TypeError) { BDB::Hash.open("tmp/aa", nil, "set_h_nelem" => "a") }
    end
+
    def test_01_init
       assert_kind_of(BDB::Hash, $bdb = BDB::Hash.new("tmp/aa", nil, "a"), "<open>")
    end
@@ -64,6 +68,10 @@ class TestHash < Inh::TestCase
       assert($bdb.value?("alpha"), "<has value>")
       assert_equal(false, $bdb.value?("unknown"), "<has unknown value>")
       assert_equal(false, $bdb.put("alpha", "gamma", BDB::NOOVERWRITE), "<nooverwrite>")
+      assert_equal("beta", $bdb.fetch("xxx", "beta"), "<fetch nil>")
+      assert_equal("xxx", $bdb.fetch("xxx") {|x| x}, "<fetch nil>")
+      assert_raises(IndexError) { $bdb.fetch("xxx") }
+      assert_raises(ArgumentError) { $bdb.fetch("xxx", "beta") {} }
       assert_equal("alpha", $bdb["alpha"], "<must not be changed>")
       assert($bdb.both?("alpha", "alpha"), "<has both>")
       assert_equal(["alpha", "alpha"], 
@@ -78,6 +86,7 @@ class TestHash < Inh::TestCase
       assert_equal({"a" => "b"}.to_s, $bdb["hash"], "<retrieve hash>")
       assert($bdb.sync, "<sync>")
    end
+
    def test_03_delete
       size = $bdb.size
       i = 0
@@ -87,7 +96,41 @@ class TestHash < Inh::TestCase
       end
       assert(size == i, "<delete count>")
       assert_equal(0, $bdb.size, "<empty>")
-   end
+       $hash = {}
+      (33 .. 126).each do |i|
+	 key = i.to_s * 5
+	 $bdb[key] = i.to_s * 7
+	 $hash[key] = i.to_s * 7
+	 assert_equal($bdb[key], $hash[key], "<set #{key}>")
+      end
+      assert_equal($bdb.size, $hash.size, "<size after load>")
+      assert_raises(ArgumentError) { $bdb.select("xxx") {}}
+      assert_equal([], $bdb.select { false }, "<select none>")
+      assert_equal($hash.sort, $bdb.select { true }.sort, "<select all>")
+      arr0 = []
+      $bdb.each_key {|key| arr0 << key }
+      assert_equal($hash.keys.sort, arr0.sort, "<each key>")
+      arr1 = []
+      $bdb.reverse_each_key {|key| arr1 << key }
+      assert_equal($hash.keys.sort, arr1.sort, "<reverse each key>")
+      assert_equal(arr0, arr1.reverse, "<reverse>")
+      assert_equal($hash.invert, $bdb.invert, "<invert>")
+      $bdb.each do |key, value|
+	 if rand < 0.5
+	    assert_equal($bdb, $bdb.delete(key), "<delete value>")
+	    $hash.delete(key)
+	 end
+      end
+      assert_equal($bdb.size, $hash.size, "<size after load>")
+      $bdb.each do |key, value|
+	 assert_equal($hash[key], value, "<after delete>")
+      end
+      $bdb.each do |key, value|
+	 assert($hash.key?(key), "<key after delete>")
+	 assert_equal($bdb, $bdb.delete(key), "<delete value>")
+      end
+  end
+
    def test_04_cursor
       array = ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
       array.each do |x|
@@ -104,7 +147,15 @@ class TestHash < Inh::TestCase
 	 arr << x
       end
       assert_equal(array, arr.sort, "<reverse order>")
+      arr = $bdb.reject {|k, v| k == "e" || v == "i" }
+      has = array.reject {|k, v| k == "e" || k == "i" }
+      assert_equal(has, arr.keys.sort, "<reject>")
+      $bdb.reject! {|k, v| k == "e" || v == "i" }
+      array.reject! {|k, v| k == "e" || k == "i" }
+      assert_equal(array, $bdb.keys.sort, "<keys after reject>")
+      assert_equal(array, $bdb.values.sort, "<values after reject>")
    end
+
    def test_05_reopen
       assert_equal(nil, $bdb.close, "<close>")
       assert_kind_of(BDB::Hash, $bdb = BDB::Hash.open("tmp/aa", nil, "w", 
@@ -113,6 +164,7 @@ class TestHash < Inh::TestCase
         "<reopen with DB_DUP>")
       assert_equal(0, $bdb.size, "<must be 0 after reopen>")
    end
+
    def test_06_dup
       assert_equal("a", $bdb["0"] = "a", "<set dup>")
       assert_equal("b", $bdb["0"] = "b", "<set dup>")
@@ -137,17 +189,20 @@ class TestHash < Inh::TestCase
 	 assert_equal([], $bdb.get_dup("4"), "<get dup 4>")
       end
    end
+
    def test_07_in_memory
       assert_equal(nil, $bdb.close, "<close>")
       assert_kind_of(BDB::Hash, $bdb = BDB::Hash.open(nil, nil), "<open in memory>")
       assert_equal(0, $bdb.size, "<must be 0 after reopen>")
    end
+
    def test_08_in_memory_get_set
       assert_equal("aa", $bdb["bb"] = "aa", "<set in memory>")
       assert_equal("cc", $bdb["bb"] = "cc", "<set in memory>")
       assert_equal("cc", $bdb["bb"], "<get in memory>")
       assert_equal(nil, $bdb.close, "<close>")
    end
+
    def test_09_partial_get
       assert_kind_of(BDB::Hash, $bdb = BDB::Hash.open("tmp/aa", nil, "w"), "<reopen>")
       {
@@ -179,6 +234,7 @@ class TestHash < Inh::TestCase
       assert_equal("house", $bdb["green"], "<partial clear get green>")
       assert_equal("sea", $bdb["blue"], "<partial clear get blue>")
    end
+
    def test_10_partial_set
       $bdb.set_partial(0, 2)
       assert_equal("", $bdb["red"] = "", "<partial set>")
@@ -210,20 +266,27 @@ class TestHash < Inh::TestCase
       assert_equal("XYZXYZ", $bdb["blue"], "<partial get>")
       assert_equal("KLMTU", $bdb["yellow"], "<partial get>")
    end
+
    def test_11_unknown
       $bdb.close
       $bdb = nil
       assert_kind_of(BDB::Hash, unknown = BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
       unknown.close
    end
+
    def test_12_env
       clean
       assert_kind_of(BDB::Env, $env = BDB::Env.open("tmp", BDB::CREATE|BDB::INIT_TRANSACTION))
       assert_kind_of(BDB::Hash, $bdb = BDB::Hash.open("aa", nil, "a", "env" => $env), "<open>")
    end
+
    def test_13_txn_commit
       assert_kind_of(BDB::Txn, txn = $env.begin, "<transaction>")
       assert_kind_of(BDB::Hash, db = txn.assoc($bdb), "<assoc>")
+      assert_equal(true, db.txn?, "<has transaction>")
+      assert_equal(txn, db.txn, "<transaction>")
+      assert_equal(true, db.env?, "<has environment>")
+      assert_equal($env, db.env, "<environment>")
       assert_equal("aa", db["aa"] = "aa", "<set>")
       assert_equal("bb", db["bb"] = "bb", "<set>")
       assert_equal("cc", db["cc"] = "cc", "<set>")
@@ -231,6 +294,7 @@ class TestHash < Inh::TestCase
       assert(txn.commit, "<commit>")
       assert_equal(3, $bdb.size, "<size after commit>")
    end
+
    def test_14_txn_abort
       assert_kind_of(BDB::Txn, txn = $env.begin, "<transaction>")
       assert_kind_of(BDB::Hash, db = txn.assoc($bdb), "<assoc>")
@@ -241,6 +305,7 @@ class TestHash < Inh::TestCase
       assert(txn.abort, "<abort>")
       assert_equal(3, $bdb.size, "<size after abort>")
    end
+
    def test_15_txn_abort2
       if BDB::VERSION_MAJOR == 2 && BDB::VERSION_MINOR < 7
 	 $stderr.print "skipping test for this version"
@@ -260,6 +325,7 @@ class TestHash < Inh::TestCase
       end
       assert_equal(3, $bdb.size, "<size after abort>")
    end
+
    def test_16_txn_commit2
       if BDB::VERSION_MAJOR == 2 && BDB::VERSION_MINOR < 7
 	 $stderr.print "skipping test for this version"
@@ -279,15 +345,8 @@ class TestHash < Inh::TestCase
       end
       assert_equal(6, $bdb.size, "<size after commit>")
    end
-   def test_17_hash_delete
-      assert_equal(nil, $bdb.close, "<close>")
-      $env.close
-      clean
-      assert_kind_of(BDB::HashRuby, 
-		     $bdb = BDB::HashRuby.open("tmp/aa", nil, "w", 
-					       "set_pagesize" => 1024,
-					       "set_cachesize" => [0, 32 * 1024, 0]),
-		     "<open>")
+
+   def intern_hash_delete
       $hash = {}
       File.foreach("examples/wordtest") do |line|
 	 line.chomp!
@@ -303,6 +362,32 @@ class TestHash < Inh::TestCase
       $bdb.each do |k, v|
 	 assert_equal($hash[k], v, "<value>")
       end
+   end
+
+   def test_17_hash_delete
+      assert_equal(true, $bdb.env?, "<has env>")
+      assert_equal($env, $bdb.env, "<env>")
+      assert_equal(nil, $bdb.close, "<close>")
+      $env.close
+      clean
+      assert_kind_of(BDB::HashRuby, 
+		     $bdb = BDB::HashRuby.open("tmp/aa", nil, "w", 
+					       "set_pagesize" => 1024,
+					       "set_cachesize" => [0, 32 * 1024, 0]),
+		     "<open>")
+      assert_equal(false, $bdb.env?, "<has env>")
+      assert_equal(nil, $bdb.env, "<env>")
+      intern_hash_delete
+      $bdb.close
+   end
+
+   def test_18_hash_delete
+      assert_kind_of(BDB::Hash,
+		     $bdb = BDB::Hash.open("tmp/aa", nil, "w",
+					   "set_h_hash" => proc {|a| a.hash },
+					   "set_pagesize" => 1024,
+					   "set_cachesize" => [0, 32 * 1024, 0]))
+      intern_hash_delete
    end
 
    def test_18_index

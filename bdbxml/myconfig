@@ -4,7 +4,7 @@ $base = "/home/ts/local"
 
 $include = {
    'db' => "#{$base}/db4.1.25/include",
-   'dbxml' => "#{$base}/dbxml/include/dbxml",
+   'dbxml' => "#{$base}/dbxml1/include/dbxml",
    'xercesc' => "#{$base}/xercesc/include"
 }
 
@@ -15,7 +15,7 @@ $include = {
 
 $library = {
    'db' => ["#{$base}/db4.1.25/lib", ["db-4.1", "db_cxx-4.1"]],
-   'dbxml' => ["#{$base}/dbxml/lib", "dbxml-1.1"],
+   'dbxml' => ["#{$base}/dbxml1/lib", "dbxml-1.1"],
    'pathan' => ["#{$base}/pathan/lib", "pathan"],
    'xercesc' => ["#{$base}/xercesc/lib", "xerces-c"]
 }

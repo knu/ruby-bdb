@@ -5,12 +5,14 @@ static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_cPat, xb_cTmp;
 static VALUE xb_cInd, xb_cUpd;
 
 #if defined(DBXML_DOM_XERCES2)
+#if BDBXML_VERSION < 10101
 static VALUE xb_cNol, xb_cNod;
+#else
+static VALUE xb_cNod;
+#endif
 #endif
 
 static ID id_current_env;
-
-static VALUE xb_internal_ary;
 
 static VALUE
 xb_s_new(int argc, VALUE *argv, VALUE obj)
@@ -427,6 +429,8 @@ xb_nol_mark(xnol *nol)
     rb_gc_mark(nol->cxt_val);
 }
 
+#if BDBXML_VERSION < 10101
+
 static VALUE
 xb_nol_size(VALUE obj)
 {
@@ -496,6 +500,7 @@ xb_nol_to_str(VALUE obj)
 {
     return rb_funcall2(xb_nol_to_ary(obj), rb_intern("to_s"), 0, 0);
 }
+#endif
 
 #endif
 
@@ -533,6 +538,7 @@ xb_xml_val(XmlValue *val, VALUE cxt_val)
 	doc->doc = new XmlDocument(val->asDocument(qcxt));
 	break;
 #if defined(DBXML_DOM_XERCES2)
+#if BDBXML_VERSION < 10101
     case XmlValue::NODELIST:
 	res = Data_Make_Struct(xb_cNol, xnol, (RDF)xb_nol_mark, (RDF)xb_nol_free, nol);
 	nol->nol = val->asNodeList(qcxt);
@@ -541,6 +547,11 @@ xb_xml_val(XmlValue *val, VALUE cxt_val)
     case XmlValue::ATTRIBUTE:
 	res = Data_Wrap_Struct(xb_cNod, 0, 0, val->asAttribute(qcxt));
 	break;
+#else
+    case XmlValue::NODE:
+	res = Data_Wrap_Struct(xb_cNod, 0, 0, val->asNode(qcxt));
+	break;
+#endif
 #endif
     case XmlValue::VARIABLE:
 	rb_raise(xb_eFatal, "a context is required");
@@ -903,36 +914,15 @@ xb_con_i_close(xcon *con, int flags, bool protect)
     int i;
 
     if (!con->closed) {
-	db_ary = 0;
-	if (BDB_VALID(con->txn_val, T_DATA)) {
+	if (RTEST(con->txn_val)) {
 	    Data_Get_Struct(con->txn_val, bdb_TXN, txnst);
-	    db_ary = txnst->db_ary;
+	    if (!bdb_ary_delete(&txnst->db_ary, con->ori_val)) {
+		bdb_ary_delete(&txnst->db_assoc, con->ori_val);
+	    }
 	}
-	else if (BDB_VALID(con->env_val, T_DATA)) {
+	else if (con->env_val) {
 	    Data_Get_Struct(con->env_val, bdb_ENV, envst);
-	    db_ary = envst->db_ary;
-	}
-	if (BDB_VALID(db_ary, T_ARRAY)) {
-	    for (i = 0; i < RARRAY(db_ary)->len; ++i) {
-		if (RARRAY(db_ary)->ptr[i] == con->ori_val) {
-		    rb_ary_delete_at(db_ary, i);
-		    break;
-		}
-	    }
-	}
-	else if (BDB_VALID(xb_internal_ary, T_ARRAY)) {
-	    struct xb_eiv *civ;
-	    
-	    for (i = 0; i < RARRAY(xb_internal_ary)->len; ++i) {
-		if (BDB_VALID(RARRAY(xb_internal_ary)->ptr[i], T_DATA)) {
-		    Data_Get_Struct(RARRAY(xb_internal_ary)->ptr[i], 
-				    struct xb_eiv, civ);
-		    if (civ->con == con) {
-			rb_ary_delete_at(xb_internal_ary, i);
-			break;
-		    }
-		}
-	    }
+	    bdb_ary_delete(&envst->db_ary, con->ori_val);
 	}
 	if (protect) {
 	    try { con->con->close(flags); } catch (...) {}
@@ -980,7 +970,7 @@ xb_con_s_new(int argc, VALUE *argv, VALUE obj)
     char *name = NULL;
     xcon *con;
     VALUE res;
-    bool init = true;
+    VALUE init = Qtrue;
 
     res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
     Data_Get_Struct(res, xcon, con);
@@ -1019,7 +1009,12 @@ xb_con_s_new(int argc, VALUE *argv, VALUE obj)
 	    pagesize = NUM2INT(v);
 	}
 	if ((v = rb_hash_aref(f, INT2NUM(rb_intern("__ts__no__init__")))) != RHASH(f)->ifnone) {
-	    init = false;
+	    if (RTEST(v)) {
+		init = Qnil;
+	    }
+	    else {
+		init = Qfalse;
+	    }
 	}
 	nargc--;
     }
@@ -1032,21 +1027,15 @@ xb_con_s_new(int argc, VALUE *argv, VALUE obj)
     if (pagesize) {
 	PROTECT(con->con->setPageSize(pagesize));
     }
-    if (init) {
+    if (!NIL_P(init)) {
 	rb_obj_call_init(res, nargc, argv);
-	if (txnst) {
-	    rb_ary_push(txnst->db_ary, res);
-	}
-	else if (envst) {
-	    rb_ary_push(envst->db_ary, res);
-	}
-	else {
-	    VALUE st;
-	    struct xb_eiv *civ;
-
-	    st = Data_Make_Struct(rb_cData, struct xb_eiv, 0, free, civ);
-	    civ->con = con;
-	    rb_ary_push(xb_internal_ary, st);
+	if (RTEST(init)) {
+	    if (txnst) {
+		bdb_ary_push(&txnst->db_ary, res);
+	    }
+	    else if (envst) {
+		bdb_ary_push(&envst->db_ary, res);
+	    }
 	}
     }
     return res;
@@ -1609,6 +1598,19 @@ xb_doc_query(int argc, VALUE *argv, VALUE obj)
     if (NIL_P(b)) {
 	b = Qfalse;
     }
+#if BDBXML_VERSION > 10100
+    if (TYPE(a) == T_DATA && RDATA(a)->dfree == (RDF)xb_pat_free) {
+	XmlQueryExpression *query;
+
+	if (argc != 1) {
+	    rb_raise(rb_eArgError, "invalid number of arguments %d (for 1)", argc);
+	}
+	res = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark, (RDF)xb_res_free, xes);
+	Data_Get_Struct(a, XmlQueryExpression, query);
+	PROTECT(xes->res = new XmlResults(doc->doc->queryWithXPath(*query)));
+	return res;
+    }
+#endif
     str = StringValuePtr(a);
     res = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark, (RDF)xb_res_free, xes);
     xes->cxt_val = b;
@@ -2076,12 +2078,14 @@ extern "C" {
 	xcon *con, *con1;
 	VALUE res;
 	bdb_TXN *txnst;
-	int argc, i;
-	VALUE *argv;
+	VALUE argv[2];
 
 	GetTxnDBErr(a, txnst, xb_eFatal);
 	Data_Get_Struct(obj, xcon, con);
-	res = xb_env_open_xml(1, &con->name, a);
+	argv[0] = con->name;
+	argv[1] = rb_hash_new();
+	rb_hash_aset(argv[1], INT2NUM(rb_intern("__ts__no__init__")), Qfalse);
+	res = xb_env_open_xml(2, argv, a);
 	return res;
     }
 
@@ -2098,22 +2102,6 @@ extern "C" {
 	    xb_con_close(0, 0, obj);
 	}
 	return Qnil;
-    }
-
-    static void
-    xb_finalize(VALUE ary)
-    {
-	VALUE con;
-	struct xb_eiv *civ;
-
-	if (BDB_VALID(xb_internal_ary, T_ARRAY)) {
-	    while ((con = rb_ary_pop(xb_internal_ary)) != Qnil) {
-		if (BDB_VALID(con, T_DATA)) {
-		    Data_Get_Struct(con, struct xb_eiv, civ);
-		    rb_funcall2(civ->con->ori_val, rb_intern("close"), 0, 0);
-		}
-	    }
-	}
     }
 
     static void xb_const_set(VALUE hash, const char *cvalue, char *ckey)
@@ -2149,8 +2137,6 @@ extern "C" {
 	rb_require("bdb");
 #endif
 	id_current_env = rb_intern("bdb_current_env");
-	xb_internal_ary = rb_ary_new();
-	rb_set_end_proc(RMFF(xb_finalize), xb_internal_ary);
 	xb_mDb = rb_const_get(rb_cObject, rb_intern("BDB"));
 	major = NUM2INT(rb_const_get(xb_mDb, rb_intern("VERSION_MAJOR")));
 	minor = NUM2INT(rb_const_get(xb_mDb, rb_intern("VERSION_MINOR")));
@@ -2369,6 +2355,7 @@ extern "C" {
 	rb_define_method(xb_cNod, "to_s", RMF(xb_nod_to_s), 0);
 	rb_define_method(xb_cNod, "to_str", RMF(xb_nod_to_s), 0);
 	rb_define_method(xb_cNod, "inspect", RMF(xb_nod_inspect), 0);
+#if BDBXML_VERSION < 10101
 	xb_cNol = rb_define_class_under(xb_mDom, "NodeList", rb_cObject);
 	rb_const_set(xb_mDom, rb_intern("List"), xb_cNol);
 	rb_include_module(xb_cNol, rb_mEnumerable);
@@ -2385,6 +2372,7 @@ extern "C" {
 	rb_define_method(xb_cNol, "inspect", RMF(xb_nol_inspect), 0);
 	rb_define_method(xb_cNol, "to_a", RMF(xb_nol_to_ary), 0);
 	rb_define_method(xb_cNol, "to_ary", RMF(xb_nol_to_ary), 0);
+#endif
 #endif
     }
 }

@@ -1,7 +1,8 @@
 #!/usr/bin/ruby
-require '../src/bdb'
+require './clean.rb'
 
 Dir.mkdir 'zippy' unless File.directory? 'zippy'
+BDB::Env.cleanup("zippy", true)
 
 lockenv = BDB::Env.new('zippy', BDB::INIT_LOCK | BDB::CREATE)
 lockid0, lockid1 = lockenv.lock, lockenv.lock

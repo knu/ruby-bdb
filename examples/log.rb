@@ -1,18 +1,7 @@
 #!/usr/bin/ruby
-require '../src/bdb'
-class << BDB::Env
-   def cleanup(dir, all = false)
-      begin
-	 remove dir
-	 Dir.foreach(dir) do |file| 
-	    File.unlink("#{dir}/#{file}") if all || /^log/ =~ file
-	 end
-      end
-   rescue
-   end
-end
+require './clean.rb'
 
-BDB::Env.cleanup "tmp", true
+BDB::Env.cleanup("tmp", true)
 
 env = BDB::Env.open "tmp", BDB::CREATE | BDB::INIT_LOG, "thread" => false
 lsn = []

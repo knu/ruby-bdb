@@ -22,6 +22,8 @@
 
   --with-db-dir=<prefix for library and include of bdb>
 
+  --help
+
  Example :
  
   ruby extconf.rb --with-db-dir=/home/ts/local

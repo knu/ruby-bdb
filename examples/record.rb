@@ -1,5 +1,8 @@
 #!/usr/bin/ruby -I../src
-require '../src/bdb'
+require './clean.rb'
+
+BDB::Env.cleanup("tmp", true)
+
 module BDB
    class Bcomp < Btree
       extend Marshal

@@ -16,6 +16,8 @@ using namespace DbXml;
 #define RMFF(func) ((void (*)())func)
 #endif
 
+#define BDBXML_VERSION (10000*DBXML_VERSION_MAJOR+100*DBXML_VERSION_MINOR+DBXML_VERSION_PATCH)
+
 #define PROTECT2(comm, libr)				\
   try {							\
     comm;						\
@@ -73,7 +75,11 @@ typedef struct {
 extern "C" void Init_bdbxml_dom();
 
 typedef struct {
+#if BDBXML_VERSION < 10101
   XERCES_CPP_NAMESPACE_QUALIFIER DOMNodeList *nol;
+#else
+  XERCES_CPP_NAMESPACE_QUALIFIER DOMNode *nol;
+#endif
   VALUE cxt_val;
 } xnol;
 
@@ -92,3 +98,4 @@ typedef struct {
     VALUE con;
     XmlUpdateContext *upd;
 } xupd;
+

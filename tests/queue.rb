@@ -95,7 +95,7 @@ class TestQueue < Inh::TestCase
       assert_equal(nil, $bdb.close, "<close>")
       assert_kind_of(BDB::Queue, $bdb = BDB::Queue.open("tmp/aa", nil, "w", 
         "set_array_base" => 0), "<reopen with ARRAY_BASE>")
-      assert_equal($bdb, $bdb.push("a"), "<push>")
+      assert_kind_of(Array, $bdb.push("a"), "<push>")
       assert_equal($bdb, $bdb << "b", "<push>")
       assert_equal(2, $bdb.size, "<size>")
       assert_equal("a", $bdb[0], "<[0]>")

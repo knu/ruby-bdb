@@ -6,9 +6,17 @@ ID bdb_id_call;
 static ID id_feedback;
 #endif
 
-static VALUE bdb_env_internal_ary;
-
 ID bdb_id_current_env;
+static void bdb_env_mark _((bdb_ENV *));
+
+#define GetIdEnv(obj, envst) do {					   \
+    (obj) = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env); \
+    if (TYPE(obj) != T_DATA ||						   \
+	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_env_mark) {		   \
+	rb_raise(bdb_eFatal, "BUG : current_env not set");		   \
+    }									   \
+    GetEnvDB(obj, envst);						   \
+} while (0)
 
 #if BDB_VERSION >= 40100
 static ID id_app_dispatch;
@@ -33,10 +41,7 @@ bdb_env_rep_transport(env, control, rec, envid, flags)
     VALUE obj, av, bv, res;
     bdb_ENV *envst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_env not set");
-    }
-    GetEnvDB(obj, envst);
+    GetIdEnv(obj, envst);
     av = rb_tainted_str_new(control->data, control->size);
     bv = rb_tainted_str_new(rec->data, rec->size);
     if (envst->rep_transport == 0) {
@@ -71,6 +76,11 @@ bdb_env_rep_process_message(env, av, bv, ev)
     DBT control, rec;
     int ret, envid;
     VALUE result;
+#if BDB_VERSION >= 40200
+    VALUE lsn;
+    struct dblsnst *lsnst;
+#endif
+
 
     GetEnvDB(env, envst);
     av = rb_str_to_str(av);
@@ -82,14 +92,28 @@ bdb_env_rep_process_message(env, av, bv, ev)
     rec.size = RSTRING(bv)->len;
     rec.data = StringValuePtr(bv);
     envid = NUM2INT(ev);
-    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, &envid);
+#if BDB_VERSION >= 40200
+    lsn = bdb_makelsn(env);
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+
+    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, 
+					   &envid, lsnst->lsn);
+#else
+    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, 
+					   &envid);
+#endif
     if (ret == DB_RUNRECOVERY) {
 	bdb_test_error(ret);
     }
-    result = rb_ary_new2(3);
+    result = rb_ary_new();
     rb_ary_push(result, INT2NUM(ret));
     rb_ary_push(result, rb_str_new(rec.data, rec.size));
     rb_ary_push(result, INT2NUM(envid));
+#if BDB_VERSION >= 42000
+    if (ret == DB_REP_NOTPERM || ret == DB_REP_ISPERM) {
+	rb_ary_push(result, lsn);
+    }
+#endif
     return result;
 }
 
@@ -157,10 +181,8 @@ bdb_env_feedback(DB_ENV *envp, int opcode, int pct)
 {
     VALUE obj;
     bdb_ENV *envst;
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_env not set");
-    }
-    Data_Get_Struct(obj, bdb_ENV, envst);
+
+    GetIdEnv(obj, envst);
     if (NIL_P(envst->feedback)) {
 	return;
     }
@@ -183,9 +205,7 @@ bdb_env_app_dispatch(DB_ENV *envp, DBT *log_rec, DB_LSN *lsn, db_recops op)
     bdb_ENV *envst;
     struct dblsnst *lsnst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env)) == Qnil) {
-	rb_raise(bdb_eFatal, "BUG : current_env not set");
-    }
+    GetIdEnv(obj, envst);
     lsnobj = bdb_makelsn(obj);
     Data_Get_Struct(lsnobj, struct dblsnst, lsnst);
     MEMCPY(lsnst->lsn, lsn, DB_LSN, 1);
@@ -326,7 +346,7 @@ bdb_env_i_options(obj, db_stobj)
 		rb_raise(bdb_eFatal, "invalid array for lk_conflicts");
 	    }
 	    for (j = 0; j < l; j++, p++) {
-		if (TYPE(RARRAY(RARRAY(value)->ptr[i])->ptr[j] != T_FIXNUM)) {
+		if (TYPE(RARRAY(RARRAY(value)->ptr[i])->ptr[j]) != T_FIXNUM) {
 		    free(conflits);
 		    rb_raise(bdb_eFatal, "invalid value for lk_conflicts");
 		}
@@ -354,39 +374,45 @@ bdb_env_i_options(obj, db_stobj)
     }
 #endif
     else if (strcmp(options, "set_data_dir") == 0) {
-	char *tmp;
-
 	SafeStringValue(value);
 #if BDB_VERSION >= 30100
 	bdb_test_error(envp->set_data_dir(envp, StringValuePtr(value)));
 #else
-	tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + RSTRING(value)->len + 2);
-	sprintf(tmp, "DB_DATA_DIR %s", StringValuePtr(value));
-	rb_ary_push(db_st->config, rb_str_new2(tmp));
+	{
+	    char *tmp;
+
+	    tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + RSTRING(value)->len + 2);
+	    sprintf(tmp, "DB_DATA_DIR %s", StringValuePtr(value));
+	    rb_ary_push(db_st->config, rb_str_new2(tmp));
+	}
 #endif
     }
     else if (strcmp(options, "set_lg_dir") == 0) {
-	char *tmp;
-
 	SafeStringValue(value);
 #if BDB_VERSION >= 30100
 	bdb_test_error(envp->set_lg_dir(envp, StringValuePtr(value)));
 #else
-	tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + RSTRING(value)->len + 2);
-	sprintf(tmp, "DB_LOG_DIR %s", StringValuePtr(value));
-	rb_ary_push(db_st->config, rb_str_new2(tmp));
+	{
+	    char *tmp;
+
+	    tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + RSTRING(value)->len + 2);
+	    sprintf(tmp, "DB_LOG_DIR %s", StringValuePtr(value));
+	    rb_ary_push(db_st->config, rb_str_new2(tmp));
+	}
 #endif
     }
     else if (strcmp(options, "set_tmp_dir") == 0) {
-	char *tmp;
-
 	SafeStringValue(value);
 #if BDB_VERSION >= 30100
 	bdb_test_error(envp->set_tmp_dir(envp, StringValuePtr(value)));
 #else
-	tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + RSTRING(value)->len + 2);
-	sprintf(tmp, "DB_TMP_DIR %s", StringValuePtr(value));
-	rb_ary_push(db_st->config, rb_str_new2(tmp));
+	{
+	    char *tmp;
+
+	    tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + RSTRING(value)->len + 2);
+	    sprintf(tmp, "DB_TMP_DIR %s", StringValuePtr(value));
+	    rb_ary_push(db_st->config, rb_str_new2(tmp));
+	}
 #endif
     }
 #if BDB_VERSION >= 30100
@@ -556,6 +582,11 @@ bdb_env_i_options(obj, db_stobj)
 	envst->envp->set_app_dispatch(envst->envp, bdb_env_app_dispatch);
     }
 #endif
+#if BDB_VERSION >= 40250
+    else if (strcmp(options, "set_shm_key") == 0) {
+	bdb_test_error(envst->envp->set_shm_key(envst->envp, NUM2INT(value)));
+    }
+#endif
     return Qnil;
 }
 
@@ -569,7 +600,11 @@ struct env_iv {
 static VALUE
 bdb_env_aref()
 {
-    return rb_thread_local_aref(rb_thread_current(), bdb_id_current_env);
+    VALUE obj;
+    bdb_ENV *envst;
+
+    GetIdEnv(obj, envst);
+    return obj;
 }
 
 #endif
@@ -582,34 +617,22 @@ bdb_protect_close(obj)
 }
 
 static void
-env_finalize(ary)
-    VALUE ary;
-{
-    VALUE db;
-
-    if (BDB_VALID(ary, T_ARRAY)) {
-	while ((db = rb_ary_pop(ary)) != Qnil) {
-	    if (BDB_VALID(db, T_DATA) &&
-		rb_respond_to(db, rb_intern("close"))) {
-		rb_protect(bdb_protect_close, db, 0);
-	    }
-	}
-    }
-}
-
-static void
 bdb_final(envst)
     bdb_ENV *envst;
 {
-    VALUE db, obj;
+    VALUE obj, *ary;
     bdb_ENV *thst;
+    int i;
 
-    env_finalize(envst->db_ary);
-    envst->db_ary = 0;
+    ary = envst->db_ary.ptr;
+    envst->db_ary.ptr = 0;
+    for (i = 0; i < envst->db_ary.len; i++) {
+	if (rb_respond_to(ary[i], rb_intern("close"))) {
+	    rb_protect(bdb_protect_close, ary[i], 0);
+	}
+    }
+    free(ary);
     if (envst->envp) {
-	struct env_iv *eiv;
-	int i;
-
 	if (!(envst->options & BDB_ENV_NOT_OPEN)) {
 #if BDB_VERSION < 30000
 	    db_appexit(envst->envp);
@@ -619,25 +642,13 @@ bdb_final(envst)
 #endif
 	}
 	envst->envp = NULL;
-	if (BDB_VALID(bdb_env_internal_ary, T_ARRAY)) {
-	    for (i = 0; i < RARRAY(bdb_env_internal_ary)->len; ++i) {
-		db = RARRAY(bdb_env_internal_ary)->ptr[i];
-		if (BDB_VALID(db, T_DATA)) {
-		    Data_Get_Struct(db, struct env_iv, eiv);
-		    if (eiv->envst == envst) {
-			rb_ary_delete_at(bdb_env_internal_ary, i);
-			break;
-		    }
-		}
-	    }
-	}
     }
 #if BDB_VERSION >= 30000
     {
 	int status;
 
 	obj = rb_protect(bdb_env_aref, 0, &status);
-	if (!status && BDB_VALID(obj, T_DATA)) {
+	if (!status) {
 	    Data_Get_Struct(obj, bdb_ENV, thst);
 	    if (thst == envst) {
 		rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, Qnil);
@@ -660,34 +671,20 @@ bdb_env_close(obj)
     VALUE obj;
 {
     bdb_ENV *envst;
-    VALUE db;
-    int i;
 
     if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4) {
 	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
     }
     GetEnvDB(obj, envst);
     bdb_final(envst);
+    RDATA(obj)->dfree = free;
     return Qnil;
-}
-
-static void
-bdb_env_finalize(ary)
-    VALUE ary;
-{
-    VALUE env;
-    struct env_iv *eiv;
-
-    while ((env = rb_ary_pop(bdb_env_internal_ary)) != Qnil) {
-	Data_Get_Struct(env, struct env_iv, eiv);
-	rb_funcall2(eiv->env, rb_intern("close"), 0, 0);
-    }
 }
 
 static void
 bdb_env_mark(envst)
     bdb_ENV *envst;
-{
+{ 
     rb_gc_mark(envst->marshal);
 #if BDB_VERSION >= 40000
     rb_gc_mark(envst->rep_transport);
@@ -698,7 +695,6 @@ bdb_env_mark(envst)
 #if BDB_VERSION >= 30000
     rb_gc_mark(envst->feedback);
 #endif
-    rb_gc_mark(envst->db_ary);
     rb_gc_mark(envst->home);
 }
 
@@ -888,11 +884,14 @@ bdb_env_s_new(argc, argv, obj)
     VALUE obj;
 {
     bdb_ENV *envst;
-    struct env_iv *eiv;
-    VALUE res, final;
+    VALUE res;
     int flags = 0;
 
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    res = rb_obj_alloc(obj);
+#else
     res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+#endif
     Data_Get_Struct(res, bdb_ENV, envst);
 #if BDB_VERSION < 30000
     envst->envp = ALLOC(DB_ENV);
@@ -913,10 +912,6 @@ bdb_env_s_new(argc, argv, obj)
 #endif
 #endif
     rb_obj_call_init(res, argc, argv);
-    final = Data_Make_Struct(rb_cData, struct env_iv, 0, free, eiv);
-    eiv->env = res;
-    eiv->envst = envst;
-    rb_ary_push(bdb_env_internal_ary, final);
     return res;
 }
 
@@ -929,7 +924,11 @@ bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
     bdb_ENV *envst;
     VALUE res;
 
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    res = rb_obj_alloc(obj);
+#else
     res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+#endif
     Data_Get_Struct(res, bdb_ENV, envst);
     envst->envp = env;
     envst->envp->set_errpfx(envst->envp, "BDB::");
@@ -1075,7 +1074,6 @@ bdb_env_init(argc, argv, obj)
     }
 #endif
     envst->options &= ~BDB_ENV_NOT_OPEN;
-    envst->db_ary = rb_ary_new2(0);
     if (flags & DB_INIT_LOCK) {
 	envst->options |= BDB_INIT_LOCK;
     }
@@ -1255,6 +1253,188 @@ bdb_env_feedback_set(VALUE obj, VALUE a)
 
 #endif
 
+#if BDB_VERSION >= 40250
+
+static VALUE
+bdb_env_i_conf(obj, a)
+    VALUE obj, a;
+{
+    bdb_ENV *envst;
+    u_int32_t bytes, gbytes, value, lk_detect;
+    int i, intval, ncache;
+    char *str;
+    const char *strval, **dirs;
+    db_timeout_t timeout;
+    long shm_key;
+    time_t timeval;
+    size_t size;
+    VALUE res;
+
+    GetEnvDB(obj, envst);
+    str = StringValuePtr(a);
+    if (strcmp(str, "cachesize") == 0) {
+	bdb_test_error(envst->envp->get_cachesize(envst->envp, &gbytes, &bytes, &ncache));
+	res = rb_ary_new2(3);
+	rb_ary_push(res, INT2NUM(gbytes));
+	rb_ary_push(res, INT2NUM(bytes));
+	rb_ary_push(res, INT2NUM(ncache));
+	return res;
+    }
+    if (strcmp(str, "data_dirs") == 0) {
+	bdb_test_error(envst->envp->get_data_dirs(envst->envp, &dirs));
+	res = rb_ary_new();
+	if (dirs) {
+	    for (i = 0; dirs[i] != NULL; i++) {
+		rb_ary_push(res, rb_tainted_str_new2(dirs[i]));
+	    }
+	}
+	return res;
+    }
+    if (strcmp(str, "flags") == 0) {
+	bdb_test_error(envst->envp->get_flags(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "home") == 0) {
+	bdb_test_error(envst->envp->get_home(envst->envp, &strval));
+	if (strval && strlen(strval)) {
+	    return rb_tainted_str_new2(strval);
+	}
+	return Qnil;
+    }
+    if (strcmp(str, "lg_bsize") == 0) {
+	bdb_test_error(envst->envp->get_lg_bsize(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "lg_dir") == 0) {
+	bdb_test_error(envst->envp->get_lg_dir(envst->envp, &strval));
+	if (strval && strlen(strval)) {
+	    return rb_tainted_str_new2(strval);
+	}
+	return Qnil;
+    }
+    if (strcmp(str, "lg_max") == 0) {
+	bdb_test_error(envst->envp->get_lg_max(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "lg_regionmax") == 0) {
+	bdb_test_error(envst->envp->get_lg_regionmax(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "lk_detect") == 0) {
+	bdb_test_error(envst->envp->get_lk_detect(envst->envp, &lk_detect));
+	return INT2NUM(lk_detect);
+    }
+    if (strcmp(str, "lk_max_lockers") == 0) {
+	bdb_test_error(envst->envp->get_lk_max_lockers(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "lk_max_locks") == 0) {
+	bdb_test_error(envst->envp->get_lk_max_locks(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "lk_max_objects") == 0) {
+	bdb_test_error(envst->envp->get_lk_max_objects(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "mp_mmapsize") == 0) {
+	bdb_test_error(envst->envp->get_mp_mmapsize(envst->envp, &size));
+	return INT2NUM(size);
+    }
+    if (strcmp(str, "open_flags") == 0) {
+	bdb_test_error(envst->envp->get_open_flags(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "rep_limit") == 0) {
+	bdb_test_error(envst->envp->get_rep_limit(envst->envp, &gbytes, &bytes));
+	res = rb_ary_new2(2);
+	rb_ary_push(res, INT2NUM(gbytes));
+	rb_ary_push(res, INT2NUM(bytes));
+	return res;
+    }
+    if (strcmp(str, "shm_key") == 0) {
+	bdb_test_error(envst->envp->get_shm_key(envst->envp, &shm_key));
+	return INT2NUM(shm_key);
+    }
+    if (strcmp(str, "tas_spins") == 0) {
+	bdb_test_error(envst->envp->get_tas_spins(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "txn_timeout") == 0) {
+	bdb_test_error(envst->envp->get_timeout(envst->envp, &timeout, DB_SET_TXN_TIMEOUT));
+	return INT2NUM(timeout);
+    }
+    if (strcmp(str, "lock_timeout") == 0) {
+	bdb_test_error(envst->envp->get_timeout(envst->envp, &timeout, DB_SET_LOCK_TIMEOUT));
+	return INT2NUM(timeout);
+    }
+    if (strcmp(str, "tmp_dir") == 0) {
+	bdb_test_error(envst->envp->get_tmp_dir(envst->envp, &strval));
+	if (strval && strlen(strval)) {
+	    return rb_tainted_str_new2(strval);
+	}
+	return Qnil;
+    }
+    if (strcmp(str, "tx_max") == 0) {
+	bdb_test_error(envst->envp->get_tx_max(envst->envp, &value));
+	return INT2NUM(value);
+    }
+    if (strcmp(str, "tx_timestamp") == 0) {
+	bdb_test_error(envst->envp->get_tx_timestamp(envst->envp, &timeval));
+	return INT2NUM(timeval);
+    }
+    rb_raise(rb_eArgError, "Unknown option %s", str);
+    return obj;
+}
+
+static char *
+options[] = {
+    "cachesize", "data_dirs", "flags", "home", "lg_bsize", "lg_dir",
+    "lg_max", "lg_regionmax", "lk_detect", "lk_max_lockers", "lk_max_locks",
+    "lk_max_objects", "mp_mmapsize", "open_flags", "rep_limit", "shm_key",
+    "tas_spins", "txn_timeout", "lock_timeout", "tmp_dir", "tx_max",
+    "tx_timestamp", 0
+};
+
+struct optst {
+    VALUE obj, str;
+};
+
+static VALUE
+bdb_env_intern_conf(optp)
+    struct optst *optp;
+{
+    return bdb_env_i_conf(optp->obj, optp->str);
+}
+
+static VALUE
+bdb_env_conf(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    int i, state;
+    VALUE res, val;
+    struct optst opt;
+
+    if (argc > 1) {
+	rb_raise(rb_eArgError, "invalid number of arguments (%d for 1)", argc);
+    }
+    if (argc == 1) {
+	return bdb_env_i_conf(obj, argv[0]);
+    }
+    res = rb_hash_new();
+    opt.obj = obj;
+    for (i = 0; options[i] != NULL; i++) {
+	opt.str = rb_str_new2(options[i]);
+	val = rb_protect(bdb_env_intern_conf, (VALUE)&opt, &state);
+	if (state == 0) {
+	    rb_hash_aset(res, opt.str, val);
+	}
+    }
+    return res;
+}
+
+#endif    
+
 void bdb_init_env()
 {
     bdb_id_call = rb_intern("call");
@@ -1265,13 +1445,9 @@ void bdb_init_env()
 #if BDB_VERSION >= 40100
     id_app_dispatch = rb_intern("bdb_app_dispatch");
 #endif
-
-    bdb_env_internal_ary = rb_ary_new();
-    rb_set_end_proc(bdb_env_finalize, bdb_env_internal_ary);
-
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
     rb_define_private_method(bdb_cEnv, "initialize", bdb_env_init, -1);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_define_alloc_func(bdb_cEnv, bdb_env_s_alloc);
 #else
     rb_define_singleton_method(bdb_cEnv, "allocate", bdb_env_s_alloc, 0);
@@ -1301,5 +1477,9 @@ void bdb_init_env()
 #endif
 #if BDB_VERSION >= 30000
     rb_define_method(bdb_cEnv, "feedback=", bdb_env_feedback_set, 1);
+#endif
+#if BDB_VERSION >= 40250
+    rb_define_method(bdb_cEnv, "configuration", bdb_env_conf, -1);
+    rb_define_method(bdb_cEnv, "conf", bdb_env_conf, -1);
 #endif
 }

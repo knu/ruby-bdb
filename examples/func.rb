@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-require '../src/bdb'
+require './clean.rb'
+
+BDB::Env.cleanup("tmp", true)
+
 module BDB
    class Btreesort < Btree
       def bdb_bt_compare(a, b)

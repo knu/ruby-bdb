@@ -228,3 +228,16 @@
 * corrected lock_id_free, marshal with recnum
    (Thanks YAEGASHI Takeshi <t@keshi.org>)
    - added method Lockid#close
+
+--- 0.4.9
+
+* adapted (???) for win32
+* corrected app_dispatch, env_stat
+* corrected #fetch
+* corrected Log
+* protected internal cursors
+* change return value for Queue#push (return indices)
+* adapted for 4.2.50
+* added Common#conf, Env#conf (4.2.50)
+* corrected Common#select
+* corrected Log#log_get

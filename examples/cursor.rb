@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-require '../src/bdb'
+require './clean.rb'
+
+BDB::Env.cleanup("tmp", true)
+
 db = BDB::Btree.open "tmp/cursor", nil, BDB::CREATE | BDB::TRUNCATE, 0644,
      "set_pagesize" => 1024, "set_flags" => BDB::RECNUM
 indice = 0
