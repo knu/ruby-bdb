@@ -15,6 +15,7 @@ static void
 bdb_txn_mark(txnst)
     bdb_TXN *txnst;
 {
+    if (txnst->marshal) rb_gc_mark(txnst->marshal);
     rb_gc_mark(txnst->db_ary);
 }
 
@@ -136,7 +137,8 @@ bdb_env_begin(argc, argv, obj)
     DB_ENV *dbenvp;
     bdb_ENV *dbenvst;
     VALUE txnv, b, env;
-    int flags, commit, marshal;
+    int flags, commit;
+    VALUE marshal;
 
     txnpar = 0;
     flags = commit = 0;
@@ -221,13 +223,24 @@ bdb_txn_id(obj)
 }
 
 static VALUE
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+bdb_txn_prepare(obj, txnid)
+    VALUE obj, txnid;
+#else
 bdb_txn_prepare(obj)
     VALUE obj;
+#endif
 {
     bdb_TXN *txnst;
+    unsigned char id;
 
     GetTxnDB(obj, txnst);
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    id = (unsigned char)NUM2INT(txnid);
+    bdb_test_error(txn_prepare(txnst->txnid, &id));
+#else
     bdb_test_error(txn_prepare(txnst->txnid));
+#endif
     return Qtrue;
 }
 
@@ -279,7 +292,11 @@ bdb_env_stat(obj)
     }
     bdb_test_error(txn_stat(dbenvst->dbenvp->tx_info, &stat, malloc));
 #else
+#if DB_VERSION_MINOR < 3
     bdb_test_error(txn_stat(dbenvst->dbenvp, &stat, malloc));
+#else
+    bdb_test_error(txn_stat(dbenvst->dbenvp, &stat));
+#endif
 #endif
     a = rb_hash_new();
     rb_hash_aset(a, rb_tainted_str_new2("st_time_ckp"), INT2NUM(stat->st_time_ckp));
@@ -299,7 +316,7 @@ bdb_env_stat(obj)
     return a;
 }
 
-void Init_transaction()
+void bdb_init_transaction()
 {
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);
     bdb_cTxnCatch = rb_define_class("DBTxnCatch", bdb_cTxn);
@@ -322,8 +339,13 @@ void Init_transaction()
     rb_define_method(bdb_cTxn, "txn_abort", bdb_txn_abort, 0);
     rb_define_method(bdb_cTxn, "id", bdb_txn_id, 0);
     rb_define_method(bdb_cTxn, "txn_id", bdb_txn_id, 0);
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    rb_define_method(bdb_cTxn, "prepare", bdb_txn_prepare, 1);
+    rb_define_method(bdb_cTxn, "txn_prepare", bdb_txn_prepare, 1);
+#else
     rb_define_method(bdb_cTxn, "prepare", bdb_txn_prepare, 0);
     rb_define_method(bdb_cTxn, "txn_prepare", bdb_txn_prepare, 0);
+#endif
     rb_define_method(bdb_cTxn, "assoc", bdb_txn_assoc, -1);
     rb_define_method(bdb_cTxn, "txn_assoc", bdb_txn_assoc, -1);
     rb_define_method(bdb_cTxn, "associate", bdb_txn_assoc, -1);

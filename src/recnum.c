@@ -859,7 +859,7 @@ bdb_sary_nitems(obj)
     return INT2NUM(j);
 }
 
-void Init_recnum()
+void bdb_init_recnum()
 {
     id_cmp = rb_intern("<=>");
     bdb_cRecnum = rb_define_class_under(bdb_mDb, "Recnum", bdb_cCommon);

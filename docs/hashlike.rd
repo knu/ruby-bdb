@@ -141,13 +141,23 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- self[key]
      Returns the value corresponding the ((|key|))
 
+--- associate(db, flag) { |db, key, value| }
+     associate a secondary index db
+     ((|flag|)) can have the value ((|BDB::RDONLY|))
+     The block must return the new key, or ((|Qfalse|)) in this case the
+     secondary index will not contain any reference to key/value
+
 --- db_get(key [, flags])
 --- get(key [, flags])
 --- fetch(key [, flags])
      Returns the value correspondind the ((|key|))
 
-     ((|flags|)) can have the values ((|BDB::GET_BOTH|)), ((|BDB::SET_RECNO|))
-     or ((|BDB::RMW|))
+     ((|flags|)) can have the values ((|BDB::GET_BOTH|)), 
+     ((|BDB::SET_RECNO|)) or ((|BDB::RMW|))
+
+--- pget(key [, flags])
+     Returns the primary key and the value corresponding to ((|key|))
+     in the secondary index
 
 --- self[key] = value
      Stores the ((|value|)) associating with ((|key|))

@@ -221,9 +221,15 @@ bdb_env_i_options(obj, db_stobj)
 #endif
     else if (strcmp(options, "marshal") == 0) {
         switch (value) {
-        case Qtrue: dbenvst->marshal = 1; break;
-        case Qfalse: dbenvst->marshal = 0; break;
-        default: rb_raise(bdb_eFatal, "marshal value must be true or false");
+        case Qtrue: dbenvst->marshal = bdb_mMarshal; break;
+        case Qfalse: dbenvst->marshal = Qfalse; break;
+        default: 
+	    if (!rb_respond_to(value, id_load) ||
+		!rb_respond_to(value, id_dump)) {
+		rb_raise(bdb_eFatal, "marshal value must be true or false");
+	    }
+	    dbenvst->marshal = value;
+	    break;
         }
     }
     else if (strcmp(options, "thread") == 0) {
@@ -268,6 +274,7 @@ static void
 bdb_env_mark(dbenvst)
     bdb_ENV *dbenvst;
 {
+    if (dbenvst->marshal) rb_gc_mark(dbenvst->marshal);
     rb_gc_mark(dbenvst->db_ary);
 }
 
@@ -442,6 +449,9 @@ bdb_env_s_new(argc, argv, obj)
     bdb_test_error(db_env_create(&dbenvp, 0));
     dbenvp->set_errpfx(dbenvp, "BDB::");
     dbenvp->set_errcall(dbenvp, bdb_env_errcall);
+#if DB_VERSION_MINOR >= 3
+    bdb_test_error(dbenvp->set_alloc(dbenvp, malloc, realloc, free));
+#endif
 #endif
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
 	options = argv[argc - 1];
@@ -605,7 +615,7 @@ bdb_env_set_flags(argc, argv, obj)
     return Qnil;
 }
 
-void Init_env()
+void bdb_init_env()
 {
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
     rb_define_private_method(bdb_cEnv, "initialize", bdb_obj_init, -1);

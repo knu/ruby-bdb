@@ -93,7 +93,9 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
 
 --- prepare()
 --- txn_prepare()
-    The txn_prepare function initiates the beginning of a two-phase commit. 
+--- prepare(id)        # version 3.3.11
+--- txn_prepare(id)    # version 3.3.11
+    The txn_prepare function initiates the beginning of a two-phase commit.
 
     In a distributed transaction environment, Berkeley DB can be used
     as a local transaction manager. In this case, the distributed

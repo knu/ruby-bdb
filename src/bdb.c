@@ -100,13 +100,26 @@ bdb_test_error(comm)
 	error = bdb_eLockHeld;
 	break;
 #endif
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    case BDB_ERROR_PRIVATE:
+	error = bdb_eFatal;
+	bdb_errcall = 1;
+	bdb_errstr = rb_inspect(rb_gv_get("$!"));
+	comm = 0;
+	break;
+#endif
     default:
 	error = bdb_eFatal;
 	break;
     }
     if (bdb_errcall) {
 	bdb_errcall = 0;
-	rb_raise(error, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(comm));
+	if (comm) {
+	    rb_raise(error, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(comm));
+	}
+	else {
+	    rb_raise(error, "%s", RSTRING(bdb_errstr)->ptr);
+	}
     }
     else
 	rb_raise(error, "%s", db_strerror(comm));
@@ -166,6 +179,11 @@ Init_bdb()
     rb_define_const(bdb_mDb, "CREATE", INT2FIX(DB_CREATE));
     rb_define_const(bdb_mDb, "CURLSN", INT2FIX(DB_CURLSN));
     rb_define_const(bdb_mDb, "CURRENT", INT2FIX(DB_CURRENT));
+#ifdef DB_DIRTY_READ
+    rb_define_const(bdb_mDb, "DIRTY_READ", INT2FIX(DB_DIRTY_READ));
+#else
+    rb_define_const(bdb_mDb, "DIRTY_READ", INT2FIX(0));
+#endif
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "DB_VERB_CHKPOINT", INT2FIX(1));
     rb_define_const(bdb_mDb, "DB_VERB_DEADLOCK", INT2FIX(1));
@@ -216,7 +234,11 @@ Init_bdb()
     rb_define_const(bdb_mDb, "KEYFIRST", INT2FIX(DB_KEYFIRST));
     rb_define_const(bdb_mDb, "KEYLAST", INT2FIX(DB_KEYLAST));
     rb_define_const(bdb_mDb, "LAST", INT2FIX(DB_LAST));
+#ifdef DB_LOCK_CONFLICT
     rb_define_const(bdb_mDb, "LOCK_CONFLICT", INT2FIX(DB_LOCK_CONFLICT));
+#else
+    rb_define_const(bdb_mDb, "LOCK_CONFLICT", INT2FIX(0));
+#endif
     rb_define_const(bdb_mDb, "LOCK_DEADLOCK", INT2FIX(DB_LOCK_DEADLOCK));
     rb_define_const(bdb_mDb, "LOCK_DEFAULT", INT2FIX(DB_LOCK_DEFAULT));
     rb_define_const(bdb_mDb, "LOCK_GET", INT2FIX(DB_LOCK_GET));
@@ -262,7 +284,11 @@ Init_bdb()
     rb_define_const(bdb_mDb, "RECOVER_FATAL", INT2FIX(DB_RECOVER_FATAL));
     rb_define_const(bdb_mDb, "RENUMBER", INT2FIX(DB_RENUMBER));
     rb_define_const(bdb_mDb, "RMW", INT2FIX(DB_RMW));
-    rb_define_const(bdb_mDb, "SET", INT2FIX(DB_SET));
+#ifdef DB_SECONDARY_BAD
+    rb_define_const(bdb_mDb, "SECONDARY_BAD", INT2FIX(DB_SECONDARY_BAD));
+#else
+    rb_define_const(bdb_mDb, "SECONDARY_BAD", INT2FIX(0));
+#endif
     rb_define_const(bdb_mDb, "SET_RANGE", INT2FIX(DB_SET_RANGE));
     rb_define_const(bdb_mDb, "SET_RECNO", INT2FIX(DB_SET_RECNO));
     rb_define_const(bdb_mDb, "SNAPSHOT", INT2FIX(DB_SNAPSHOT));
@@ -287,14 +313,14 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "TXN_COMMIT", INT2FIX(BDB_TXN_COMMIT));
 
-    Init_env();
-    Init_common();
-    Init_recnum();
-    Init_transaction();
-    Init_cursor();
-    Init_lock();
-    Init_log();
-    Init_delegator();
+    bdb_init_env();
+    bdb_init_common();
+    bdb_init_recnum();
+    bdb_init_transaction();
+    bdb_init_cursor();
+    bdb_init_lock();
+    bdb_init_log();
+    bdb_init_delegator();
 
     bdb_errstr = rb_tainted_str_new(0, 0);
     rb_global_variable(&bdb_errstr);

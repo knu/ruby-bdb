@@ -78,3 +78,11 @@
 -- 0.2.0
 
 * better interface with Marshal (experimental)
+
+-- 0.2.1
+
+* new syntax "marshal" => Marshal (or any module with #load, #dump)
+* tested with 3.3.11
+* txn_prepare take now an extra argument
+* secondary index for 3.3.11 (see #associate)
+* partial implementation of #pget

@@ -138,7 +138,11 @@ bdb_env_log_stat(obj)
     }
     bdb_test_error(log_stat(dbenvst->dbenvp->lg_info, &stat, 0));
 #else
+#if DB_VERSION_MINOR < 3
     bdb_test_error(log_stat(dbenvst->dbenvp, &stat, 0));
+#else
+    bdb_test_error(log_stat(dbenvst->dbenvp, &stat));
+#endif
 #endif
     res = rb_hash_new();
     rb_hash_aset(res, rb_tainted_str_new2("st_magic"), INT2NUM(stat->st_magic));
@@ -278,7 +282,11 @@ bdb_env_log_archive(argc, argv, obj)
     }
     bdb_test_error(log_archive(dbenvst->dbenvp->lg_info, &list, flag, NULL));
 #else
+#if DB_VERSION_MINOR < 3
     bdb_test_error(log_archive(dbenvst->dbenvp, &list, flag, NULL));
+#else
+    bdb_test_error(log_archive(dbenvst->dbenvp, &list, flag));
+#endif
 #endif
     res = rb_ary_new();
     for (file = list; file != NULL && *file != NULL; file++) {
@@ -434,7 +442,7 @@ bdb_log_unregister(obj)
     return obj;
 }
 
-void Init_log()
+void bdb_init_log()
 {
     rb_define_method(bdb_cEnv, "log_put", bdb_s_log_put, -1);
     rb_define_method(bdb_cEnv, "log_curlsn", bdb_s_log_curlsn, 0);

@@ -325,7 +325,7 @@ bdb_cursor_put(argc, argv, obj)
     }
 }
 
-void Init_cursor()
+void bdb_init_cursor()
 {
     rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, 0);
     rb_define_method(bdb_cCommon, "cursor", bdb_cursor, 0);

@@ -10,6 +10,10 @@
 #define BDB_DUP_COMPARE 32
 #define BDB_H_HASH 64
 
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+#define BDB_ERROR_PRIVATE 44444
+#endif
+
 #define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
 #define BDB_NEED_CURRENT (BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH)
 
@@ -45,8 +49,9 @@ extern ID id_dump, id_load;
 extern ID id_current_db;
 
 typedef struct  {
-    int marshal, no_thread;
+    int no_thread;
     int flags27;
+    VALUE marshal;
     VALUE db_ary;
     DB_ENV *dbenvp;
 #if DB_VERSION_MAJOR < 3 || DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
@@ -57,7 +62,7 @@ typedef struct  {
 
 typedef struct {
     int status;
-    int marshal;
+    VALUE marshal;
     int flags27;
     VALUE db_ary;
     VALUE env;
@@ -67,9 +72,10 @@ typedef struct {
 
 typedef struct {
     int options, no_thread;
+    VALUE marshal;
     int flags27;
     DBTYPE type;
-    VALUE env, orig;
+    VALUE env, orig, secondary;
     VALUE bt_compare, bt_prefix, dup_compare, h_hash;
     DB *dbp;
     bdb_TXN *txn;
@@ -150,21 +156,25 @@ struct deleg_class {
     }									\
 }
 
-#define test_dump(dbst, key, a)					\
-{								\
-    int _bdb_is_nil = 0;					\
-    VALUE _bdb_tmp_;						\
-    if (dbst->options & BDB_MARSHAL)				\
-        _bdb_tmp_ = rb_funcall(bdb_mMarshal, id_dump, 1, a);	\
-    else {							\
-        _bdb_tmp_ = rb_obj_as_string(a);			\
-        if (a == Qnil)						\
-            _bdb_is_nil = 1;					\
-        else							\
-            a = _bdb_tmp_;					\
-    }								\
-    key.data = RSTRING(_bdb_tmp_)->ptr;				\
-    key.size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;		\
+#define test_dump(dbst, key, a)						\
+{									\
+    int _bdb_is_nil = 0;						\
+    VALUE _bdb_tmp_;							\
+    if (dbst->marshal) {						\
+        _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, a);		\
+        if (TYPE(_bdb_tmp_) != T_STRING) {				\
+	    rb_raise(rb_eTypeError, "dump() must return String");	\
+	}								\
+    }									\
+    else {								\
+        _bdb_tmp_ = rb_obj_as_string(a);				\
+        if (a == Qnil)							\
+            _bdb_is_nil = 1;						\
+        else								\
+            a = _bdb_tmp_;						\
+    }									\
+    key.data = RSTRING(_bdb_tmp_)->ptr;					\
+    key.size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;			\
 }
 
 #define test_recno(dbst, key, recno, a)		\
@@ -279,4 +289,11 @@ extern VALUE bdb_s_new _((int, VALUE *, VALUE));
 extern VALUE bdb_test_load _((bdb_DB *, DBT));
 extern VALUE bdb_to_a_intern _((VALUE, int));
 extern VALUE bdb_tree_stat _((VALUE));
-
+extern void bdb_init_env _((void));
+extern void bdb_init_common _((void));
+extern void bdb_init_recnum _((void));
+extern void bdb_init_transaction _((void));
+extern void bdb_init_cursor _((void));
+extern void bdb_init_lock _((void));
+extern void bdb_init_log _((void));
+extern void bdb_init_delegator _((void));

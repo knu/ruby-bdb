@@ -86,7 +86,11 @@ bdb_env_lockstat(obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
 #else
+#if DB_VERSION_MINOR < 3
     bdb_test_error(lock_stat(dbenvst->dbenvp, &statp, 0));
+#else
+    bdb_test_error(lock_stat(dbenvst->dbenvp, &statp));
+#endif
     a = rb_hash_new();
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
     rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
@@ -361,7 +365,7 @@ bdb_lock_put(obj)
     return Qnil;
 } 
 
-void Init_lock()
+void bdb_init_lock()
 {
     rb_define_method(bdb_cEnv, "lock_id", bdb_env_lockid, 0);
     rb_define_method(bdb_cEnv, "lock", bdb_env_lockid, 0);

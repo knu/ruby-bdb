@@ -315,6 +315,15 @@ Upgrade the database
 Returns the value corresponding the <VAR>key</VAR>
 </P>
 </DD>
+<DT><A NAME="associate"><CODE>associate(<var>db</var>, <var>flag</var>) { |<var>db</var>, <var>key</var>, <var>value</var>| }</CODE></A><!-- RDLabel: "associate" -->
+<DD>
+<P>
+associate a secondary index db
+<VAR>flag</VAR> can have the value <VAR>BDB::RDONLY</VAR>
+The block must return the new key, or <VAR>Qfalse</VAR> in this case the
+secondary index will not contain any reference to key/value
+</P>
+</DD>
 <DT><A NAME="db_get"><CODE>db_get(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "db_get" -->
 <DT><A NAME="get"><CODE>get(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "get" -->
 <DT><A NAME="fetch"><CODE>fetch(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "fetch" -->
@@ -324,8 +333,15 @@ Returns the value correspondind the <VAR>key</VAR>
 </P>
 
 <P>
-<VAR>flags</VAR> can have the values <VAR>BDB::GET_BOTH</VAR>, <VAR>BDB::SET_RECNO</VAR>
-or <VAR>BDB::RMW</VAR>
+<VAR>flags</VAR> can have the values <VAR>BDB::GET_BOTH</VAR>, 
+<VAR>BDB::SET_RECNO</VAR> or <VAR>BDB::RMW</VAR>
+</P>
+</DD>
+<DT><A NAME="pget"><CODE>pget(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "pget" -->
+<DD>
+<P>
+Returns the primary key and the value corresponding to <VAR>key</VAR>
+in the secondary index
 </P>
 </DD>
 <DT><A NAME="self[key]"><CODE>self[key] = <var>value</var></CODE></A><!-- RDLabel: "self[key]" -->

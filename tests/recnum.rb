@@ -1,4 +1,5 @@
-#!/usr/bin/ruby -I../src -Isrc -Itests
+#!/usr/bin/ruby
+$LOAD_PATH.unshift *%w{../src src tests}
 require 'bdb'
 require 'runit_'
 

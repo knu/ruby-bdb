@@ -128,7 +128,7 @@ bdb_deleg_orig(obj)
     return obj;
 }
 
-void Init_delegator()
+void bdb_init_delegator()
 {
     id_send = rb_intern("send");
     bdb_cDelegate = rb_define_class_under(bdb_mDb, "Delegate", rb_cObject);

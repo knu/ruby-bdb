@@ -1,4 +1,5 @@
-#!/usr/bin/ruby -I../src -Isrc -Itests
+#!/usr/bin/ruby
+$LOAD_PATH.unshift *%w{../src src tests}
 require 'bdb'
 require 'runit_'
 
@@ -21,7 +22,7 @@ class TestBtree < RUNIT::TestCase
       assert_error(BDB::Fatal, 'BDB::Btree.open("tmp/aa", nil, "env" => 1)', "invalid Env")
    end
    def test_01_init
-      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.new("tmp/aa", nil, "a", "marshal" => true), "<open>")
+      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.new("tmp/aa", nil, "a", "marshal" => Marshal), "<open>")
    end
    def test_02_get_set
       assert_equal([12, "alpha"], $bdb["alpha"] = [12, "alpha"], "<set value>")
@@ -76,7 +77,7 @@ class TestBtree < RUNIT::TestCase
    def test_05_reopen
       assert_equal(nil, $bdb.close, "<close>")
       assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("tmp/aa", nil, "w", 
-	"set_flags" => BDB::DUP, "marshal" => true),
+	"set_flags" => BDB::DUP, "marshal" => Marshal),
         "<reopen with DB_DUP>")
       assert_equal(0, $bdb.size, "<must be 0 after reopen>")
    end
@@ -111,7 +112,7 @@ class TestBtree < RUNIT::TestCase
    end
    def test_07_in_memory
       assert_equal(nil, $bdb.close, "<close>")
-      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("marshal" => true), "<open in memory>")
+      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("marshal" => Marshal), "<open in memory>")
       assert_equal(0, $bdb.size, "<must be 0 after reopen>")
    end
    def test_08_in_memory_get_set
@@ -125,7 +126,7 @@ class TestBtree < RUNIT::TestCase
    end
    def test_09_modify
       assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("tmp/aa", nil, "w",
-							"marshal" => true),
+							"marshal" => Marshal),
 		     "<reopen RECNUM>")
       array = [1, "a", {"a" => 12}]
       assert_equal(array, $bdb["a"] = array, "<set>")
@@ -140,7 +141,7 @@ class TestBtree < RUNIT::TestCase
    end
    def test_10_recnum
       assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("tmp/aa", nil, "w",
-      "set_flags" => BDB::RECNUM, "marshal" => true), "<reopen RECNUM>")
+      "set_flags" => BDB::RECNUM, "marshal" => Marshal), "<reopen RECNUM>")
       assert_equal(0, $bdb.size, "<empty RECNUM>")
       arr = ["A 0", "B 1", "C 2", "D 3", "E 4", "F 5", "G 6"]
       i = 0
@@ -161,12 +162,12 @@ class TestBtree < RUNIT::TestCase
    def test_11_unknown
       $bdb.close
       $bdb = nil
-      assert_kind_of(BDB::Btree, BDB::Unknown.open("tmp/aa", nil, "r", "marshal" => true), "<unknown>")
+      assert_kind_of(BDB::Btree, BDB::Unknown.open("tmp/aa", nil, "r", "marshal" => Marshal), "<unknown>")
    end
    def test_12_env
       clean
       assert_kind_of(BDB::Env, $env = BDB::Env.open("tmp", BDB::CREATE|BDB::INIT_TRANSACTION))
-      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("aa", nil, "a", "env" => $env, "marshal" => true), "<open>")
+      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("aa", nil, "a", "env" => $env, "marshal" => Marshal), "<open>")
    end
    def test_13_txn_commit
       assert_kind_of(BDB::Txn, txn = $env.begin, "<transaction>")
