@@ -36,3 +36,6 @@
    - struct timeval
    - rb_struct_define
 
+-- 0.1.4
+
+* corrected rb_iterate()

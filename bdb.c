@@ -178,15 +178,16 @@ struct db_stoptions {
 };
 
 static VALUE
-bdb_env_i_options(obj, db_st)
-    VALUE obj;
-    struct db_stoptions *db_st;
+bdb_env_i_options(obj, db_stobj)
+    VALUE obj, db_stobj;
 {
     char *options;
     DB_ENV *dbenvp;
     VALUE key, value;
     bdb_ENV *dbenvst;
+    struct db_stoptions *db_st;
 
+    Data_Get_Struct(db_stobj, struct db_stoptions, db_st);
     dbenvst = db_st->env;
 
     key = rb_ary_entry(obj, 0);
@@ -419,7 +420,9 @@ bdb_env_free(dbenvst)
 
     if (dbenvst->dbenvp) {
 	while ((db = rb_ary_pop(dbenvst->db_ary)) != Qnil) {
-	    bdb_close(0, 0, db);
+	    if (TYPE(db) == T_DATA) {
+		bdb_close(0, 0, db);
+	    }
 	}
 	env_close(dbenvst->dbenvp);
     }
@@ -451,7 +454,9 @@ bdb_env_close(obj)
 	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
     GetEnvDB(obj, dbenvst);
     while ((db = rb_ary_pop(dbenvst->db_ary)) != Qnil) {
-	bdb_close(0, 0, db);
+	if (TYPE(db) == T_DATA) {
+	    bdb_close(0, 0, db);
+	}
     }
     env_close(dbenvst->dbenvp);
     return Qtrue;
@@ -586,15 +591,16 @@ bdb_env_s_new(argc, argv, obj)
     MEMZERO(dbenvst, bdb_ENV, 1);
     dbenvst->dbenvp = dbenvp;
     if (!NIL_P(options)) {
-	VALUE subargs[2];
-	struct db_stoptions db_st;
+	VALUE subargs[2], db_stobj;
+	struct db_stoptions *db_st;
 
 	st_config = rb_ary_new();
-	db_st.env = dbenvst;
-	db_st.config = st_config;
+	db_stobj = Data_Make_Struct(rb_cObject, struct db_stoptions, 0, free, db_st);
+	db_st->env = dbenvst;
+	db_st->config = st_config;
 
 	subargs[0] = options;
-	subargs[1] = (VALUE)&db_st;
+	subargs[1] = db_stobj;
 	rb_rescue(bdb_env_each_options, (VALUE)subargs, bdb_env_each_failed, (VALUE)dbenvst);
     }
     if (flags & DB_CREATE) {
@@ -818,14 +824,15 @@ bdb_h_hash(bytes, length)
 }
 
 static VALUE
-bdb_i_options(obj, dbst)
-    VALUE obj;
-    bdb_DB *dbst;
+bdb_i_options(obj, dbstobj)
+    VALUE obj, dbstobj;
 {
     char *options;
     DB *dbp;
     VALUE key, value;
+    bdb_DB *dbst;
 
+    Data_Get_Struct(dbstobj, bdb_DB, dbst);
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     dbp = dbst->dbp;
@@ -1178,7 +1185,7 @@ bdb_open_common(argc, argv, obj)
 	if (TYPE(f) != T_HASH) {
 	    rb_raise(bdb_eFatal, "options must be an hash");
 	}
-	rb_iterate(rb_each, f, bdb_i_options, (VALUE)dbst);
+	rb_iterate(rb_each, f, bdb_i_options, res);
     }
     if (dbst->bt_compare == 0 && rb_method_boundp(obj, id_bt_compare, 0) == Qtrue) {
 	    dbst->options |= BDB_BT_COMPARE;
@@ -1356,12 +1363,13 @@ struct re {
 };
 
 static VALUE
-bdb_queue_i_search_re_len(obj, rest)
+bdb_queue_i_search_re_len(obj, restobj)
     VALUE obj;
-    struct re *rest;
 {
     VALUE key, value;
+    struct re *rest;
 
+    Data_Get_Struct(restobj, struct re, rest);
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
@@ -1390,21 +1398,22 @@ bdb_queue_s_new(argc, argv, obj)
     VALUE *argv;
     VALUE obj;
 {
-    VALUE *nargv, ret;
-    struct re rest;
+    VALUE *nargv, ret, restobj;
+    struct re *rest;
     bdb_DB *dbst;
 
-    rest.re_len = -1;
-    rest.re_pad = -1;
+    restobj = Data_Make_Struct(obj, struct re, 0, free, rest);
+    rest->re_len = -1;
+    rest->re_pad = -1;
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
-	rb_iterate(rb_each, argv[argc - 1], bdb_queue_i_search_re_len, (VALUE)&rest);
-	if (rest.re_len <= 0) {
-	    rest.re_len = DEFAULT_RECORD_LENGTH;
-	    rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("set_re_len"), INT2NUM(rest.re_len));
+	rb_iterate(rb_each, argv[argc - 1], bdb_queue_i_search_re_len, restobj);
+	if (rest->re_len <= 0) {
+	    rest->re_len = DEFAULT_RECORD_LENGTH;
+	    rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("set_re_len"), INT2NUM(rest->re_len));
 	}
-	if (rest.re_pad < 0) {
-	    rest.re_pad = DEFAULT_RECORD_PAD;
-	    rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("set_re_pad"), INT2NUM(rest.re_pad));
+	if (rest->re_pad < 0) {
+	    rest->re_pad = DEFAULT_RECORD_PAD;
+	    rb_hash_aset(argv[argc - 1], rb_tainted_str_new2("set_re_pad"), INT2NUM(rest->re_pad));
 	}
 	nargv = argv;
     }
@@ -1412,16 +1421,16 @@ bdb_queue_s_new(argc, argv, obj)
 	nargv = ALLOCA_N(VALUE, argc + 1);
 	MEMCPY(nargv, argv, VALUE, argc);
 	nargv[argc] = rb_hash_new();
-	rest.re_len = DEFAULT_RECORD_LENGTH;
-	rest.re_pad = DEFAULT_RECORD_PAD;
+	rest->re_len = DEFAULT_RECORD_LENGTH;
+	rest->re_pad = DEFAULT_RECORD_PAD;
 	rb_hash_aset(nargv[argc], rb_tainted_str_new2("set_re_len"), INT2NUM(DEFAULT_RECORD_LENGTH));
 	rb_hash_aset(nargv[argc], rb_tainted_str_new2("set_re_pad"), INT2NUM(DEFAULT_RECORD_PAD));
 	argc += 1;
     }
     ret = bdb_s_new(argc, nargv, obj);
     Data_Get_Struct(ret, bdb_DB, dbst);
-    dbst->re_len = rest.re_len;
-    dbst->re_pad = rest.re_pad;
+    dbst->re_len = rest->re_len;
+    dbst->re_pad = rest->re_pad;
     return ret;
 }
 #endif
@@ -3380,7 +3389,9 @@ bdb_txn_commit(argc, argv, obj)
     test_error(txn_commit(txnst->txnid, flags));
 #endif
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	bdb_close(0, 0, db);
+	if (TYPE(db) == T_DATA) {
+	    bdb_close(0, 0, db);
+	}
     }
     txnst->txnid = NULL;
     if (txnst->status == 1) {
@@ -3400,7 +3411,9 @@ bdb_txn_abort(obj)
     GetTxnDB(obj, txnst);
     test_error(txn_abort(txnst->txnid));
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	bdb_close(0, 0, db);
+	if (TYPE(db) == T_DATA) {
+	    bdb_close(0, 0, db);
+	}
     }
     txnst->txnid = NULL;
     if (txnst->status == 1) {
@@ -3689,14 +3702,21 @@ bdb_lockid_get(argc, argv, obj)
         rb_raise(bdb_eFatal, "closed environment");	\
 }
 
-static VALUE
-bdb_lockid_each(obj, list)
-    VALUE obj;
+struct lockreq {
     DB_LOCKREQ *list;
+};
+
+static VALUE
+bdb_lockid_each(obj, listobj)
+    VALUE obj, listobj;
 {
     VALUE key, value;
+    DB_LOCKREQ *list;
+    struct lockreq *listst;
     char *options;
 
+    Data_Get_Struct(listobj, struct lockreq, listst);
+    list = listst->list;
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
@@ -3742,6 +3762,8 @@ bdb_lockid_vec(argc, argv, obj)
     unsigned int flags;
     VALUE a, b, c, res;
     int i, n, err;
+    VALUE listobj;
+    struct lockreq *listst;
 
     flags = 0;
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
@@ -3750,10 +3772,12 @@ bdb_lockid_vec(argc, argv, obj)
     Check_Type(a, T_ARRAY);
     list = ALLOCA_N(DB_LOCKREQ, RARRAY(a)->len);
     MEMZERO(list, DB_LOCKREQ, RARRAY(a)->len);
+    listobj = Data_Make_Struct(obj, struct lockreq, 0, free, listst);
     for (i = 0; i < RARRAY(a)->len; i++) {
 	b = RARRAY(a)->ptr[i];
 	Check_Type(b, T_HASH);
-	rb_iterate(rb_each, b, bdb_lockid_each, (VALUE)&list[i]);
+	listst->list = &list[i];
+	rb_iterate(rb_each, b, bdb_lockid_each, listobj);
     }
     GetLockid(obj, lockid);
 #if DB_VERSION_MAJOR < 3
