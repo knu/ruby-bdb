@@ -93,21 +93,18 @@ class TestBtree < RUNIT::TestCase
 	 end
 	 ind += 1
       end
-      if BDB::VERSION_MAJOR < 3 && BDB::VERSION_MINOR < 6
-	 assert_error(BDB::Fatal, '$bdb.count("0")', "<count dup 0 must fail>")
-	 assert_error(BDB::Fatal, '$bdb.dup("0")', "<dup 0 must fail>")
-      else
+      if BDB::VERSION_MAJOR > 2 || BDB::VERSION_MINOR >= 6
 	 assert_equal(4, $bdb.count("0"), "<count dup 0>")
 	 assert_equal(3, $bdb.count("1"), "<count dup 1>")
 	 assert_equal(2, $bdb.count("2"), "<count dup 2>")
 	 assert_equal(1, $bdb.count("3"), "<count dup 3>")
 	 assert_equal(0, $bdb.count("4"), "<count dup 4>")
 	 array.size.times do |i|
-	    $bdb.dup(i.to_s) do |val|
+	    $bdb.get_dup(i.to_s) do |val|
 	       assert(array[i].index(val) != nil)
 	    end
 	 end
-	 assert_equal([], $bdb.dup("4"), "<get dup 4>")
+	 assert_equal([], $bdb.get_dup("4"), "<get dup 4>")
       end
    end
    def test_07_in_memory
@@ -136,6 +133,7 @@ class TestBtree < RUNIT::TestCase
       $bdb["a"][-1] = 4; array[-1] = 4
       assert_equal(array, $bdb["a"].to_orig, "<get>")
       $bdb["a"][-1] = ["abc", 4]; array[-1] = ["abc", 4]
+      assert_equal(array, $bdb["a"].to_orig, "<get>")
       assert_equal(nil, $bdb.close, "<close>")
       clean
    end

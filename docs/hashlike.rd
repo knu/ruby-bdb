@@ -213,42 +213,46 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
       It return the object deleted or ((|nil|)) if the specified
       key don't exist.
 
---- delete_if([bulk]) { |key, value| ... }
---- reject!([bulk]) { |key, value| ... }
+--- delete_if([set]) { |key, value| ... }
+--- reject!([set]) { |key, value| ... }
       Deletes associations if the evaluation of the block returns true. 
 
-      ((<bulk>))
+      ((<set>))
 
 --- duplicates(key [, assoc = true])
       Return an array of all duplicate associations for ((|key|))
 
       if ((|assoc|)) is ((|false|)) return only the values.
 
---- each([bulk]) { |key, value| ... }
---- each_pair([bulk]) { |key, value| ... }
+--- each([set [, bulk]]) { |key, value| ... }
+--- each_pair([set [, bulk]]) { |key, value| ... }
       Iterates over associations.
 
-      ((<bulk>))
+      ((<set>)) ((<bulk>))
 
---- each_dup(key) { |key, value| ... }
+--- each_dup(key [, bulk]) { |key, value| ... }
       Iterates over each duplicate associations for ((|key|))
 
---- each_dup_value(key) { |value| ... }
-      Iterates over each duplicate values for ((|key|))
+      ((<bulk>))
 
---- each_key([bulk]) { |key| ... }
-      Iterates over keys. 
+--- each_dup_value(key [, bulk]) { |value| ... }
+      Iterates over each duplicate values for ((|key|))
 
       ((<bulk>))
 
---- each_primary { |skey, pkey, pvalue| ... }
+--- each_key([set [, bulk]]) { |key| ... }
+      Iterates over keys. 
+
+      ((<set>)) ((<bulk>))
+
+--- each_primary([set]) { |skey, pkey, pvalue| ... }
       Iterates over secondary indexes and give secondary key, primary key
       and value
 
---- each_value([bulk]) { |value| ... }
+--- each_value([set [, bulk]]) { |value| ... }
       Iterates over values. 
 
-      ((<bulk>))
+      ((<set>)) ((<bulk>))
 
 --- empty?() 
        Returns true if the database is empty. 
@@ -295,19 +299,25 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
       Create an hash without the associations if the evaluation of the
       block returns true. 
 
---- reverse_each { |key, value| ... }
---- reverse_each_pair { |key, value| ... }
+--- reverse_each([set]) { |key, value| ... }
+--- reverse_each_pair([set]) { |key, value| ... }
       Iterates over associations in reverse order 
 
---- reverse_each_key { |key| ... }
+      ((<set>))
+
+--- reverse_each_key([set]) { |key| ... }
       Iterates over keys in reverse order 
 
---- reverse_each_primary { |skey, pkey, pvalue| ... }
-      Iterates over secondary indexes in reverse order and give secondary key,
-      primary key and value
+      ((<set>))
 
---- reverse_each_value { |value| ... }
+--- reverse_each_primary([set]) { |skey, pkey, pvalue| ... }
+      Iterates over secondary indexes in reverse order and give secondary
+      key, primary key and value
+
+--- reverse_each_value([set]) { |value| ... }
       Iterates over values in reverse order.
+
+      ((<set>))
 
 --- set_partial(len, offset)
        Set the partial value ((|len|)) and ((|offset|))
@@ -340,6 +350,12 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
        Removes and returns an association from the database.
 
 === Remark
+
+==== set
+
+If the parameter ((|set|)) is given, an initial call will be made
+with the option ((|BDB::SET_RANGE|)) to move the cursor to the specified
+key before iterating.
 
 ==== bulk
 

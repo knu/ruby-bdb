@@ -4,9 +4,12 @@ static void
 bdb_cursor_free(dbcst)
     bdb_DBC *dbcst;
 {
-    if (dbcst->dbc && dbcst->dbst && dbcst->dbst->dbp) {
+    bdb_DB *dbst;
+    if (dbcst->dbc && dbcst->db) {
+	GetDB(dbcst->db, dbst);
         bdb_test_error(dbcst->dbc->c_close(dbcst->dbc));
         dbcst->dbc = NULL;
+	dbcst->db = 0;
     }
     free(dbcst);
 }
@@ -31,7 +34,7 @@ bdb_cursor(obj)
 #endif
     a = Data_Make_Struct(bdb_cCursor, bdb_DBC, 0, bdb_cursor_free, dbcst);
     dbcst->dbc = dbc;
-    dbcst->dbst = dbst;
+    dbcst->db = obj;
     return a;
 }
 
@@ -40,10 +43,11 @@ bdb_cursor_close(obj)
     VALUE obj;
 {
     bdb_DBC *dbcst;
+    bdb_DB *dbst;
     
     if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4)
 	rb_raise(rb_eSecurityError, "Insecure: can't close the cursor");
-    GetCursorDB(obj, dbcst);
+    GetCursorDB(obj, dbcst, dbst);
     bdb_test_error(dbcst->dbc->c_close(dbcst->dbc));
     dbcst->dbc = NULL;
     return Qtrue;
@@ -55,9 +59,10 @@ bdb_cursor_del(obj)
 {
     int flags = 0;
     bdb_DBC *dbcst;
+    bdb_DB *dbst;
     
     rb_secure(4);
-    GetCursorDB(obj, dbcst);
+    GetCursorDB(obj, dbcst, dbst);
     bdb_test_error(dbcst->dbc->c_del(dbcst->dbc, flags));
     return Qtrue;
 }
@@ -73,15 +78,16 @@ bdb_cursor_dup(argc, argv, obj)
     int ret, flags = 0;
     VALUE a, b;
     bdb_DBC *dbcst, *dbcstdup;
+    bdb_DB *dbst;
     DBC *dbcdup;
     
     if (rb_scan_args(argc, argv, "01", &a))
         flags = NUM2INT(a);
-    GetCursorDB(obj, dbcst);
+    GetCursorDB(obj, dbcst, dbst);
     bdb_test_error(dbcst->dbc->c_dup(dbcst->dbc, &dbcdup, flags));
     b = Data_Make_Struct(bdb_cCursor, bdb_DBC, 0, bdb_cursor_free, dbcstdup);
     dbcstdup->dbc = dbcdup;
-    dbcstdup->dbst = dbcst->dbst;
+    dbcstdup->db = dbcst->db;
     return b;
 }
 
@@ -101,9 +107,10 @@ bdb_cursor_count(obj)
     DBT key_o, data_o;
 #endif
     bdb_DBC *dbcst;
+    bdb_DB *dbst;
     db_recno_t count;
 
-    GetCursorDB(obj, dbcst);
+    GetCursorDB(obj, dbcst, dbst);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1
     bdb_test_error(dbcst->dbc->c_count(dbcst->dbc, &count, 0));
     return INT2NUM(count);
@@ -116,7 +123,7 @@ bdb_cursor_count(obj)
     memset(&data_o, 0, sizeof(data_o));
     key_o.flags |= DB_DBT_MALLOC;
     data_o.flags |= DB_DBT_MALLOC;
-    set_partial(dbcst->dbst, data);
+    set_partial(dbst, data);
     ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key_o, &data_o, DB_CURRENT));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return INT2NUM(0);
@@ -126,7 +133,7 @@ bdb_cursor_count(obj)
 	if (ret == DB_NOTFOUND) {
 	    bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key_o, &data_o, DB_SET));
 
-	    free_key(dbcst->dbst, key_o);
+	    free_key(dbst, key_o);
 	    free(data_o.data);
 	    return INT2NUM(count);
 	}
@@ -150,15 +157,16 @@ bdb_cursor_get(argc, argv, obj)
     int flags, cnt, ret;
     DBT key, data;
     bdb_DBC *dbcst;
+    bdb_DB *dbst;
     db_recno_t recno;
 
     cnt = rb_scan_args(argc, argv, "12", &a, &b, &c);
     flags = NUM2INT(a);
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
-    GetCursorDB(obj, dbcst);
+    GetCursorDB(obj, dbcst, dbst);
     if (flags == DB_SET_RECNO) {
-	if (dbcst->dbst->type != DB_BTREE || !(dbcst->dbst->flags & DB_RECNUM)) {
+	if (dbst->type != DB_BTREE || !(dbst->flags & DB_RECNUM)) {
 	    rb_raise(bdb_eFatal, "database must be Btree with RECNUM for SET_RECNO");
 	}
         if (cnt != 2)
@@ -172,15 +180,15 @@ bdb_cursor_get(argc, argv, obj)
     else if (flags == DB_SET || flags == DB_SET_RANGE) {
         if (cnt != 2)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbcst->dbst, key, recno, b);
+        test_recno(dbst, key, recno, b);
 	data.flags |= DB_DBT_MALLOC;
     }
 #if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
     else if (flags == DB_GET_BOTH) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbcst->dbst, key, recno, b);
-        test_dump(dbcst->dbst, data, c);
+        test_recno(dbst, key, recno, b);
+        test_dump(dbst, data, c);
     }
 #endif
     else {
@@ -190,11 +198,11 @@ bdb_cursor_get(argc, argv, obj)
 	key.flags |= DB_DBT_MALLOC;
 	data.flags |= DB_DBT_MALLOC;
     }
-    set_partial(dbcst->dbst, data);
+    set_partial(dbst, data);
     ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qnil;
-    return bdb_assoc(dbcst->dbst, recno, key, data);
+    return bdb_assoc_dyna(dbcst->db, key, data);
 }
 
 static VALUE
@@ -256,92 +264,6 @@ bdb_cursor_next_dup(obj)
     return bdb_cursor_xxx(obj, DB_NEXT_DUP);
 }
 
-struct iea_st {
-    VALUE cursor;
-    VALUE key;
-    VALUE ret;
-    int assoc;
-};
-
-static VALUE
-bdb_i_each_dup_ensure(iea)
-    struct iea_st *iea;
-{
-    return bdb_cursor_close(iea->cursor);
-}
-
-static VALUE
-bdb_i_each_dup(iea)
-    struct iea_st *iea;
-{
-    VALUE res;
-    
-    res = bdb_cursor_set(iea->cursor, iea->key);
-    if (res == Qnil) return Qnil;
-    if (!iea->assoc) {
-	res = RARRAY(res)->ptr[1];
-    }
-    if (iea->ret != Qnil) {
-	rb_ary_push(iea->ret, res);
-    }
-    else {
-	rb_yield(res);
-	    
-    }
-    while ((res = bdb_cursor_next_dup(iea->cursor)) != Qnil) {
-	if (!iea->assoc) {
-	    res = RARRAY(res)->ptr[1];
-	}
-	if (iea->ret != Qnil) {
-	    rb_ary_push(iea->ret, res);
-	}
-	else {
-	    rb_yield(res);
-	}
-    }
-    return Qtrue;
-}
-
-static VALUE
-bdb_common_dups(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
-{
-    VALUE a, b, ret;
-    struct iea_st iea;
-
-    iea.assoc = 1;
-    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
-	iea.assoc = RTEST(b);
-    }
-    iea.ret = Qnil;
-    if (!rb_block_given_p()) {
-	iea.ret = rb_ary_new();
-    }
-    iea.cursor = bdb_cursor(obj);
-    iea.key = a;
-    rb_ensure(bdb_i_each_dup, (VALUE)&iea, bdb_i_each_dup_ensure, (VALUE)&iea);
-    if (!rb_block_given_p()) return iea.ret;
-    return obj;
-}
-
-static VALUE
-bdb_common_each_dup(obj, a)
-    VALUE obj, a;
-{
-    return bdb_common_dups(1, &a, obj);
-}
-
-static VALUE
-bdb_common_each_dup_val(obj, a)
-    VALUE obj, a;
-{
-    VALUE tmp[2];
-    tmp[0] = a;
-    tmp[1] = Qfalse;
-    return bdb_common_dups(2, tmp, obj);
-}
-
 #endif
 
 static VALUE
@@ -381,6 +303,7 @@ bdb_cursor_put(argc, argv, obj)
     int flags, cnt;
     DBT key, data;
     bdb_DBC *dbcst;
+    bdb_DB *dbst;
     VALUE a, b, c, f;
     db_recno_t recno;
     int ret;
@@ -389,23 +312,23 @@ bdb_cursor_put(argc, argv, obj)
     memset(&key, 0, sizeof(key));
     memset(&data, 0, sizeof(data));
     cnt = rb_scan_args(argc, argv, "21", &a, &b, &c);
-    GetCursorDB(obj, dbcst);
+    GetCursorDB(obj, dbcst, dbst);
     flags = NUM2INT(c);
     if (flags & (DB_KEYFIRST | DB_KEYLAST)) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbcst->dbst, key, recno, b);
-        test_dump(dbcst->dbst, data, c);
+        test_recno(dbst, key, recno, b);
+        test_dump(dbst, data, c);
 	f = c;
     }
     else {
-        test_dump(dbcst->dbst, data, b);
+        test_dump(dbst, data, b);
 	f = b;
     }
-    set_partial(dbcst->dbst, data);
+    set_partial(dbst, data);
     ret = bdb_test_error(dbcst->dbc->c_put(dbcst->dbc, &key, &data, flags));
     if (cnt == 3) {
-	free_key(dbcst->dbst, key);
+	free_key(dbst, key);
     }
     if (data.flags & DB_DBT_MALLOC)
 	free(data.data);
@@ -413,7 +336,7 @@ bdb_cursor_put(argc, argv, obj)
 	return Qfalse;
     }
     else {
-	if (dbcst->dbst->partial) {
+	if (dbst->partial) {
 	    return bdb_cursor_current(obj);
 	}
 	else {
@@ -426,12 +349,6 @@ void bdb_init_cursor()
 {
     rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, 0);
     rb_define_method(bdb_cCommon, "cursor", bdb_cursor, 0);
-#if DB_VERSION_MAJOR == 3
-    rb_define_method(bdb_cCommon, "each_dup", bdb_common_each_dup, 1);
-    rb_define_method(bdb_cCommon, "each_dup_value", bdb_common_each_dup_val, 1);
-    rb_define_method(bdb_cCommon, "dups", bdb_common_dups, -1);
-    rb_define_method(bdb_cCommon, "duplicates", bdb_common_dups, -1);
-#endif
     bdb_cCursor = rb_define_class_under(bdb_mDb, "Cursor", rb_cObject);
     rb_undef_method(CLASS_OF(bdb_cCursor), "new");
     rb_define_method(bdb_cCursor, "close", bdb_cursor_close, 0);

@@ -3,6 +3,14 @@ $LOAD_PATH.unshift *%w{../src src tests}
 require 'bdb'
 require 'runit_'
 
+module BDB
+   class BTCompare < Btree
+      def bdb_bt_compare(a, b)
+	 a <=> b
+      end
+   end
+end
+
 def clean
    Dir.foreach('tmp') do |x|
       if FileTest.file?("tmp/#{x}")
@@ -75,6 +83,19 @@ class TestBtree < RUNIT::TestCase
 	 arr << x
       end
       assert_equal(array, arr.sort, "<reverse order>")
+      arr = []
+      $bdb.each_value("d") do |x|
+	 arr << x
+      end
+      assert_equal(array - ["a", "b", "c"], arr.sort, "<order>")
+      arr = []
+      $bdb.reverse_each_value("g") do |x|
+	 arr << x
+      end
+      assert_equal(array - ["h", "i"], arr.sort, "<reverse order>")
+      arr = $bdb.reject {|k, v| k == "e" || v == "i" }
+      has = array.reject {|k, v| k == "e" || k == "i" }
+      assert_equal(has, arr.keys.sort, "<reject>")
    end
    def test_05_reopen
       assert_equal(nil, $bdb.close, "<close>")
@@ -95,20 +116,17 @@ class TestBtree < RUNIT::TestCase
       assert_equal("aaa", $bdb["2"] = "aaa", "<set dup>")
       assert_equal("bbb", $bdb["2"] = "bbb", "<set dup>")
       assert_equal("aaaa", $bdb["3"] = "aaaa", "<set dup>")
-      if BDB::VERSION_MAJOR < 3 && BDB::VERSION_MINOR < 6
-	 assert_error(BDB::Fatal, '$bdb.count("0")', "<count dup 0 must fail>")
-	 assert_error(BDB::Fatal, '$bdb.dup("0")', "<dup 0 must fail>")
-      else
+      if BDB::VERSION_MAJOR > 2 || BDB::VERSION_MINOR >= 6
 	 assert_equal(4, $bdb.count("0"), "<count dup 0>")
 	 assert_equal(3, $bdb.count("1"), "<count dup 1>")
 	 assert_equal(2, $bdb.count("2"), "<count dup 2>")
 	 assert_equal(1, $bdb.count("3"), "<count dup 3>")
 	 assert_equal(0, $bdb.count("4"), "<count dup 4>")
-	 assert_equal(["a", "b", "c", "d"], $bdb.dup("0").sort, "<get dup 0>")
-	 assert_equal(["aa", "bb", "cc"], $bdb.dup("1").sort, "<get dup 1>")
-	 assert_equal(["aaa", "bbb"], $bdb.dup("2").sort, "<get dup 2>")
-	 assert_equal(["aaaa"], $bdb.dup("3"), "<get dup 3>")
-	 assert_equal([], $bdb.dup("4"), "<get dup 4>")
+	 assert_equal(["a", "b", "c", "d"], $bdb.get_dup("0").sort, "<get dup 0>")
+	 assert_equal(["aa", "bb", "cc"], $bdb.get_dup("1").sort, "<get dup 1>")
+	 assert_equal(["aaa", "bbb"], $bdb.get_dup("2").sort, "<get dup 2>")
+	 assert_equal(["aaaa"], $bdb.get_dup("3"), "<get dup 3>")
+	 assert_equal([], $bdb.get_dup("4"), "<get dup 4>")
       end
    end
    def test_07_in_memory
@@ -252,6 +270,7 @@ class TestBtree < RUNIT::TestCase
       end
       assert_equal(3, $bdb.size, "<size after abort>")
    end
+
    def test_17_txn_commit2
       if BDB::VERSION_MAJOR == 2 && BDB::VERSION_MINOR < 7
 	 $stderr.print "skipping test for this version"
@@ -270,7 +289,78 @@ class TestBtree < RUNIT::TestCase
          assert_fail("<after an commit>")
       end
       assert_equal(6, $bdb.size, "<size after commit>")
+      assert_equal(nil, $bdb.close, "<close>")
    end
+
+   def test_18_btree_delete
+      clean
+      assert_kind_of(BDB::BTCompare, 
+		     $bdb = BDB::BTCompare.open("tmp/aa", nil, "w", 
+					       "set_pagesize" => 1024,
+					       "set_cachesize" => [0, 32 * 1024, 0]),
+		     "<open>")
+      $hash = {}
+      File.foreach("examples/wordtest") do |line|
+	 line.chomp!
+	 $hash[line] = line.reverse
+	 $bdb[line] = line.reverse
+      end
+      $bdb.each do |k, v|
+	 assert_equal($hash[k], v, "<value>")
+      end
+      $bdb.delete_if {|k, v| k[0] == ?a}
+      $hash.delete_if {|k, v| k[0] == ?a}
+      assert_equal($bdb.size, $hash.size, "<size after delete_if>")
+      $bdb.each do |k, v|
+	 assert_equal($hash[k], v, "<value>")
+      end
+   end
+
+   def test_19_index
+      lines = $hash.keys
+      array = []
+      10.times do
+	 h = lines[rand(lines.size - 1)]
+	 array.push h
+	 assert_equal($hash.index(h.reverse), $bdb.index(h.reverse), "<index>")
+      end
+      assert_equal($hash.indexes(array), $bdb.indexes(array), "<indexes>")
+      array.each do |k|
+	 assert($bdb.has_both?(k, k.reverse), "<has both>")
+      end
+   end
+
+   def test_20_convert
+      h = $bdb.to_hash
+      h.each do |k, v|
+	 assert_equal(v, $hash[k], "<to_hash>")
+      end
+      $hash.each do |k, v|
+	 assert_equal(v, h[k], "<to_hash>")
+      end
+      h1 = $hash.to_a
+      h2 = $bdb.to_a
+      assert_equal(h1.size, h2.size, "<equal>")
+      h1.each do |k|
+	 assert(h2.include?(k), "<include>")
+      end
+   end
+      
+
+   if BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 3
+      def test_21_blurb
+	 $bdb.each(nil, 10) do |k, v|
+	    assert_equal($hash[k], v, "<value>")
+	 end
+	 $bdb.each_key(nil, 10) do |k|
+	    assert($hash.key?(k), "<key>")
+	 end
+	 $hash.each_key do |k|
+	    assert($bdb.key?(k), "<key>")
+	 end
+      end
+   end
+
 end
 
 RUNIT::CUI::TestRunner.run(TestBtree.suite)

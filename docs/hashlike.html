@@ -316,38 +316,40 @@ it will return <var>nil</var> if the specified key exist, otherwise <var>true</v
 <p>Removes the association from the key. </p>
 <p>It return the object deleted or <var>nil</var> if the specified
 key don't exist.</p></dd>
-<dt><a name="label:62" id="label:62"><code>delete_if([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "delete_if" -->
-<dt><a name="label:63" id="label:63"><code>reject!([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject!" -->
+<dt><a name="label:62" id="label:62"><code>delete_if([<var>set</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "delete_if" -->
+<dt><a name="label:63" id="label:63"><code>reject!([<var>set</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject!" -->
 <dd>
 <p>Deletes associations if the evaluation of the block returns true. </p>
-<p><a href="#label:107">bulk</a></p></dd>
+<p><a href="#label:107">set</a></p></dd>
 <dt><a name="label:64" id="label:64"><code>duplicates(<var>key</var> [, <var>assoc</var> = <var>true</var>])</code></a></dt><!-- RDLabel: "duplicates" -->
 <dd>
 <p>Return an array of all duplicate associations for <var>key</var></p>
 <p>if <var>assoc</var> is <var>false</var> return only the values.</p></dd>
-<dt><a name="label:65" id="label:65"><code>each([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "each" -->
-<dt><a name="label:66" id="label:66"><code>each_pair([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_pair" -->
+<dt><a name="label:65" id="label:65"><code>each([<var>set</var> [, <var>bulk</var>]]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "each" -->
+<dt><a name="label:66" id="label:66"><code>each_pair([<var>set</var> [, <var>bulk</var>]]) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_pair" -->
 <dd>
 <p>Iterates over associations.</p>
-<p><a href="#label:107">bulk</a></p></dd>
-<dt><a name="label:67" id="label:67"><code>each_dup(<var>key</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup" -->
+<p><a href="#label:107">set</a> <a href="#label:108">bulk</a></p></dd>
+<dt><a name="label:67" id="label:67"><code>each_dup(<var>key</var> [, <var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup" -->
 <dd>
-<p>Iterates over each duplicate associations for <var>key</var></p></dd>
-<dt><a name="label:68" id="label:68"><code>each_dup_value(<var>key</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup_value" -->
+<p>Iterates over each duplicate associations for <var>key</var></p>
+<p><a href="#label:108">bulk</a></p></dd>
+<dt><a name="label:68" id="label:68"><code>each_dup_value(<var>key</var> [, <var>bulk</var>]) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup_value" -->
 <dd>
-<p>Iterates over each duplicate values for <var>key</var></p></dd>
-<dt><a name="label:69" id="label:69"><code>each_key([<var>bulk</var>]) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "each_key" -->
+<p>Iterates over each duplicate values for <var>key</var></p>
+<p><a href="#label:108">bulk</a></p></dd>
+<dt><a name="label:69" id="label:69"><code>each_key([<var>set</var> [, <var>bulk</var>]]) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "each_key" -->
 <dd>
 <p>Iterates over keys. </p>
-<p><a href="#label:107">bulk</a></p></dd>
-<dt><a name="label:70" id="label:70"><code>each_primary { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "each_primary" -->
+<p><a href="#label:107">set</a> <a href="#label:108">bulk</a></p></dd>
+<dt><a name="label:70" id="label:70"><code>each_primary([<var>set</var>]) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "each_primary" -->
 <dd>
 <p>Iterates over secondary indexes and give secondary key, primary key
 and value</p></dd>
-<dt><a name="label:71" id="label:71"><code>each_value([<var>bulk</var>]) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_value" -->
+<dt><a name="label:71" id="label:71"><code>each_value([<var>set</var> [, <var>bulk</var>]]) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_value" -->
 <dd>
 <p>Iterates over values. </p>
-<p><a href="#label:107">bulk</a></p></dd>
+<p><a href="#label:107">set</a> <a href="#label:108">bulk</a></p></dd>
 <dt><a name="label:72" id="label:72"><code>empty?()</code></a></dt><!-- RDLabel: "empty?" -->
 <dd>
 <p>Returns true if the database is empty. </p></dd>
@@ -391,20 +393,23 @@ and value</p></dd>
 <dd>
 <p>Create an hash without the associations if the evaluation of the
 block returns true. </p></dd>
-<dt><a name="label:90" id="label:90"><code>reverse_each { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "reverse_each" -->
-<dt><a name="label:91" id="label:91"><code>reverse_each_pair { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_pair" -->
+<dt><a name="label:90" id="label:90"><code>reverse_each([<var>set</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "reverse_each" -->
+<dt><a name="label:91" id="label:91"><code>reverse_each_pair([<var>set</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_pair" -->
 <dd>
-<p>Iterates over associations in reverse order </p></dd>
-<dt><a name="label:92" id="label:92"><code>reverse_each_key { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_key" -->
+<p>Iterates over associations in reverse order </p>
+<p><a href="#label:107">set</a></p></dd>
+<dt><a name="label:92" id="label:92"><code>reverse_each_key([<var>set</var>]) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_key" -->
 <dd>
-<p>Iterates over keys in reverse order </p></dd>
-<dt><a name="label:93" id="label:93"><code>reverse_each_primary { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_primary" -->
+<p>Iterates over keys in reverse order </p>
+<p><a href="#label:107">set</a></p></dd>
+<dt><a name="label:93" id="label:93"><code>reverse_each_primary([<var>set</var>]) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_primary" -->
 <dd>
-<p>Iterates over secondary indexes in reverse order and give secondary key,
-primary key and value</p></dd>
-<dt><a name="label:94" id="label:94"><code>reverse_each_value { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_value" -->
+<p>Iterates over secondary indexes in reverse order and give secondary
+key, primary key and value</p></dd>
+<dt><a name="label:94" id="label:94"><code>reverse_each_value([<var>set</var>]) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_value" -->
 <dd>
-<p>Iterates over values in reverse order.</p></dd>
+<p>Iterates over values in reverse order.</p>
+<p><a href="#label:107">set</a></p></dd>
 <dt><a name="label:95" id="label:95"><code>set_partial(<var>len</var>, <var>offset</var>)</code></a></dt><!-- RDLabel: "set_partial" -->
 <dd>
 <p>Set the partial value <var>len</var> and <var>offset</var></p></dd>
@@ -438,7 +443,11 @@ primary key and value</p></dd>
 <p>Removes and returns an association from the database.</p></dd>
 </dl>
 <h3><a name="label:106" id="label:106">Remark</a></h3><!-- RDLabel: "Remark" -->
-<h4><a name="label:107" id="label:107">bulk</a></h4><!-- RDLabel: "bulk" -->
+<h4><a name="label:107" id="label:107">set</a></h4><!-- RDLabel: "set" -->
+<p>If the parameter <var>set</var> is given, an initial call will be made
+with the option <var>BDB::SET_RANGE</var> to move the cursor to the specified
+key before iterating.</p>
+<h4><a name="label:108" id="label:108">bulk</a></h4><!-- RDLabel: "bulk" -->
 <p>Only with &gt;= 3.3.11 : if the parameter <var>bulk</var> is given, 
 an application buffer of size <var>bulk * 1024</var> will be used 
 (see "Retrieving records in bulk" in the documentation of BerkeleyDB)</p>

@@ -253,7 +253,7 @@ bdb_env_i_options(obj, db_stobj)
     free(envst->dbenvp);			\
     envst->dbenvp = NULL;
 #else
-#define env_close(envst)				\
+#define env_close(envst)					\
     bdb_test_error(envst->dbenvp->close(envst->dbenvp, 0));	\
     envst->dbenvp = NULL;
 #endif

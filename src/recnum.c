@@ -495,14 +495,14 @@ static VALUE
 bdb_sary_to_a(obj)
     VALUE obj;
 {
-    return bdb_to_a_intern(obj, 0);
+    return bdb_to_type(obj, rb_ary_new(), Qfalse);
 }
 
 static VALUE
 bdb_sary_reverse_m(obj)
     VALUE obj;
 {
-    return bdb_to_a_intern(obj, -1);
+    return bdb_to_type(obj, rb_ary_new(), Qnil);
 }
 
 static VALUE
@@ -537,7 +537,7 @@ bdb_sary_collect_bang(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    return bdb_each_valuec(argc, argv, obj, DB_NEXT, Qtrue);
+    return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qtrue, BDB_ST_VALUE);
 }
 
 static VALUE
@@ -548,7 +548,7 @@ bdb_sary_collect(argc, argv, obj)
     if (!rb_block_given_p()) {
 	return bdb_sary_to_a(obj);
     }
-    return bdb_each_valuec(argc, argv, obj, DB_NEXT, rb_ary_new());
+    return bdb_each_kvc(argc, argv, obj, DB_NEXT, rb_ary_new(), BDB_ST_VALUE);
 }
 
 static VALUE

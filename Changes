@@ -101,3 +101,8 @@
 * BDB::Env#recover && BDB::Txn#discard for >= 3.3.11
 * BDB::Common#each_dup, BDB::Common#each_dup_value, BDB::Common#duplicates
 * BDB::Common#each_primary, BDB::Common#reverse_each_primary 3.3.11
+
+-- 0.2.4
+
+* delegator also for #each, #each_dup, #duplicates, etc
+* #get_dup (without delegator)

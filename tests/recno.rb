@@ -73,6 +73,19 @@ class TestRecno < RUNIT::TestCase
 	 arr << x
       end
       assert_equal(array, arr.sort, "<reverse order>")
+      arr = []
+      $bdb.each_value(4) do |x|
+	 arr << x
+      end
+      assert_equal(array - ["a", "b", "c"], arr.sort, "<order>")
+      arr = []
+      $bdb.reverse_each_value(7) do |x|
+	 arr << x
+      end
+      assert_equal(array - ["h", "i"], arr.sort, "<reverse order>")
+      arr = $bdb.reject {|k, v| k == 5 || v == "i" }
+      has = array.reject {|k| k == "e" || k == "i" }
+      assert_equal(has, arr.values.sort, "<reject>")
    end
    def test_05_reopen
       assert_equal(nil, $bdb.close, "<close>")

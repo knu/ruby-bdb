@@ -95,7 +95,7 @@ typedef struct {
 
 typedef struct {
     DBC *dbc;
-    bdb_DB *dbst;
+    VALUE db;
 } bdb_DBC;
 
 typedef struct {
@@ -131,11 +131,12 @@ struct deleg_class {
 
 #define RECNUM_TYPE(dbst) ((dbst->type == DB_RECNO || dbst->type == DB_QUEUE) || (dbst->type == DB_BTREE && (dbst->flags & DB_RECNUM)))
 
-#define GetCursorDB(obj, dbcst)			\
+#define GetCursorDB(obj, dbcst, dbst)		\
 {						\
     Data_Get_Struct(obj, bdb_DBC, dbcst);	\
-    if (dbcst->dbc == 0)			\
+    if (dbcst->db == 0)				\
         rb_raise(bdb_eFatal, "closed cursor");	\
+    GetDB(dbcst->db, dbst);			\
 }
 
 #define GetEnvDB(obj, dbenvst)				\
@@ -173,8 +174,8 @@ struct deleg_class {
         else								\
             a = _bdb_tmp_;						\
     }									\
-    key.data = RSTRING(_bdb_tmp_)->ptr;					\
-    key.size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;			\
+    (key).data = RSTRING(_bdb_tmp_)->ptr;				\
+    (key).size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;			\
 }
 
 #define test_recno(dbst, key, recno, a)		\
@@ -205,8 +206,8 @@ struct deleg_class {
 
 #define free_key(dbst, key)					\
 {								\
-    if ((key.flags & DB_DBT_MALLOC) && !RECNUM_TYPE(dbst)) {	\
-	free(key.data);						\
+    if (((key).flags & DB_DBT_MALLOC) && !RECNUM_TYPE(dbst)) {	\
+	free((key).data);					\
     }								\
 }
 
@@ -226,8 +227,8 @@ struct deleg_class {
 
 #define free_key(dbst, key)			\
 {						\
-    if (key.flags & DB_DBT_MALLOC) {		\
-	free(key.data);				\
+    if ((key).flags & DB_DBT_MALLOC) {		\
+	free((key).data);			\
     }						\
 }
 
@@ -244,9 +245,9 @@ struct deleg_class {
 }
 
 #define set_partial(db, data)			\
-    data.flags |= db->partial;			\
-    data.dlen = db->dlen;			\
-    data.doff = db->doff;
+    (data).flags |= db->partial;		\
+    (data).dlen = db->dlen;			\
+    (data).doff = db->doff;
 
 #if DB_VERSION_MAJOR < 3
 #define test_init_lock(dbst) (((dbst)->flags27 & DB_INIT_LOCK)?DB_RMW:0)
@@ -254,6 +255,16 @@ struct deleg_class {
 #define test_init_lock(dbst) (0)
 #endif
 
+#define BDB_ST_KEY    1
+#define BDB_ST_VALUE  2
+#define BDB_ST_KV     3
+#define BDB_ST_DELETE 4
+#define BDB_ST_DUPU   (5 | BDB_ST_DUP)
+#define BDB_ST_DUPKV  (6 | BDB_ST_DUP)
+#define BDB_ST_DUPVAL (7 | BDB_ST_DUP)
+#define BDB_ST_REJECT 8
+#define BDB_ST_DUP    32
+#define BDB_ST_ONE    64
 
 extern VALUE bdb_errstr;
 extern int bdb_errcall;
@@ -266,7 +277,8 @@ extern char *db_strerror _((int));
 #endif
 
 extern void bdb_mark _((bdb_DB *));
-extern VALUE bdb_assoc _((bdb_DB *, int, DBT, DBT));
+extern VALUE bdb_assoc _((bdb_DB *, DBT, DBT));
+extern VALUE bdb_assoc_dyna _((VALUE, DBT, DBT));
 extern VALUE bdb_clear _((VALUE));
 extern VALUE bdb_close _((int, VALUE *, VALUE));
 extern VALUE bdb_del _((VALUE, VALUE));
@@ -287,7 +299,7 @@ extern VALUE bdb_internal_value _((VALUE, VALUE, VALUE, int));
 extern VALUE bdb_put _((int, VALUE *, VALUE));
 extern VALUE bdb_s_new _((int, VALUE *, VALUE));
 extern VALUE bdb_test_load _((bdb_DB *, DBT));
-extern VALUE bdb_to_a_intern _((VALUE, int));
+extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
 extern VALUE bdb_tree_stat _((VALUE));
 extern void bdb_init_env _((void));
 extern void bdb_init_common _((void));
