@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>docs/lock.rd</TITLE>
+</HEAD>
+<BODY>
+<H2><A NAME="label:0">Lock system
+</A></H2><!-- RDLabel: "Lock system" -->
+<P>
+The lock subsystem provides interprocess and intraprocess concurrency
+control mechanisms. While the locking system is used extensively by
+the Berkeley DB access methods and transaction system, it may also be
+used as a stand-alone subsystem to provide concurrency control to any
+set of designated resources.
+</P>
+<P>
+The lock subsystem is created, initialized, and opened by calls to
+<CODE>BDB::Env#open</CODE> with the <VAR>DB_INIT_LOCK</VAR> or 
+<VAR>DB_INIT_CDB</VAR> flags specified. 
+</P>
+<P>
+The following options can be given when the environnement is created
+</P>
+<DL>
+<DT><A NAME="label:4">    <VAR>"lk_conflicts"</VAR>
+</A><!-- RDLabel: ""lk_conflicts"" -->
+<DD>
+<P>
+Set lock conflicts matrix
+</P>
+</DD>
+<DT><A NAME="label:5">    <VAR>"lk_detect"</VAR>
+</A><!-- RDLabel: ""lk_detect"" -->
+<DD>
+<P>
+Set automatic deadlock detection 
+</P>
+</DD>
+<DT><A NAME="label:6">    <VAR>"lk_max"</VAR>
+</A><!-- RDLabel: ""lk_max"" -->
+<DD>
+<P>
+Set maximum number of locks
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:1">BDB::Lockid
+</A></H3><!-- RDLabel: "BDB::Lockid" -->
+<P>
+A lock ID can be obtained with <A HREF="env.html#lock_id">BDB::Env#lock_id</A>
+</P>
+<P>
+See also <A HREF="env.html#lock_stat">BDB::Env#lock_stat</A> and
+<A HREF="env.html#lock_detect">BDB::Env#lock_detect</A>
+</P>
+<H4><A NAME="label:2">Methods
+</A></H4><!-- RDLabel: "Methods" -->
+<DL>
+<DT><A NAME="get"><CODE>get(<var>string</var>, <var>mode</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "get" -->
+<DT><A NAME="lock_get"><CODE>lock_get(<var>string</var>, <var>mode</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "lock_get" -->
+<DD>
+<P>
+The lock_get function acquires a lock from the lock table, it return
+an object <VAR>BDB::Lock</VAR>
+</P>
+
+<P>
+<VAR>string</VAR> specifies the object to be locked or released.
+</P>
+
+<P>
+<VAR>mode</VAR> is an index into the environment's lock conflict array
+</P>
+
+<P>
+<VAR>flags</VAR> value must be set to 0 or the value <VAR>BDBD::LOCK_NOWAIT</VAR>
+in this case if a lock cannot be granted because the requested
+lock conflicts with an existing lock, return immediately
+instead of waiting for the lock to become available.
+</P>
+</DD>
+<DT><A NAME="vec"><CODE>vec(<var>array</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "vec" -->
+<DT><A NAME="lock_vec"><CODE>lock_vec(<var>array</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "lock_vec" -->
+<DD>
+<P>
+The <VAR>lock_vec</VAR> function atomically obtains and releases one or more
+locks from the lock table. The <VAR>lock_vec</VAR> function is intended to
+support acquisition or trading of multiple locks under one lock table
+semaphore, as is needed for lock coupling or in multigranularity
+locking for lock escalation.
+</P>
+
+<DL>
+<DT><A NAME="label:7">       <VAR>array</VAR> 
+</A><!-- RDLabel: "array" -->
+<DD>
+<P>
+ARRAY of HASH with the following keys
+</P>
+
+<DL>
+<DT><A NAME="label:9">            <VAR>"op"</VAR>  
+</A><!-- RDLabel: ""op"" -->
+<DD>
+<P>
+the operation to be performed, which must be set to one
+of the following values <VAR>BDB::LOCK_GET</VAR>, <VAR>BDB::LOCK_PUT</VAR>,
+<VAR>BDB::LOCK_PUT_ALL</VAR> or <VAR>BDB::LOCK_PUT_OBJ</VAR>
+</P>
+</DD>
+<DT><A NAME="label:10">            <VAR>"obj"</VAR> 
+</A><!-- RDLabel: ""obj"" -->
+<DD>
+<P>
+the object (String) to be locked or released
+</P>
+</DD>
+<DT><A NAME="label:11">            <VAR>"mode"</VAR> 
+</A><!-- RDLabel: ""mode"" -->
+<DD>
+<P>
+is an index into the environment's lock conflict array
+</P>
+</DD>
+<DT><A NAME="label:12">            <VAR>"lock"</VAR> 
+</A><!-- RDLabel: ""lock"" -->
+<DD>
+<P>
+an object <VAR>BDB::Lock</VAR>
+</P>
+</DD>
+</DL>
+</DD>
+<DT><A NAME="label:8">       <VAR>flags</VAR> 
+</A><!-- RDLabel: "flags" -->
+<DD>
+<P>
+value must be set to 0 or the value <VAR>BDBD::LOCK_NOWAIT</VAR>
+in this case if a lock cannot be granted because the requested
+lock conflicts with an existing lock, return immediately
+instead of waiting for the lock to become available.
+</P>
+</DD>
+</DL>
+</DD>
+</DL>
+<H3><A NAME="label:3">BDB::Lock
+</A></H3><!-- RDLabel: "BDB::Lock" -->
+<H4><A NAME="label:2">Methods
+</A></H4><!-- RDLabel: "Methods" -->
+<DL>
+<DT><A NAME="put"><CODE>put()</CODE></A><!-- RDLabel: "put" -->
+<DT><A NAME="lock_put"><CODE>lock_put()</CODE></A><!-- RDLabel: "lock_put" -->
+<DT><A NAME="release"><CODE>release()</CODE></A><!-- RDLabel: "release" -->
+<DT><A NAME="delete"><CODE>delete()</CODE></A><!-- RDLabel: "delete" -->
+<DD>
+<P>
+The <VAR>lock_put</VAR> function releases lock from the lock table. 
+</P>
+</DD>
+</DL>
+
+</BODY>
+</HTML>

@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>docs/cursor.rd</TITLE>
+</HEAD>
+<BODY>
+<H2><A NAME="label:0">Cursor operation
+</A></H2><!-- RDLabel: "Cursor operation" -->
+<P>
+A database cursor is a sequential pointer to the database entries. It
+allows traversal of the database and access to duplicate keyed
+entries.  Cursors are used for operating on collections of records,
+for iterating over a database, and for saving handles to individual
+records, so that they can be modified after they have been read.
+</P>
+<P>
+See also iterators in <A HREF="docs/access.html#each">Acces Methods</A>
+</P>
+<H3><A NAME="label:1">Methods
+</A></H3><!-- RDLabel: "Methods" -->
+<DL>
+<DT><A NAME="close"><CODE>close()</CODE></A><!-- RDLabel: "close" -->
+<DT><A NAME="c_close"><CODE>c_close()</CODE></A><!-- RDLabel: "c_close" -->
+<DD>
+<P>
+Discards the cursor.
+</P>
+</DD>
+<DT><A NAME="count"><CODE>count()</CODE></A><!-- RDLabel: "count" -->
+<DT><A NAME="c_count"><CODE>c_count()</CODE></A><!-- RDLabel: "c_count" -->
+<DD>
+<P>
+Return the count of duplicate
+</P>
+</DD>
+<DT><A NAME="current"><CODE>current()</CODE></A><!-- RDLabel: "current" -->
+<DT><A NAME="c_current"><CODE>c_current()</CODE></A><!-- RDLabel: "c_current" -->
+<DD>
+<P>
+Same than <CODE>get(BDB::CURRENT)</CODE>
+</P>
+</DD>
+<DT><A NAME="del"><CODE>del()</CODE></A><!-- RDLabel: "del" -->
+<DT><A NAME="delete"><CODE>delete()</CODE></A><!-- RDLabel: "delete" -->
+<DT><A NAME="c_del"><CODE>c_del()</CODE></A><!-- RDLabel: "c_del" -->
+<DD>
+<P>
+Deletes the key/data pair currently referenced by the cursor.
+</P>
+</DD>
+<DT><A NAME="dup"><CODE>dup([<var>flags</var>])</CODE></A><!-- RDLabel: "dup" -->
+<DT><A NAME="clone"><CODE>clone([<var>flags</var>])</CODE></A><!-- RDLabel: "clone" -->
+<DT><A NAME="c_dup"><CODE>c_dup([<var>flags</var>])</CODE></A><!-- RDLabel: "c_dup" -->
+<DT><A NAME="c_clone"><CODE>c_clone([<var>flags</var>])</CODE></A><!-- RDLabel: "c_clone" -->
+<DD>
+<P>
+Creates new cursor that uses the same transaction and locker ID as
+the original cursor. This is useful when an application is using
+locking and requires two or more cursors in the same thread of
+control.
+</P>
+
+<P>
+<VAR>flags</VAR> can have the value <VAR>BDB::DB_POSITION</VAR>, in this case the
+newly created cursor is initialized to reference the same position in
+the database as the original cursor and hold the same locks.
+</P>
+</DD>
+<DT><A NAME="first"><CODE>first()</CODE></A><!-- RDLabel: "first" -->
+<DT><A NAME="c_first"><CODE>c_first()</CODE></A><!-- RDLabel: "c_first" -->
+<DD>
+<P>
+Same than <CODE>get(BDB::FIRST)</CODE>
+</P>
+</DD>
+<DT><A NAME="get"><CODE>get(<var>flags</var> [, <var>key</var> [, <var>value</var>]])</CODE></A><!-- RDLabel: "get" -->
+<DT><A NAME="c_get"><CODE>c_get(<var>flags</var> [, <var>key</var> [, <var>value</var>]])</CODE></A><!-- RDLabel: "c_get" -->
+<DD>
+<P>
+Retrieve key/data pair from the database
+</P>
+
+<P>
+See the description of <CODE>c_get</CODE> in the Berkeley distribution
+for the different values of the <VAR>flags</VAR> parameter.
+</P>
+
+<P>
+<VAR>key</VAR> must be given if the <VAR>flags</VAR> parameter is 
+<VAR>BDB::SET</VAR> | <VAR>BDB::SET_RANGE</VAR> | <VAR>BDB::SET_RECNO</VAR>
+</P>
+
+<P>
+<VAR>key</VAR> and <VAR>value</VAR> must be specified for <VAR>BDB::GET_BOTH</VAR>
+</P>
+</DD>
+<DT><A NAME="last"><CODE>last()</CODE></A><!-- RDLabel: "last" -->
+<DT><A NAME="c_last"><CODE>c_last()</CODE></A><!-- RDLabel: "c_last" -->
+<DD>
+<P>
+Same than <CODE>get(BDB::LAST)</CODE>
+</P>
+</DD>
+<DT><A NAME="next"><CODE>next()</CODE></A><!-- RDLabel: "next" -->
+<DT><A NAME="c_next"><CODE>c_next()</CODE></A><!-- RDLabel: "c_next" -->
+<DD>
+<P>
+Same than <CODE>get(BDB::NEXT)</CODE>
+</P>
+</DD>
+<DT><A NAME="prev"><CODE>prev()</CODE></A><!-- RDLabel: "prev" -->
+<DT><A NAME="c_prev"><CODE>c_prev()</CODE></A><!-- RDLabel: "c_prev" -->
+<DD>
+<P>
+Same than <CODE>get(BDB::PREV)</CODE>
+</P>
+</DD>
+<DT><A NAME="put"><CODE>put(<var>flags</var>, <var>value</var>)</CODE></A><!-- RDLabel: "put" -->
+<DT><A NAME="c_put"><CODE>c_put(<var>flags</var>, <var>value</var>)</CODE></A><!-- RDLabel: "c_put" -->
+<DD>
+<P>
+Stores data value into the database.
+</P>
+
+<P>
+See the description of <CODE>c_put</CODE> in the Berkeley distribution
+for the different values of the <VAR>flags</VAR> parameter.
+</P>
+</DD>
+<DT><A NAME="put"><CODE>put(<var>flags</var>, <var>key</var>, <var>value</var>)</CODE></A><!-- RDLabel: "put" -->
+<DT><A NAME="c_put"><CODE>c_put(<var>flags</var>, <var>key</var>, <var>value</var>)</CODE></A><!-- RDLabel: "c_put" -->
+<DD>
+<P>
+Stores key/data pairs into the database (only for Btree and Hash
+access methods)
+</P>
+
+<P>
+<VAR>flags</VAR> must have the value <VAR>BDB::KEYFIRST</VAR> or
+<VAR>BDB::KEYLAST</VAR>
+</P>
+</DD>
+<DT><A NAME="set"><CODE>set(<var>key</var>)</CODE></A><!-- RDLabel: "set" -->
+<DT><A NAME="c_set"><CODE>c_set(<var>key</var>)</CODE></A><!-- RDLabel: "c_set" -->
+<DT><A NAME="set_range"><CODE>set_range(<var>key</var>)</CODE></A><!-- RDLabel: "set_range" -->
+<DT><A NAME="c_set_range"><CODE>c_set_range(<var>key</var>)</CODE></A><!-- RDLabel: "c_set_range" -->
+<DT><A NAME="set_recno"><CODE>set_recno(<var>key</var>)</CODE></A><!-- RDLabel: "set_recno" -->
+<DT><A NAME="c_set_recno"><CODE>c_set_recno(<var>key</var>)</CODE></A><!-- RDLabel: "c_set_recno" -->
+<DD>
+<P>
+Same than <CODE>get</CODE> with the flags <VAR>BDB::SET</VAR> or <VAR>BDB::SET_RANGE</VAR>
+or <VAR>BDB::SET_RECNO</VAR>
+</P>
+</DD>
+</DL>
+
+</BODY>
+</HTML>

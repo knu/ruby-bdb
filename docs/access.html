@@ -1,0 +1,471 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>docs/access.rd</TITLE>
+</HEAD>
+<BODY>
+<H2><A NAME="label:0">Acces Methods
+</A></H2><!-- RDLabel: "Acces Methods" -->
+<P>
+These are the common methods for <VAR>BDB::Btree</VAR>, <VAR>BDB::Hash</VAR>,
+<VAR>BDB::Recno</VAR> and <VAR>BDB::Queue</VAR>
+</P>
+<UL>
+<LI><P>
+<A HREF="#label:1">Class Methods</A>
+</P>
+<LI><P>
+<A HREF="#label:2">Methods</A>
+</P>
+</UL>
+<H3><A NAME="label:1">Class Methods
+</A></H3><!-- RDLabel: "Class Methods" -->
+<DL>
+<DT><A NAME="create"><CODE>create([<var>name</var>, <var>subname</var>, <var>flags</var>, <var>mode</var>, <var>options</var>])</CODE></A><!-- RDLabel: "create" -->
+<DT><A NAME="new"><CODE>new([<var>name</var>, <var>subname</var>, <var>flags</var>, <var>mode</var>, <var>options</var>])</CODE></A><!-- RDLabel: "new" -->
+<DT><A NAME="open"><CODE>open([<var>name</var>, <var>subname</var>, <var>flags</var>, <var>mode</var>, <var>options</var>])</CODE></A><!-- RDLabel: "open" -->
+<DD>
+<P>
+open the database
+</P>
+
+<DL>
+<DT><A NAME="label:3">         <VAR>name</VAR>
+</A><!-- RDLabel: "name" -->
+<DD>
+<P>
+The argument name is used as the name of a single physical
+file on disk that will be used to back the database.
+</P>
+</DD>
+<DT><A NAME="label:4">         <VAR>subname</VAR>
+</A><!-- RDLabel: "subname" -->
+<DD>
+<P>
+The subname argument allows applications to have
+subdatabases, i.e., multiple databases inside of a single physical
+file. This is useful when the logical databases are both
+numerous and reasonably small, in order to avoid creating a large
+number of underlying files. It is an error to attempt to open a
+subdatabase in a database file that was not initially
+created using a subdatabase name.
+</P>
+</DD>
+<DT><A NAME="label:5">         <VAR>flags</VAR>
+</A><!-- RDLabel: "flags" -->
+<DD>
+<P>
+The flags value must be set to 0 or by bitwise inclusively
+OR'ing together one or more of the following values
+</P>
+
+<DL>
+<DT><A NAME="label:7">             <VAR>BDB::CREATE</VAR>
+</A><!-- RDLabel: "BDB::CREATE" -->
+<DD>
+<P>
+Create any underlying files, as necessary. If the files
+do not already exist and the DB_CREATE flag is not
+specified, the call will fail. 
+</P>
+</DD>
+<DT><A NAME="label:8">             <VAR>BD::EXCL</VAR>
+</A><!-- RDLabel: "BD::EXCL" -->
+<DD>
+<P>
+Return an error if the database already exists. Underlying
+filesystem primitives are used to implement this
+flag. For this reason it is only applicable to the
+physical database file and cannot be used to test if a
+subdatabase already exists. 
+</P>
+</DD>
+<DT><A NAME="label:9">             <VAR>BDB::NOMMAP</VAR>
+</A><!-- RDLabel: "BDB::NOMMAP" -->
+<DD>
+<P>
+Do not map this database into process memory.
+</P>
+</DD>
+<DT><A NAME="label:10">             <VAR>BDB::RDONLY</VAR>
+</A><!-- RDLabel: "BDB::RDONLY" -->
+<DD>
+<P>
+Open the database for reading only. Any attempt to
+modify items in the database will fail regardless of the
+actual permissions of any underlying files. 
+</P>
+</DD>
+<DT><A NAME="label:11">             <VAR>BDB::TRUNCATE</VAR>
+</A><!-- RDLabel: "BDB::TRUNCATE" -->
+<DD>
+<P>
+Physically truncate the underlying database file,
+discarding all previous subdatabases or databases.
+Underlying filesystem primitives are used to implement
+this flag. For this reason it is only applicable to the
+physical database file and cannot be used to discard
+subdatabases.
+</P>
+
+<P>
+The DB_TRUNCATE flag cannot be transaction protected,
+and it is an error to specify it in a transaction
+protected environment. 
+</P>
+</DD>
+</DL>
+</DD>
+<DT><A NAME="label:6">         <VAR>options</VAR>
+</A><!-- RDLabel: "options" -->
+<DD>
+<P>
+Hash, Possible options are (see the documentation of Berkeley DB
+for more informations) 
+</P>
+
+<DL>
+<DT><A NAME="label:12">             <VAR>set_bt_minkey</VAR>
+</A><!-- RDLabel: "set_bt_minkey" -->
+<DD>
+<P>
+set the minimum number of keys per Btree page
+</P>
+</DD>
+<DT><A NAME="label:13">             <VAR>set_cachesize</VAR>
+</A><!-- RDLabel: "set_cachesize" -->
+<DD>
+<P>
+set the database cache size
+</P>
+</DD>
+<DT><A NAME="label:14">             <VAR>set_flags</VAR>
+</A><!-- RDLabel: "set_flags" -->
+<DD>
+<P>
+general database configuration
+</P>
+</DD>
+<DT><A NAME="label:15">             <VAR>set_h_ffactor</VAR>
+</A><!-- RDLabel: "set_h_ffactor" -->
+<DD>
+<P>
+set the Hash table density
+</P>
+</DD>
+<DT><A NAME="label:16">             <VAR>set_h_nelem</VAR>
+</A><!-- RDLabel: "set_h_nelem" -->
+<DD>
+<P>
+set the Hash table size
+</P>
+</DD>
+<DT><A NAME="label:17">             <VAR>set_lorder</VAR>
+</A><!-- RDLabel: "set_lorder" -->
+<DD>
+<P>
+set the database byte order
+</P>
+</DD>
+<DT><A NAME="label:18">             <VAR>set_pagesize</VAR>
+</A><!-- RDLabel: "set_pagesize" -->
+<DD>
+<P>
+set the underlying database page size
+</P>
+</DD>
+<DT><A NAME="label:19">             <VAR>set_re_delim</VAR>
+</A><!-- RDLabel: "set_re_delim" -->
+<DD>
+<P>
+set the variable-length record delimiter
+</P>
+</DD>
+<DT><A NAME="label:20">             <VAR>set_re_len</VAR>
+</A><!-- RDLabel: "set_re_len" -->
+<DD>
+<P>
+set the fixed-length record length
+</P>
+</DD>
+<DT><A NAME="label:21">             <VAR>set_re_pad</VAR>
+</A><!-- RDLabel: "set_re_pad" -->
+<DD>
+<P>
+set the fixed-length record pad byte
+</P>
+</DD>
+<DT><A NAME="label:22">             <VAR>set_re_source</VAR>
+</A><!-- RDLabel: "set_re_source" -->
+<DD>
+<P>
+set the backing Recno text file
+</P>
+</DD>
+<DT><A NAME="label:23">             <VAR>env</VAR>
+</A><!-- RDLabel: "env" -->
+<DD>
+<P>
+open the database in the environnement given as the value
+</P>
+</DD>
+<DT><A NAME="label:24">             <VAR>txn</VAR>
+</A><!-- RDLabel: "txn" -->
+<DD>
+<P>
+open the database in the transaction given as the value
+</P>
+</DD>
+</DL>
+</DD>
+</DL>
+</DD>
+<DT><A NAME="db_remove"><CODE>db_remove(<var>name</var> [, <var>subname</var>])</CODE></A><!-- RDLabel: "db_remove" -->
+<DT><A NAME="remove"><CODE>remove(<var>name</var> [, <var>subname</var>])</CODE></A><!-- RDLabel: "remove" -->
+<DT><A NAME="unlink"><CODE>unlink(<var>name</var> [,<var>subname</var>])</CODE></A><!-- RDLabel: "unlink" -->
+<DD>
+<P>
+Removes the database (or subdatabase) represented by the
+name and subname combination.
+</P>
+
+<P>
+If no subdatabase is specified, the physical file represented by name
+is removed, incidentally removing all subdatabases that it contained.
+</P>
+</DD>
+<DT><A NAME="db_upgrade"><CODE>db_upgrade(<var>name</var>)</CODE></A><!-- RDLabel: "db_upgrade" -->
+<DT><A NAME="upgrade"><CODE>upgrade(<var>name</var>)</CODE></A><!-- RDLabel: "upgrade" -->
+<DD>
+<P>
+Upgrade the database
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:2">Methods
+</A></H3><!-- RDLabel: "Methods" -->
+<DL>
+<DT><A NAME="self[key]"><CODE>self[key]</CODE></A><!-- RDLabel: "self[key]" -->
+<DD>
+<P>
+Returns the value corresponding the <VAR>key</VAR>
+</P>
+</DD>
+<DT><A NAME="db_get"><CODE>db_get(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "db_get" -->
+<DT><A NAME="get"><CODE>get(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "get" -->
+<DD>
+<P>
+Returns the value correspondind the <VAR>key</VAR>
+</P>
+
+<P>
+<VAR>flags</VAR> can have the values <VAR>BDB::GET_BOTH</VAR>, <VAR>BDB::SET_RECNO</VAR>
+or <VAR>BDB::RMW</VAR>
+</P>
+</DD>
+<DT><A NAME="self[key]"><CODE>self[key] = <var>value</var></CODE></A><!-- RDLabel: "self[key]" -->
+<DD>
+<P>
+Stores the <VAR>value</VAR> associating with <VAR>key</VAR>
+</P>
+
+<P>
+If <VAR>nil</VAR> is given as the value, the association from the key will be
+removed. 
+</P>
+</DD>
+<DT><A NAME="db_put"><CODE>db_put(<var>key</var>, <var>value</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "db_put" -->
+<DT><A NAME="put"><CODE>put(<var>key</var>, <var>value</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "put" -->
+<DD>
+<P>
+Stores the <VAR>value</VAR> associating with <VAR>key</VAR>
+</P>
+
+<P>
+If <VAR>nil</VAR> is given as the value, the association from the <VAR>key</VAR>
+will be removed. It return the object deleted or <VAR>nil</VAR> if the
+specified key don't exist.
+</P>
+
+<P>
+<VAR>flags</VAR> can have the value <VAR>DBD::NOOVERWRITE</VAR>, in this case
+it will return <VAR>nil</VAR> if the specified key exist, otherwise <VAR>true</VAR>
+</P>
+</DD>
+<DT><A NAME="append"><CODE>append(<var>key</var>, <var>value</var>)</CODE></A><!-- RDLabel: "append" -->
+<DT><A NAME="db_append"><CODE>db_append(<var>key</var>, <var>value</var>)</CODE></A><!-- RDLabel: "db_append" -->
+<DD>
+<P>
+Append the <VAR>value</VAR> associating with <VAR>key</VAR>
+</P>
+</DD>
+<DT><A NAME="byteswapped?"><CODE>byteswapped?</CODE></A><!-- RDLabel: "byteswapped?" -->
+<DT><A NAME="get_byteswapped"><CODE>get_byteswapped</CODE></A><!-- RDLabel: "get_byteswapped" -->
+<DD>
+<P>
+Return if the underlying database is in host order
+</P>
+</DD>
+<DT><A NAME="clear_partial"><CODE>clear_partial</CODE></A><!-- RDLabel: "clear_partial" -->
+<DD>
+<P>
+Clear partial set.
+</P>
+</DD>
+<DT><A NAME="close"><CODE>close([<var>flags</var>])</CODE></A><!-- RDLabel: "close" -->
+<DT><A NAME="db_close"><CODE>db_close([<var>flags</var>])</CODE></A><!-- RDLabel: "db_close" -->
+<DD>
+<P>
+Closes the file.
+</P>
+</DD>
+<DT><A NAME="count"><CODE>count(<var>key</var>)</CODE></A><!-- RDLabel: "count" -->
+<DD>
+<P>
+Return the count of duplicate for <VAR>key</VAR>
+</P>
+</DD>
+<DT><A NAME="cursor"><CODE>cursor()</CODE></A><!-- RDLabel: "cursor" -->
+<DT><A NAME="db_cursor"><CODE>db_cursor()</CODE></A><!-- RDLabel: "db_cursor" -->
+<DD>
+<P>
+Open a new cursor.
+</P>
+</DD>
+<DT><A NAME="delete"><CODE>delete(<var>key</var>)</CODE></A><!-- RDLabel: "delete" -->
+<DT><A NAME="db_del"><CODE>db_del(<var>key</var>)</CODE></A><!-- RDLabel: "db_del" -->
+<DD>
+<P>
+Removes the association from the key. 
+</P>
+
+<P>
+It return the object deleted or <VAR>nil</VAR> if the specified
+key don't exist.
+</P>
+</DD>
+<DT><A NAME="delete_if"><CODE>delete_if { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "delete_if" -->
+<DD>
+<P>
+Deletes associations if the evaluation of the block returns true. 
+</P>
+</DD>
+<DT><A NAME="each"><CODE>each { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "each" -->
+<DT><A NAME="each_pair"><CODE>each_pair { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "each_pair" -->
+<DD>
+<P>
+Iterates over associations. 
+</P>
+</DD>
+<DT><A NAME="each_key"><CODE>each_key { |<var>key</var>| ... }</CODE></A><!-- RDLabel: "each_key" -->
+<DD>
+<P>
+Iterates over keys. 
+</P>
+</DD>
+<DT><A NAME="each_value"><CODE>each_value { |<var>value</var>| ... }</CODE></A><!-- RDLabel: "each_value" -->
+<DD>
+<P>
+Iterates over values. 
+</P>
+</DD>
+<DT><A NAME="empty?"><CODE>empty?()</CODE></A><!-- RDLabel: "empty?" -->
+<DD>
+<P>
+Returns true if the database is empty. 
+</P>
+</DD>
+<DT><A NAME="has_key?"><CODE>has_key?(<var>key</var>)</CODE></A><!-- RDLabel: "has_key?" -->
+<DT><A NAME="key?"><CODE>key?(<var>key</var>)</CODE></A><!-- RDLabel: "key?" -->
+<DT><A NAME="include?"><CODE>include?(<var>key</var>)</CODE></A><!-- RDLabel: "include?" -->
+<DD>
+<P>
+Returns true if the association from the <VAR>key</VAR> exists.
+</P>
+</DD>
+<DT><A NAME="has_both?"><CODE>has_both?(<var>key</var>, <var>value</var>)</CODE></A><!-- RDLabel: "has_both?" -->
+<DT><A NAME="both?"><CODE>both?(<var>key</var>, <var>value</var>)</CODE></A><!-- RDLabel: "both?" -->
+<DD>
+<P>
+Returns true if the association from <VAR>key</VAR> is <VAR>value</VAR> 
+</P>
+</DD>
+<DT><A NAME="has_value?"><CODE>has_value?(<var>value</var>)</CODE></A><!-- RDLabel: "has_value?" -->
+<DT><A NAME="value?"><CODE>value?(<var>value</var>)</CODE></A><!-- RDLabel: "value?" -->
+<DD>
+<P>
+Returns true if the association to the <VAR>value</VAR> exists. 
+</P>
+</DD>
+<DT><A NAME="join"><CODE>join(<var>cursor</var> [, <var>flag</var>]) { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "join" -->
+<DD>
+<P>
+Perform a join. <VAR>cursor</VAR> is an array of <VAR>BDB::Cursor</VAR>
+</P>
+</DD>
+<DT><A NAME="keys"><CODE>keys</CODE></A><!-- RDLabel: "keys" -->
+<DD>
+<P>
+Returns the array of the keys in the database
+</P>
+</DD>
+<DT><A NAME="length"><CODE>length</CODE></A><!-- RDLabel: "length" -->
+<DT><A NAME="size"><CODE>size</CODE></A><!-- RDLabel: "size" -->
+<DD>
+<P>
+Returns the number of association in the database.
+</P>
+</DD>
+<DT><A NAME="reverse_each"><CODE>reverse_each { |<var>key</var>, <var>value</var>} ... }</CODE></A><!-- RDLabel: "reverse_each" -->
+<DT><A NAME="reverse_each_pair"><CODE>reverse_each_pair { |<var>key</var>, <var>value</var>} ... }</CODE></A><!-- RDLabel: "reverse_each_pair" -->
+<DD>
+<P>
+Iterates over associations in reverse order 
+</P>
+</DD>
+<DT><A NAME="reverse_each_key"><CODE>reverse_each_key { |<var>key</var>| ... }</CODE></A><!-- RDLabel: "reverse_each_key" -->
+<DD>
+<P>
+Iterates over keys in reverse order 
+</P>
+</DD>
+<DT><A NAME="reverse_each_value"><CODE>reverse_each_value { |<var>value</var>| ... }</CODE></A><!-- RDLabel: "reverse_each_value" -->
+<DD>
+<P>
+Iterates over values in reverse order.
+</P>
+</DD>
+<DT><A NAME="set_partial"><CODE>set_partial(<var>len</var>, <var>offset</var>)</CODE></A><!-- RDLabel: "set_partial" -->
+<DD>
+<P>
+Set the partial value <VAR>len</VAR> and <VAR>offset</VAR>
+</P>
+</DD>
+<DT><A NAME="shift"><CODE>shift</CODE></A><!-- RDLabel: "shift" -->
+<DD>
+<P>
+Removes and returns an association from the database. 
+</P>
+</DD>
+<DT><A NAME="stat"><CODE>stat</CODE></A><!-- RDLabel: "stat" -->
+<DD>
+<P>
+Return database statistics.
+</P>
+</DD>
+<DT><A NAME="to_a"><CODE>to_a</CODE></A><!-- RDLabel: "to_a" -->
+<DD>
+<P>
+Return an array of all associations [key, value]
+</P>
+</DD>
+<DT><A NAME="values"><CODE>values</CODE></A><!-- RDLabel: "values" -->
+<DD>
+<P>
+Returns the array of the values in the database.
+</P>
+</DD>
+</DL>
+
+</BODY>
+</HTML>

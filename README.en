@@ -1,0 +1,46 @@
+
+ This is an interface to Berkeley DB, distributed by Sleepycat
+ (http://www.sleepycat.com/)
+
+* Prerequisite
+
+  db >= 2 (some functionnality like join are not available with db < 2.6)
+
+* Installation
+ 
+   ruby extconf.rb
+   make
+   make install
+ 
+ You may need to specify :
+
+  --with-db-include-dir=<include file directory for bdb>
+
+  --with-db-lib-dir=<library directory for bdb>
+
+  --with-db-prefix=<prefix for library and include of bdb>
+
+ Example :
+ 
+  ruby extconf.rb --with-db-prefix=/home/ts/local
+
+* examples 
+
+  examples/basic.rb        simple access method
+  examples/recno.rb        access to flat file
+  examples/cursor.rb       direct cursor access
+  examples/txn.rb          transaction
+  examples/join.rb         join (need db >= 2.6)
+
+
+* Documentation : see bdb.rd and bdb.html
+ 
+* Copying
+ 
+ This extension module is copyrighted free software by Guy Decoux
+ 
+ You can redistribute it and/or modify it under the same term as
+ Ruby.
+ 
+ 
+Guy Decoux <ts@moulon.inra.fr>
