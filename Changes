@@ -130,3 +130,10 @@
 * set_{txn,lock,}timeout
 * options for Env::begin
 * corrected a stupid bug introduced in 0.2.6
+
+-- 0.2.8
+
+* corrected stat for winxx
+* accept 'extend Marshal'
+* corrected bug with gc (test_dump)
+* protected against old class

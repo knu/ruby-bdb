@@ -112,7 +112,7 @@ static VALUE bdb_deleg_to_hash(obj) DELEG_0(rb_intern("to_hash"))
 static VALUE bdb_deleg_to_io(obj)   DELEG_0(rb_intern("to_io"))
 static VALUE bdb_deleg_to_proc(obj) DELEG_0(rb_intern("to_proc"))
 
-static VALUE
+VALUE
 bdb_deleg_to_orig(obj)
     VALUE obj;
 {
@@ -127,6 +127,32 @@ bdb_deleg_orig(obj)
 {
     return obj;
 }
+
+static VALUE
+bdb_deleg_dump(obj, limit)
+    VALUE obj, limit;
+{
+    struct deleg_class *delegst;
+    bdb_DB *dbst;
+    Data_Get_Struct(obj, struct deleg_class, delegst);
+    Data_Get_Struct(delegst->db, bdb_DB, dbst);
+    return rb_funcall(dbst->marshal, rb_intern("dump"), 1, delegst->obj);
+}
+
+static VALUE
+bdb_deleg_load(obj, str)
+    VALUE obj, str;
+{
+    bdb_DB *dbst;
+
+    if ((obj = rb_thread_local_aref(rb_thread_current(), id_current_db)) == Qnil) {
+	rb_raise(bdb_eFatal, "BUG : current_db not set");
+    }
+    Data_Get_Struct(obj, bdb_DB, dbst);
+    return rb_funcall(dbst->marshal, rb_intern("load"), 1, str);
+}
+
+
 
 void bdb_init_delegator()
 {
@@ -157,6 +183,8 @@ void bdb_init_delegator()
     rb_define_method(bdb_cDelegate, "to_hash", bdb_deleg_to_hash, 0);
     rb_define_method(bdb_cDelegate, "to_io", bdb_deleg_to_io, 0);
     rb_define_method(bdb_cDelegate, "to_proc", bdb_deleg_to_proc, 0);
+    rb_define_method(bdb_cDelegate, "_dump", bdb_deleg_dump, 1);
+    rb_define_singleton_method(bdb_cDelegate, "_load", bdb_deleg_load, 1);
     /* don't use please */
     rb_define_method(bdb_cDelegate, "to_orig", bdb_deleg_to_orig, 0);
     rb_define_method(rb_mKernel, "to_orig", bdb_deleg_orig, 0);

@@ -141,7 +141,7 @@ bdb_env_log_stat(argc, argv, obj)
     int argc;
     VALUE obj, *argv;
 {
-    DB_LOG_STAT *stat;
+    DB_LOG_STAT *bdb_stat;
     bdb_ENV *dbenvst;
     VALUE res, b;
     int flags;
@@ -154,57 +154,57 @@ bdb_env_log_stat(argc, argv, obj)
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
-    bdb_test_error(log_stat(dbenvst->dbenvp->lg_info, &stat, 0));
+    bdb_test_error(log_stat(dbenvst->dbenvp->lg_info, &bdb_stat, 0));
 #else
 #if DB_VERSION_MAJOR >= 4
     flags = 0;
     if (rb_scan_args(argc, argv, "01", &b) == 1) {
 	flags = NUM2INT(b);
     }
-    bdb_test_error(dbenvst->dbenvp->log_stat(dbenvst->dbenvp, &stat, flags));
+    bdb_test_error(dbenvst->dbenvp->log_stat(dbenvst->dbenvp, &bdb_stat, flags));
 #else
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
 #if DB_VERSION_MINOR < 3
-    bdb_test_error(log_stat(dbenvst->dbenvp, &stat, 0));
+    bdb_test_error(log_stat(dbenvst->dbenvp, &bdb_stat, 0));
 #else
-    bdb_test_error(log_stat(dbenvst->dbenvp, &stat));
+    bdb_test_error(log_stat(dbenvst->dbenvp, &bdb_stat));
 #endif
 #endif
 #endif
     res = rb_hash_new();
-    rb_hash_aset(res, rb_tainted_str_new2("st_magic"), INT2NUM(stat->st_magic));
-    rb_hash_aset(res, rb_tainted_str_new2("st_version"), INT2NUM(stat->st_version));
-    rb_hash_aset(res, rb_tainted_str_new2("st_regsize"), INT2NUM(stat->st_regsize));
-    rb_hash_aset(res, rb_tainted_str_new2("st_mode"), INT2NUM(stat->st_mode));
+    rb_hash_aset(res, rb_tainted_str_new2("st_magic"), INT2NUM(bdb_stat->st_magic));
+    rb_hash_aset(res, rb_tainted_str_new2("st_version"), INT2NUM(bdb_stat->st_version));
+    rb_hash_aset(res, rb_tainted_str_new2("st_regsize"), INT2NUM(bdb_stat->st_regsize));
+    rb_hash_aset(res, rb_tainted_str_new2("st_mode"), INT2NUM(bdb_stat->st_mode));
 #if DB_VERSION_MAJOR < 3
-    rb_hash_aset(res, rb_tainted_str_new2("st_refcnt"), INT2NUM(stat->st_refcnt));
+    rb_hash_aset(res, rb_tainted_str_new2("st_refcnt"), INT2NUM(bdb_stat->st_refcnt));
 #else
-    rb_hash_aset(res, rb_tainted_str_new2("st_lg_bsize"), INT2NUM(stat->st_lg_bsize));
+    rb_hash_aset(res, rb_tainted_str_new2("st_lg_bsize"), INT2NUM(bdb_stat->st_lg_bsize));
 #endif
-    rb_hash_aset(res, rb_tainted_str_new2("st_lg_max"), INT2NUM(stat->st_lg_max));
-    rb_hash_aset(res, rb_tainted_str_new2("st_w_mbytes"), INT2NUM(stat->st_w_mbytes));
-    rb_hash_aset(res, rb_tainted_str_new2("st_w_bytes"), INT2NUM(stat->st_w_bytes));
-    rb_hash_aset(res, rb_tainted_str_new2("st_wc_mbytes"), INT2NUM(stat->st_wc_mbytes));
-    rb_hash_aset(res, rb_tainted_str_new2("st_wc_bytes"), INT2NUM(stat->st_wc_bytes));
-    rb_hash_aset(res, rb_tainted_str_new2("st_wcount"), INT2NUM(stat->st_wcount));
+    rb_hash_aset(res, rb_tainted_str_new2("st_lg_max"), INT2NUM(bdb_stat->st_lg_max));
+    rb_hash_aset(res, rb_tainted_str_new2("st_w_mbytes"), INT2NUM(bdb_stat->st_w_mbytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_w_bytes"), INT2NUM(bdb_stat->st_w_bytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wc_mbytes"), INT2NUM(bdb_stat->st_wc_mbytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wc_bytes"), INT2NUM(bdb_stat->st_wc_bytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wcount"), INT2NUM(bdb_stat->st_wcount));
 #if DB_VERSION_MAJOR >= 3
-    rb_hash_aset(res, rb_tainted_str_new2("st_wcount_fill"), INT2NUM(stat->st_wcount_fill));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wcount_fill"), INT2NUM(bdb_stat->st_wcount_fill));
 #endif
-    rb_hash_aset(res, rb_tainted_str_new2("st_scount"), INT2NUM(stat->st_scount));
-    rb_hash_aset(res, rb_tainted_str_new2("st_cur_file"), INT2NUM(stat->st_cur_file));
-    rb_hash_aset(res, rb_tainted_str_new2("st_cur_offset"), INT2NUM(stat->st_cur_offset));
-    rb_hash_aset(res, rb_tainted_str_new2("st_region_wait"), INT2NUM(stat->st_region_wait));
-    rb_hash_aset(res, rb_tainted_str_new2("st_region_nowait"), INT2NUM(stat->st_region_nowait));
+    rb_hash_aset(res, rb_tainted_str_new2("st_scount"), INT2NUM(bdb_stat->st_scount));
+    rb_hash_aset(res, rb_tainted_str_new2("st_cur_file"), INT2NUM(bdb_stat->st_cur_file));
+    rb_hash_aset(res, rb_tainted_str_new2("st_cur_offset"), INT2NUM(bdb_stat->st_cur_offset));
+    rb_hash_aset(res, rb_tainted_str_new2("st_region_wait"), INT2NUM(bdb_stat->st_region_wait));
+    rb_hash_aset(res, rb_tainted_str_new2("st_region_nowait"), INT2NUM(bdb_stat->st_region_nowait));
 #if DB_VERSION_MAJOR >= 4
-    rb_hash_aset(res, rb_tainted_str_new2("st_disk_file"), INT2NUM(stat->st_disk_file));
-    rb_hash_aset(res, rb_tainted_str_new2("st_disk_offset"), INT2NUM(stat->st_disk_offset));
-    rb_hash_aset(res, rb_tainted_str_new2("st_flushcommit"), INT2NUM(stat->st_flushcommit));
-    rb_hash_aset(res, rb_tainted_str_new2("st_maxcommitperflush"), INT2NUM(stat->st_maxcommitperflush));
-    rb_hash_aset(res, rb_tainted_str_new2("st_mincommitperflush"), INT2NUM(stat->st_mincommitperflush));
+    rb_hash_aset(res, rb_tainted_str_new2("st_disk_file"), INT2NUM(bdb_stat->st_disk_file));
+    rb_hash_aset(res, rb_tainted_str_new2("st_disk_offset"), INT2NUM(bdb_stat->st_disk_offset));
+    rb_hash_aset(res, rb_tainted_str_new2("st_flushcommit"), INT2NUM(bdb_stat->st_flushcommit));
+    rb_hash_aset(res, rb_tainted_str_new2("st_maxcommitperflush"), INT2NUM(bdb_stat->st_maxcommitperflush));
+    rb_hash_aset(res, rb_tainted_str_new2("st_mincommitperflush"), INT2NUM(bdb_stat->st_mincommitperflush));
 #endif
-    free(stat);
+    free(bdb_stat);
     return res;
 }
 

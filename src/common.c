@@ -82,6 +82,7 @@ bdb_bt_compare(a, b)
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
     a->flags = b->flags = 0;
+//	rb_warn("icu %d %s", a->size, a->data);
     av = bdb_test_load(dbst, *a);
     bv = bdb_test_load(dbst, *b);
     if (dbst->bt_compare == 0)
@@ -346,14 +347,21 @@ bdb_i_options(obj, dbstobj)
 #endif
     else if (strcmp(options, "marshal") == 0) {
         switch (value) {
-        case Qtrue: dbst->marshal = bdb_mMarshal; break;
-        case Qfalse: dbst->marshal = Qfalse; break;
+        case Qtrue: 
+	    dbst->marshal = bdb_mMarshal; 
+	    dbst->options |= BDB_MARSHAL;
+	    break;
+        case Qfalse: 
+	    dbst->marshal = Qfalse; 
+	    dbst->options &= ~BDB_MARSHAL;
+	    break;
         default: 
 	    if (!rb_respond_to(value, id_load) ||
 		!rb_respond_to(value, id_dump)) {
 		rb_raise(bdb_eFatal, "marshal value must be true or false");
 	    }
 	    dbst->marshal = value;
+	    dbst->options |= BDB_MARSHAL;
 	    break;
         }
     }
@@ -483,21 +491,21 @@ static long
 bdb_is_recnum(dbp)
     DB *dbp;
 {
-    DB_BTREE_STAT *stat;
+    DB_BTREE_STAT *bdb_stat;
     long count, hard;
 
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
 #if DB_VERSION_MINOR >= 3 || DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbp->stat(dbp, &stat, 0));
+    bdb_test_error(dbp->stat(dbp, &bdb_stat, 0));
 #else
-    bdb_test_error(dbp->stat(dbp, &stat, 0, 0));
+    bdb_test_error(dbp->stat(dbp, &bdb_stat, 0, 0));
 #endif
-    count = (stat->bt_nkeys == stat->bt_ndata)?stat->bt_nkeys:-1;
-    free(stat);
+    count = (bdb_stat->bt_nkeys == bdb_stat->bt_ndata)?bdb_stat->bt_nkeys:-1;
+    free(bdb_stat);
 #else
-    bdb_test_error(dbp->stat(dbp, &stat, 0, DB_RECORDCOUNT));
-    count = stat->bt_nrecs;
-    free(stat);
+    bdb_test_error(dbp->stat(dbp, &bdb_stat, 0, DB_RECORDCOUNT));
+    count = bdb_stat->bt_nrecs;
+    free(bdb_stat);
     hard = bdb_hard_count(dbp);
     count = (count == hard)?count:-1;
 #endif
@@ -509,25 +517,25 @@ bdb_recno_length(obj)
     VALUE obj;
 {
     bdb_DB *dbst;
-    DB_BTREE_STAT *stat;
+    DB_BTREE_STAT *bdb_stat;
     VALUE hash;
 
     GetDB(obj, dbst);
 #if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, DB_FAST_STAT));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, DB_FAST_STAT));
 #else
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, DB_RECORDCOUNT));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, DB_RECORDCOUNT));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, DB_RECORDCOUNT));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, DB_RECORDCOUNT));
 #endif
 #endif
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
-    hash = INT2NUM(stat->bt_nkeys);
+    hash = INT2NUM(bdb_stat->bt_nkeys);
 #else
-    hash = INT2NUM(stat->bt_nrecs);
+    hash = INT2NUM(bdb_stat->bt_nrecs);
 #endif
-    free(stat);
+    free(bdb_stat);
     return hash;
 }
 
@@ -636,6 +644,12 @@ bdb_open_common(argc, argv, obj)
 #else
     dbst->dbinfo = &dbinfo;
 #endif
+    if (rb_respond_to(obj, id_load) == Qtrue &&
+	rb_respond_to(obj, id_dump) == Qtrue) {
+	dbst->marshal = obj;
+	dbst->options |= BDB_MARSHAL;
+    }
+
     if (!NIL_P(f)) {
 	if (TYPE(f) != T_HASH) {
 	    rb_raise(bdb_eFatal, "options must be an hash");
@@ -676,7 +690,6 @@ bdb_open_common(argc, argv, obj)
 	    bdb_test_error(dbp->set_h_hash(dbp, bdb_h_hash));
 #endif
     }
-
     if (flags & DB_TRUNCATE) {
 	rb_secure(2);
     }
@@ -1148,6 +1161,7 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
 	    return bdb_has_both_internal(obj, a, b, Qtrue);
 #else
             test_dump(dbst, data, b);
+	    data.flags |= DB_DBT_MALLOC;
 #endif
         }
 	break;
@@ -1705,7 +1719,13 @@ bdb_i_each_kv(st)
 	else
 #endif
 	{
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+	    key.flags |= DB_DBT_MALLOC;
+#endif
 	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_SET_RANGE));
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+	    key.flags &= ~DB_DBT_MALLOC;
+#endif
 	}
 	if (ret == DB_NOTFOUND) {
 	    return Qfalse;
@@ -1720,7 +1740,13 @@ bdb_i_each_kv(st)
 	else
 #endif
 	{
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+	    key.flags |= DB_DBT_MALLOC;
+#endif
 	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, st->sens));
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+	    key.flags &= ~DB_DBT_MALLOC;
+#endif
 	}
         if (ret == DB_NOTFOUND) {
             return Qnil;
@@ -2298,41 +2324,41 @@ bdb_hash_stat(obj)
     VALUE obj;
 {
     bdb_DB *dbst;
-    DB_HASH_STAT *stat;
+    DB_HASH_STAT *bdb_stat;
     VALUE hash;
     int ret;
     GetDB(obj, dbst);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 3
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
 #endif
     hash = rb_hash_new();
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_magic"), INT2NUM(stat->hash_magic));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_version"), INT2NUM(stat->hash_version));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_pagesize"), INT2NUM(stat->hash_pagesize));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_magic"), INT2NUM(bdb_stat->hash_magic));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_version"), INT2NUM(bdb_stat->hash_version));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_pagesize"), INT2NUM(bdb_stat->hash_pagesize));
 #if (DB_VERSION_MAJOR == 3 &&					\
         ((DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14) ||	\
          DB_VERSION_MINOR >= 2)) ||				\
     DB_VERSION_MAJOR >= 4
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_nkeys"), INT2NUM(stat->hash_nkeys));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(stat->hash_nkeys));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_ndata"), INT2NUM(stat->hash_ndata));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_nkeys"), INT2NUM(bdb_stat->hash_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(bdb_stat->hash_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_ndata"), INT2NUM(bdb_stat->hash_ndata));
 #else
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(stat->hash_nrecs));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(bdb_stat->hash_nrecs));
 #endif
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_nelem"), INT2NUM(stat->hash_nelem));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_ffactor"), INT2NUM(stat->hash_ffactor));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_buckets"), INT2NUM(stat->hash_buckets));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_free"), INT2NUM(stat->hash_free));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_bfree"), INT2NUM(stat->hash_bfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_bigpages"), INT2NUM(stat->hash_bigpages));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_big_bfree"), INT2NUM(stat->hash_big_bfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_overflows"), INT2NUM(stat->hash_overflows));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_ovfl_free"), INT2NUM(stat->hash_ovfl_free));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_dup"), INT2NUM(stat->hash_dup));
-    rb_hash_aset(hash, rb_tainted_str_new2("hash_dup_free"), INT2NUM(stat->hash_dup_free));
-    free(stat);
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_nelem"), INT2NUM(bdb_stat->hash_nelem));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_ffactor"), INT2NUM(bdb_stat->hash_ffactor));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_buckets"), INT2NUM(bdb_stat->hash_buckets));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_free"), INT2NUM(bdb_stat->hash_free));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_bfree"), INT2NUM(bdb_stat->hash_bfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_bigpages"), INT2NUM(bdb_stat->hash_bigpages));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_big_bfree"), INT2NUM(bdb_stat->hash_big_bfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_overflows"), INT2NUM(bdb_stat->hash_overflows));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_ovfl_free"), INT2NUM(bdb_stat->hash_ovfl_free));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_dup"), INT2NUM(bdb_stat->hash_dup));
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_dup_free"), INT2NUM(bdb_stat->hash_dup_free));
+    free(bdb_stat);
     return hash;
 }
 #endif
@@ -2342,42 +2368,42 @@ bdb_tree_stat(obj)
     VALUE obj;
 {
     bdb_DB *dbst;
-    DB_BTREE_STAT *stat;
+    DB_BTREE_STAT *bdb_stat;
     VALUE hash;
     char pad;
 
     GetDB(obj, dbst);
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
 #endif
     hash = rb_hash_new();
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_magic"), INT2NUM(stat->bt_magic));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_version"), INT2NUM(stat->bt_version));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_dup_pg"), INT2NUM(stat->bt_dup_pg));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_dup_pgfree"), INT2NUM(stat->bt_dup_pgfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_free"), INT2NUM(stat->bt_free));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_int_pg"), INT2NUM(stat->bt_int_pg));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_int_pgfree"), INT2NUM(stat->bt_int_pgfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_leaf_pg"), INT2NUM(stat->bt_leaf_pg));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_leaf_pgfree"), INT2NUM(stat->bt_leaf_pgfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_levels"), INT2NUM(stat->bt_levels));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_minkey"), INT2NUM(stat->bt_minkey));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_magic"), INT2NUM(bdb_stat->bt_magic));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_version"), INT2NUM(bdb_stat->bt_version));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_dup_pg"), INT2NUM(bdb_stat->bt_dup_pg));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_dup_pgfree"), INT2NUM(bdb_stat->bt_dup_pgfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_free"), INT2NUM(bdb_stat->bt_free));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_int_pg"), INT2NUM(bdb_stat->bt_int_pg));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_int_pgfree"), INT2NUM(bdb_stat->bt_int_pgfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_leaf_pg"), INT2NUM(bdb_stat->bt_leaf_pg));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_leaf_pgfree"), INT2NUM(bdb_stat->bt_leaf_pgfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_levels"), INT2NUM(bdb_stat->bt_levels));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_minkey"), INT2NUM(bdb_stat->bt_minkey));
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_nrecs"), INT2NUM(stat->bt_nkeys));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_nkeys"), INT2NUM(stat->bt_nkeys));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_ndata"), INT2NUM(stat->bt_ndata));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_nrecs"), INT2NUM(bdb_stat->bt_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_nkeys"), INT2NUM(bdb_stat->bt_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_ndata"), INT2NUM(bdb_stat->bt_ndata));
 #else
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_nrecs"), INT2NUM(stat->bt_nrecs));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_nrecs"), INT2NUM(bdb_stat->bt_nrecs));
 #endif
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_over_pg"), INT2NUM(stat->bt_over_pg));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_over_pgfree"), INT2NUM(stat->bt_over_pgfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_pagesize"), INT2NUM(stat->bt_pagesize));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_re_len"), INT2NUM(stat->bt_re_len));
-    pad = (char)stat->bt_re_pad;
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_over_pg"), INT2NUM(bdb_stat->bt_over_pg));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_over_pgfree"), INT2NUM(bdb_stat->bt_over_pgfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_pagesize"), INT2NUM(bdb_stat->bt_pagesize));
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_re_len"), INT2NUM(bdb_stat->bt_re_len));
+    pad = (char)bdb_stat->bt_re_pad;
     rb_hash_aset(hash, rb_tainted_str_new2("bt_re_pad"), rb_tainted_str_new(&pad, 1));
-    free(stat);
+    free(bdb_stat);
     return hash;
 }
 
@@ -2387,41 +2413,41 @@ bdb_queue_stat(obj)
     VALUE obj;
 {
     bdb_DB *dbst;
-    DB_QUEUE_STAT *stat;
+    DB_QUEUE_STAT *bdb_stat;
     VALUE hash;
     char pad;
 
     GetDB(obj, dbst);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 3
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
 #endif
     hash = rb_hash_new();
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_magic"), INT2NUM(stat->qs_magic));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_version"), INT2NUM(stat->qs_version));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_magic"), INT2NUM(bdb_stat->qs_magic));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_version"), INT2NUM(bdb_stat->qs_version));
 #if (DB_VERSION_MAJOR == 3 &&					\
         ((DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14) ||	\
          DB_VERSION_MINOR >= 2)) ||				\
     DB_VERSION_MAJOR >= 4
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(stat->qs_nkeys));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_nkeys"), INT2NUM(stat->qs_nkeys));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_ndata"), INT2NUM(stat->qs_ndata));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(bdb_stat->qs_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_nkeys"), INT2NUM(bdb_stat->qs_nkeys));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_ndata"), INT2NUM(bdb_stat->qs_ndata));
 #else
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(stat->qs_nrecs));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(bdb_stat->qs_nrecs));
 #endif
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_pages"), INT2NUM(stat->qs_pages));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_pagesize"), INT2NUM(stat->qs_pagesize));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_pgfree"), INT2NUM(stat->qs_pgfree));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_re_len"), INT2NUM(stat->qs_re_len));
-    pad = (char)stat->qs_re_pad;
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_pages"), INT2NUM(bdb_stat->qs_pages));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_pagesize"), INT2NUM(bdb_stat->qs_pagesize));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_pgfree"), INT2NUM(bdb_stat->qs_pgfree));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_re_len"), INT2NUM(bdb_stat->qs_re_len));
+    pad = (char)bdb_stat->qs_re_pad;
     rb_hash_aset(hash, rb_tainted_str_new2("qs_re_pad"), rb_tainted_str_new(&pad, 1));
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 2
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_start"), INT2NUM(stat->qs_start));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_start"), INT2NUM(bdb_stat->qs_start));
 #endif
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_first_recno"), INT2NUM(stat->qs_first_recno));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_cur_recno"), INT2NUM(stat->qs_cur_recno));
-    free(stat);
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_first_recno"), INT2NUM(bdb_stat->qs_first_recno));
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_cur_recno"), INT2NUM(bdb_stat->qs_cur_recno));
+    free(bdb_stat);
     return hash;
 }
 
@@ -2430,19 +2456,19 @@ bdb_queue_padlen(obj)
     VALUE obj;
 {
     bdb_DB *dbst;
-    DB_QUEUE_STAT *stat;
+    DB_QUEUE_STAT *bdb_stat;
     VALUE hash;
     char pad;
 
     GetDB(obj, dbst);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 3
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
 #else
-    bdb_test_error(dbst->dbp->stat(dbst->dbp, &stat, 0));
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
 #endif
-    pad = (char)stat->qs_re_pad;
-    hash = rb_assoc_new(rb_tainted_str_new(&pad, 1), INT2NUM(stat->qs_re_len));
-    free(stat);
+    pad = (char)bdb_stat->qs_re_pad;
+    hash = rb_assoc_new(rb_tainted_str_new(&pad, 1), INT2NUM(bdb_stat->qs_re_len));
+    free(bdb_stat);
     return hash;
 }
 #endif

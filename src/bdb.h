@@ -15,7 +15,7 @@
 #endif
 
 #define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
-#define BDB_NEED_CURRENT (BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH)
+#define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH)
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
 #define DB_RMW 0
@@ -47,6 +47,8 @@ extern VALUE bdb_mMarshal;
 
 extern ID id_dump, id_load;
 extern ID id_current_db;
+
+extern VALUE bdb_deleg_to_orig _((VALUE));
 
 typedef struct  {
     int no_thread;
@@ -176,7 +178,13 @@ struct dblsnst {
     int _bdb_is_nil = 0;						\
     VALUE _bdb_tmp_;							\
     if (dbst->marshal) {						\
-        _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, a);		\
+        if (rb_obj_is_kind_of(a, bdb_cDelegate)) {			\
+	    _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump,		\
+				   1, bdb_deleg_to_orig(a));		\
+	}								\
+        else {								\
+           _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, a);	\
+        }								\
         if (TYPE(_bdb_tmp_) != T_STRING) {				\
 	    rb_raise(rb_eTypeError, "dump() must return String");	\
 	}								\
@@ -188,7 +196,11 @@ struct dblsnst {
         else								\
             a = _bdb_tmp_;						\
     }									\
-    (key).data = RSTRING(_bdb_tmp_)->ptr;				\
+    (key).data = ALLOCA_N(char,						\
+			  RSTRING(_bdb_tmp_)->len + _bdb_is_nil + 1);	\
+    MEMCPY((key).data, RSTRING(_bdb_tmp_)->ptr, char,			\
+			  RSTRING(_bdb_tmp_)->len + _bdb_is_nil + 1);	\
+    (key).flags &= ~DB_DBT_MALLOC;					\
     (key).size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;			\
 }
 

@@ -138,6 +138,10 @@ Init_bdb()
 {
     int major, minor, patch;
     VALUE version;
+
+    if (rb_const_defined_at(rb_cObject, rb_intern("BDB"))) {
+	rb_raise(rb_eNameError, "class already defined");
+    }
     version = rb_tainted_str_new2(db_version(&major, &minor, &patch));
     if (major != DB_VERSION_MAJOR || minor != DB_VERSION_MINOR
 	|| patch != DB_VERSION_PATCH) {

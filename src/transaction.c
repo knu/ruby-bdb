@@ -441,7 +441,7 @@ bdb_env_stat(argc, argv, obj)
 {
     bdb_ENV *dbenvst;
     VALUE a, b;
-    DB_TXN_STAT *stat;
+    DB_TXN_STAT *bdb_stat;
     int flags;
 
 #if DB_VERSION_MAJOR >= 4
@@ -459,31 +459,31 @@ bdb_env_stat(argc, argv, obj)
     if (dbenvst->dbenvp->tx_info == NULL) {
 	rb_raise(bdb_eFatal, "Transaction Manager not enabled");
     }
-    bdb_test_error(txn_stat(dbenvst->dbenvp->tx_info, &stat, malloc));
+    bdb_test_error(txn_stat(dbenvst->dbenvp->tx_info, &bdb_stat, malloc));
 #else
 #if DB_VERSION_MAJOR >= 4
-    bdb_test_error(dbenvst->dbenvp->txn_stat(dbenvst->dbenvp, &stat, flags));
+    bdb_test_error(dbenvst->dbenvp->txn_stat(dbenvst->dbenvp, &bdb_stat, flags));
 #else
 #if DB_VERSION_MINOR < 3
-    bdb_test_error(txn_stat(dbenvst->dbenvp, &stat, malloc));
+    bdb_test_error(txn_stat(dbenvst->dbenvp, &bdb_stat, malloc));
 #else
-    bdb_test_error(txn_stat(dbenvst->dbenvp, &stat));
+    bdb_test_error(txn_stat(dbenvst->dbenvp, &bdb_stat));
 #endif
 #endif
 #endif
     a = rb_hash_new();
-    rb_hash_aset(a, rb_tainted_str_new2("st_time_ckp"), INT2NUM(stat->st_time_ckp));
-    rb_hash_aset(a, rb_tainted_str_new2("st_last_txnid"), INT2NUM(stat->st_last_txnid));
-    rb_hash_aset(a, rb_tainted_str_new2("st_maxtxns"), INT2NUM(stat->st_maxtxns));
-    rb_hash_aset(a, rb_tainted_str_new2("st_naborts"), INT2NUM(stat->st_naborts));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nbegins"), INT2NUM(stat->st_nbegins));
-    rb_hash_aset(a, rb_tainted_str_new2("st_ncommits"), INT2NUM(stat->st_ncommits));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nactive"), INT2NUM(stat->st_nactive));
+    rb_hash_aset(a, rb_tainted_str_new2("st_time_ckp"), INT2NUM(bdb_stat->st_time_ckp));
+    rb_hash_aset(a, rb_tainted_str_new2("st_last_txnid"), INT2NUM(bdb_stat->st_last_txnid));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxtxns"), INT2NUM(bdb_stat->st_maxtxns));
+    rb_hash_aset(a, rb_tainted_str_new2("st_naborts"), INT2NUM(bdb_stat->st_naborts));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nbegins"), INT2NUM(bdb_stat->st_nbegins));
+    rb_hash_aset(a, rb_tainted_str_new2("st_ncommits"), INT2NUM(bdb_stat->st_ncommits));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nactive"), INT2NUM(bdb_stat->st_nactive));
 #if DB_VERSION_MAJOR > 2 
-    rb_hash_aset(a, rb_tainted_str_new2("st_maxnactive"), INT2NUM(stat->st_maxnactive));
-    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(stat->st_regsize));
-    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(stat->st_region_wait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(stat->st_region_nowait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxnactive"), INT2NUM(bdb_stat->st_maxnactive));
+    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(bdb_stat->st_regsize));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(bdb_stat->st_region_wait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(bdb_stat->st_region_nowait));
 #endif
 #if DB_VERSION_MAJOR >= 4
     {
@@ -491,29 +491,29 @@ bdb_env_stat(argc, argv, obj)
 	VALUE obj, ary, hash, lsn;
 	int i;
 
-	rb_hash_aset(a, rb_tainted_str_new2("st_nrestores"), INT2NUM(stat->st_nrestores));
+	rb_hash_aset(a, rb_tainted_str_new2("st_nrestores"), INT2NUM(bdb_stat->st_nrestores));
 	lsn = MakeLsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
-	MEMCPY(lsnst->lsn, &stat->st_last_ckp, DB_LSN, 1);
+	MEMCPY(lsnst->lsn, &bdb_stat->st_last_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_last_ckp"), lsn);
 	lsn = MakeLsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
-	MEMCPY(lsnst->lsn, &stat->st_pending_ckp, DB_LSN, 1);
+	MEMCPY(lsnst->lsn, &bdb_stat->st_pending_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_pending_ckp"), lsn);
-	ary = rb_ary_new2(stat->st_nactive);
-	for (i = 0; i < stat->st_nactive; i++) {
+	ary = rb_ary_new2(bdb_stat->st_nactive);
+	for (i = 0; i < bdb_stat->st_nactive; i++) {
 	    hash = rb_hash_new();
-	    rb_hash_aset(hash, rb_tainted_str_new2("txnid"), INT2NUM(stat->st_txnarray[i].txnid));
-	    rb_hash_aset(hash, rb_tainted_str_new2("parentid"), INT2NUM(stat->st_txnarray[i].parentid));
+	    rb_hash_aset(hash, rb_tainted_str_new2("txnid"), INT2NUM(bdb_stat->st_txnarray[i].txnid));
+	    rb_hash_aset(hash, rb_tainted_str_new2("parentid"), INT2NUM(bdb_stat->st_txnarray[i].parentid));
 	    lsn = MakeLsn(obj);
 	    Data_Get_Struct(lsn, struct dblsnst, lsnst);
-	    MEMCPY(lsnst->lsn, &stat->st_txnarray[i].lsn, DB_LSN, 1);
+	    MEMCPY(lsnst->lsn, &bdb_stat->st_txnarray[i].lsn, DB_LSN, 1);
 	    rb_hash_aset(hash, rb_tainted_str_new2("lsn"), lsn);
 	    rb_ary_push(ary, hash);
 	}
     }
 #endif
-    free(stat);
+    free(bdb_stat);
     return a;
 }
 
