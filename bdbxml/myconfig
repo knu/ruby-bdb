@@ -1,29 +1,29 @@
-XDB = "/ts/db/dbxml-0.4.0"
+XDB = "/ts/db/dbxml-0.5.0"
 
 # directories for cpp
 
 $include = {
-   'db' => ["#{XDB}/lib/db-4.1.16/build_unix", "#{XDB}/lib/db-4.1.16/dbinc"],
+   'db' => ["#{XDB}/lib/db-4.1.24/build_unix", "#{XDB}/lib/db-4.1.24/dbinc"],
    'dbxml' => "#{XDB}/include",
    'antlr' => "#{XDB}/lib/antlr-2.7.1/lib/cpp",
-   'dbg' => "#{XDB}/lib/dbg-1.07",
-   'expat' => "#{XDB}/lib/expat-1.95.2/lib",
+#   'dbg' => "#{XDB}/lib/dbg-1.07",
+   'expat' => "#{XDB}/lib/expat-1.95.4/lib",
    'pathan' => "#{XDB}/lib/libpathan-1.1/include",
-   'xerces' => "#{XDB}/lib/xerces-c-src1_7_0/include"
+   'xerces' => "#{XDB}/lib/xerces-c-src2_1_0/include"
 }
 
 # [directory, library] for ld
 
 $library = {
-   'db' => ["#{XDB}/lib/db-4.1.16/build_unix/.libs", ["db-4.1", "db_cxx-4.1"]],
+   'db' => ["#{XDB}/lib/db-4.1.24/build_unix/.libs", ["db-4.1", "db_cxx-4.1"]],
    'dbxml' => ["#{XDB}/build_unix", "dbxml-1.0"],
    'antlr' => ["#{XDB}/lib/antlr-2.7.1/lib/cpp/src/.libs", "antlr"],
-   'dbg' => [],
-   'expat' => ["#{XDB}/lib/expat-1.95.2/lib/.libs", "expat"],
+#   'dbg' => [],
+   'expat' => ["#{XDB}/lib/expat-1.95.4/lib/.libs", "expat"],
    'pathan' => ["#{XDB}/lib/libpathan-1.1/lib", "pathan"],
-   'xerces' => ["#{XDB}/lib/xerces-c-src1_7_0/lib", "xerces-c1_7_0"]
+   'xerces' => ["#{XDB}/lib/xerces-c-src2_1_0/lib", "xerces-c"]
 }
 
 # order for ld
 
-$order = ['dbxml', 'antlr', 'db', 'dbg', 'expat', 'pathan', 'xerces']
+$order = ['dbxml', 'antlr', 'db', 'expat', 'pathan', 'xerces']

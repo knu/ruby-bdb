@@ -39,6 +39,7 @@ typedef struct {
   VALUE env_val;
   VALUE txn_val;
   VALUE ori_val;
+  VALUE name;
   int closed, flag;
 } xcon;
 
@@ -52,4 +53,9 @@ typedef struct {
   DOM_NodeList *nol;
   VALUE cxt_val;
 } xnol;
+
+typedef struct {
+  XmlDocument *doc;
+  VALUE uri, prefix;
+} xdoc;
 

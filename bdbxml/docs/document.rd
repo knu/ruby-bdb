@@ -39,6 +39,10 @@ Document supports annotation attributes.
 --- encoding
     Return the encoding
 
+--- get(uri = "", attr)
+    Return the value of an attribute. ((|uri|)) specify the namespace
+    where reside the attribute.
+
 --- id
     Return the ID
 
@@ -52,15 +56,25 @@ Document supports annotation attributes.
 --- name=(val)
     Set the name of the document
 
+--- prefix
+    Return the default prefix for the namespace
+
+--- prefix=(val)
+    Set the default prefix used by ((|set|))
+
+--- set(uri = "", prefix = "", attr, value)
+    Set an attribute in the namespace ((|uri|)). ((|prefix|)) is the prefix
+    for the namespace
+
 --- to_s
 --- to_str
     Return the document as a String object
 
---- types
-    Return the type of the document
+--- uri
+    Return the default namespace
 
---- types=(val)
-    Set the type of the document
+--- uri=(val)
+    Set the default namespace used by ((|set|)) and ((|get|))
 
 # end
 # end

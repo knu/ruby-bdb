@@ -73,8 +73,11 @@ directory used will be the current working directory.
     : ((|flags|))
       flags can has the value 0 or ((|BDB::DIRTY_READ|)), ((|BDB::RMW|))
 
---- index(element, index)
+--- index(uri, element, index)
     Declare the indexing required for a particular element type.   
+
+    : ((|uri|))
+      The namespace for the element
 
     : ((|element|))
       The element parameter provides the fully qualified element type
@@ -84,18 +87,23 @@ directory used will be the current working directory.
       The index string is a comma separated list of the following indexing
       strategy names
 
-         : none-none-none-none
-         : node-element-presence-none
-         : node-element-equality-string
-         : node-element-equality-number
-         : node-element-substring-string
-         : edge-element-presence-none
-         : node-attribute-presence-none
-         : node-attribute-equality-string
-         : node-attribute-equality-number
-         : node-attribute-substring-string
-         : edge-attribute-presence-none
-
+         : none-none-none-none 
+         : node-element-presence 
+         : node-attribute-presence 
+         : node-element-equality-string 
+         : node-element-equality-number 
+         : node-element-substring-string 
+         : node-attribute-equality-string 
+         : node-attribute-equality-number 
+         : node-attribute-substring-string 
+         : edge-element-presence 
+         : edge-attribute-presence 
+         : edge-element-equality-string 
+         : edge-element-equality-number 
+         : edge-element-substring-string 
+         : edge-attribute-equality-string 
+         : edge-attribute-equality-number 
+         : edge-attribute-substring-string 
 
 --- initialize(name, flags = 0, mode = 0)
     open the container

@@ -109,132 +109,156 @@ or <var>BDB::XML::Content::Values</var></p>
 <p>flags can has the value 0 or <var>BDB::DIRTY_READ</var>, <var>BDB::RMW</var></p>
 </dd>
 </dl></dd>
-<dt><a name="label:19" id="label:19"><code>index(<var>element</var>, <var>index</var>)</code></a></dt><!-- RDLabel: "index" -->
+<dt><a name="label:19" id="label:19"><code>index(<var>uri</var>, <var>element</var>, <var>index</var>)</code></a></dt><!-- RDLabel: "index" -->
 <dd>
 <p>Declare the indexing required for a particular element type.   </p>
 <dl>
-<dt><a name="label:20" id="label:20"><var>element</var>
+<dt><a name="label:20" id="label:20"><var>uri</var>
+</a></dt><!-- RDLabel: "uri
+" -->
+<dd>
+<p>The namespace for the element</p>
+</dd>
+<dt><a name="label:21" id="label:21"><var>element</var>
 </a></dt><!-- RDLabel: "element
 " -->
 <dd>
 <p>The element parameter provides the fully qualified element type
 to be indexed.</p>
 </dd>
-<dt><a name="label:21" id="label:21"><var>index</var>
+<dt><a name="label:22" id="label:22"><var>index</var>
 </a></dt><!-- RDLabel: "index
 " -->
 <dd>
 <p>The index string is a comma separated list of the following indexing
 strategy names</p>
 <dl>
-<dt><a name="label:22" id="label:22">none-none-none-none
-</a></dt><!-- RDLabel: "none-none-none-none
+<dt><a name="label:23" id="label:23">none-none-none-none 
+</a></dt><!-- RDLabel: "none-none-none-none 
 " -->
-<dt><a name="label:23" id="label:23">node-element-presence-none
-</a></dt><!-- RDLabel: "node-element-presence-none
+<dt><a name="label:24" id="label:24">node-element-presence 
+</a></dt><!-- RDLabel: "node-element-presence 
 " -->
-<dt><a name="label:24" id="label:24">node-element-equality-string
-</a></dt><!-- RDLabel: "node-element-equality-string
+<dt><a name="label:25" id="label:25">node-attribute-presence 
+</a></dt><!-- RDLabel: "node-attribute-presence 
 " -->
-<dt><a name="label:25" id="label:25">node-element-equality-number
-</a></dt><!-- RDLabel: "node-element-equality-number
+<dt><a name="label:26" id="label:26">node-element-equality-string 
+</a></dt><!-- RDLabel: "node-element-equality-string 
 " -->
-<dt><a name="label:26" id="label:26">node-element-substring-string
-</a></dt><!-- RDLabel: "node-element-substring-string
+<dt><a name="label:27" id="label:27">node-element-equality-number 
+</a></dt><!-- RDLabel: "node-element-equality-number 
 " -->
-<dt><a name="label:27" id="label:27">edge-element-presence-none
-</a></dt><!-- RDLabel: "edge-element-presence-none
+<dt><a name="label:28" id="label:28">node-element-substring-string 
+</a></dt><!-- RDLabel: "node-element-substring-string 
 " -->
-<dt><a name="label:28" id="label:28">node-attribute-presence-none
-</a></dt><!-- RDLabel: "node-attribute-presence-none
+<dt><a name="label:29" id="label:29">node-attribute-equality-string 
+</a></dt><!-- RDLabel: "node-attribute-equality-string 
 " -->
-<dt><a name="label:29" id="label:29">node-attribute-equality-string
-</a></dt><!-- RDLabel: "node-attribute-equality-string
+<dt><a name="label:30" id="label:30">node-attribute-equality-number 
+</a></dt><!-- RDLabel: "node-attribute-equality-number 
 " -->
-<dt><a name="label:30" id="label:30">node-attribute-equality-number
-</a></dt><!-- RDLabel: "node-attribute-equality-number
+<dt><a name="label:31" id="label:31">node-attribute-substring-string 
+</a></dt><!-- RDLabel: "node-attribute-substring-string 
 " -->
-<dt><a name="label:31" id="label:31">node-attribute-substring-string
-</a></dt><!-- RDLabel: "node-attribute-substring-string
+<dt><a name="label:32" id="label:32">edge-element-presence 
+</a></dt><!-- RDLabel: "edge-element-presence 
 " -->
-<dt><a name="label:32" id="label:32">edge-attribute-presence-none
-</a></dt><!-- RDLabel: "edge-attribute-presence-none
+<dt><a name="label:33" id="label:33">edge-attribute-presence 
+</a></dt><!-- RDLabel: "edge-attribute-presence 
+" -->
+<dt><a name="label:34" id="label:34">edge-element-equality-string 
+</a></dt><!-- RDLabel: "edge-element-equality-string 
+" -->
+<dt><a name="label:35" id="label:35">edge-element-equality-number 
+</a></dt><!-- RDLabel: "edge-element-equality-number 
+" -->
+<dt><a name="label:36" id="label:36">edge-element-substring-string 
+</a></dt><!-- RDLabel: "edge-element-substring-string 
+" -->
+<dt><a name="label:37" id="label:37">edge-attribute-equality-string 
+</a></dt><!-- RDLabel: "edge-attribute-equality-string 
+" -->
+<dt><a name="label:38" id="label:38">edge-attribute-equality-number 
+</a></dt><!-- RDLabel: "edge-attribute-equality-number 
+" -->
+<dt><a name="label:39" id="label:39">edge-attribute-substring-string 
+</a></dt><!-- RDLabel: "edge-attribute-substring-string 
 " -->
 </dl>
 </dd>
 </dl></dd>
-<dt><a name="label:33" id="label:33"><code>initialize(<var>name</var>, <var>flags</var> = <var>0</var>, <var>mode</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "initialize" -->
+<dt><a name="label:40" id="label:40"><code>initialize(<var>name</var>, <var>flags</var> = <var>0</var>, <var>mode</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "initialize" -->
 <dd>
 <p>open the container</p>
 <dl>
-<dt><a name="label:34" id="label:34"><var>name</var>
+<dt><a name="label:41" id="label:41"><var>name</var>
 </a></dt><!-- RDLabel: "name
 " -->
 <dd>
 <p>see <var>allocate</var></p>
 </dd>
-<dt><a name="label:35" id="label:35"><var>flags</var>
+<dt><a name="label:42" id="label:42"><var>flags</var>
 </a></dt><!-- RDLabel: "flags
 " -->
 <dd>
 <p>The flags must be the string "r", "r+", "w", "w+", "a", "a+" or
 and integer value.</p>
 </dd>
-<dt><a name="label:36" id="label:36"><var>mode</var>
+<dt><a name="label:43" id="label:43"><var>mode</var>
 </a></dt><!-- RDLabel: "mode
 " -->
 <dd>
 <p>mode for creation (see chmod(2))</p>
 </dd>
 </dl></dd>
-<dt><a name="label:37" id="label:37"><code>name</code></a></dt><!-- RDLabel: "name" -->
+<dt><a name="label:44" id="label:44"><code>name</code></a></dt><!-- RDLabel: "name" -->
 <dd>
 <p>return the name of the container</p></dd>
-<dt><a name="label:38" id="label:38"><code>parse(<var>query</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "parse" -->
+<dt><a name="label:45" id="label:45"><code>parse(<var>query</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "parse" -->
 <dd>
 <p>Pre-parse an XPath query and return an <var>BDB::XML::XPath</var> object</p>
 <dl>
-<dt><a name="label:39" id="label:39"><var>query</var>
+<dt><a name="label:46" id="label:46"><var>query</var>
 </a></dt><!-- RDLabel: "query
 " -->
 <dd>
 <p>the XPath query to execute against the container</p>
 </dd>
-<dt><a name="label:40" id="label:40"><var>context</var>
+<dt><a name="label:47" id="label:47"><var>context</var>
 </a></dt><!-- RDLabel: "context
 " -->
 <dd>
 <p>the context within which the query will be executed</p>
 </dd>
 </dl></dd>
-<dt><a name="label:41" id="label:41"><code>push(<var>document</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "push" -->
+<dt><a name="label:48" id="label:48"><code>push(<var>document</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "push" -->
 <dd>
 <p>Add a document to the container and return an ID</p>
 <dl>
-<dt><a name="label:42" id="label:42"><var>document</var>
+<dt><a name="label:49" id="label:49"><var>document</var>
 </a></dt><!-- RDLabel: "document
 " -->
 <dd>
 <p>an object <var>BDB::XML::Document</var> or any object suitable for 
 <var>BDB::XML::Document::new</var></p>
 </dd>
-<dt><a name="label:43" id="label:43"><var>flags</var>
+<dt><a name="label:50" id="label:50"><var>flags</var>
 </a></dt><!-- RDLabel: "flags
 " -->
 <dd>
 <p>flags can be 0 or <var>BDB::AUTO_COMMIT</var></p>
 </dd>
 </dl></dd>
-<dt><a name="label:44" id="label:44"><code>&lt;&lt;(<var>document</var>)</code></a></dt><!-- RDLabel: "<<" -->
+<dt><a name="label:51" id="label:51"><code>&lt;&lt;(<var>document</var>)</code></a></dt><!-- RDLabel: "<<" -->
 <dd>
 <p>Add a document to the container and return <var>self</var></p></dd>
-<dt><a name="label:45" id="label:45"><code>query(<var>xpath</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "query" -->
-<dt><a name="label:46" id="label:46"><code>query(<var>string</var>, <var>context</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "query" -->
+<dt><a name="label:52" id="label:52"><code>query(<var>xpath</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "query" -->
+<dt><a name="label:53" id="label:53"><code>query(<var>string</var>, <var>context</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "query" -->
 <dd>
 <p>Query the container with an XPath expression, which can be an object
 <var>BDB::XML::XPath</var> or a <var>String</var></p>
 <dl>
-<dt><a name="label:47" id="label:47"><var>flags</var>
+<dt><a name="label:54" id="label:54"><var>flags</var>
 </a></dt><!-- RDLabel: "flags
 " -->
 <dd>
@@ -242,10 +266,10 @@ and integer value.</p>
 </dd>
 </dl>
 <p>return a <var>BDB::XML::Results</var> object</p></dd>
-<dt><a name="label:48" id="label:48"><code>remove</code></a></dt><!-- RDLabel: "remove" -->
+<dt><a name="label:55" id="label:55"><code>remove</code></a></dt><!-- RDLabel: "remove" -->
 <dd>
 <p>Remove the container</p></dd>
-<dt><a name="label:49" id="label:49"><code>rename(<var>newname</var>)</code></a></dt><!-- RDLabel: "rename" -->
+<dt><a name="label:56" id="label:56"><code>rename(<var>newname</var>)</code></a></dt><!-- RDLabel: "rename" -->
 <dd>
 <p>Rename the container</p></dd>
 </dl>
