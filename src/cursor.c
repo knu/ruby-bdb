@@ -67,7 +67,7 @@ bdb_cursor_del(obj)
     return Qtrue;
 }
 
-#if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MAJOR >= 3
 
 static VALUE
 bdb_cursor_dup(argc, argv, obj)
@@ -102,7 +102,7 @@ bdb_cursor_count(obj)
 #else
     int ret;
 
-#if !(DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
+#if !((DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4)
     DBT key, data;
     DBT key_o, data_o;
 #endif
@@ -111,7 +111,7 @@ bdb_cursor_count(obj)
     db_recno_t count;
 
     GetCursorDB(obj, dbcst, dbst);
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
     bdb_test_error(dbcst->dbc->c_count(dbcst->dbc, &count, 0));
     return INT2NUM(count);
 #else
@@ -202,7 +202,7 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
 	data.flags |= DB_DBT_MALLOC;
     }
     set_partial(dbst, data);
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
     if (c_pget) {
 	if (dbst->secondary != Qnil) {
 	    rb_raise(bdb_eFatal, "pget must be used with a secondary index");
@@ -231,7 +231,7 @@ bdb_cursor_get(argc, argv, obj)
     return bdb_cursor_get_common(argc, argv, obj, 0);
 }
 
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
 static VALUE
 bdb_cursor_pget(argc, argv, obj)
 {
@@ -289,7 +289,7 @@ bdb_cursor_next(obj)
     return bdb_cursor_xxx(obj, DB_NEXT);
 }
 
-#if DB_VERSION_MAJOR == 3 || DB_VERSION_MINOR >= 6
+#if DB_VERSION_MAJOR >= 3 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
 
 static VALUE
 bdb_cursor_next_dup(obj)
@@ -390,7 +390,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_del", bdb_cursor_del, 0);
     rb_define_method(bdb_cCursor, "del", bdb_cursor_del, 0);
     rb_define_method(bdb_cCursor, "delete", bdb_cursor_del, 0);
-#if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MAJOR >= 3
     rb_define_method(bdb_cCursor, "dup", bdb_cursor_dup, -1);
     rb_define_method(bdb_cCursor, "c_dup", bdb_cursor_dup, -1);
     rb_define_method(bdb_cCursor, "clone", bdb_cursor_dup, -1);
@@ -400,7 +400,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_count", bdb_cursor_count, 0);
     rb_define_method(bdb_cCursor, "get", bdb_cursor_get, -1);
     rb_define_method(bdb_cCursor, "c_get", bdb_cursor_get, -1);
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
     rb_define_method(bdb_cCursor, "pget", bdb_cursor_pget, -1);
     rb_define_method(bdb_cCursor, "c_pget", bdb_cursor_pget, -1);
 #endif
@@ -408,7 +408,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_put", bdb_cursor_put, -1);
     rb_define_method(bdb_cCursor, "c_next", bdb_cursor_next, 0);
     rb_define_method(bdb_cCursor, "next", bdb_cursor_next, 0);
-#if DB_VERSION_MAJOR == 3 || DB_VERSION_MINOR >= 6
+#if DB_VERSION_MAJOR == 3 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
     rb_define_method(bdb_cCursor, "c_next_dup", bdb_cursor_next_dup, 0);
     rb_define_method(bdb_cCursor, "next_dup", bdb_cursor_next_dup, 0);
 #endif

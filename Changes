@@ -118,3 +118,15 @@
 
 * corrected lock_get (Thanks Darrin Thompson <dthompson@characterlink.net>)
 * lock_vec now return always an array with (lockid for GET, nil for PUT)
+
+-- 0.2.7
+
+* corrected an error for Recnum#indexes 
+* corrected Recnum#unshift (length)
+* corrected Recnum#delete_at
+* set_q_extendsize (Queue), set_tx_timestamp
+* support for 4.0
+* replication (not tested)
+* set_{txn,lock,}timeout
+* options for Env::begin
+* corrected a stupid bug introduced in 0.2.6

@@ -59,7 +59,7 @@ class TestLog < RUNIT::TestCase
    def test_06_reinit
       clean
       assert_kind_of(BDB::Env, 
-		     $env = BDB::Env.open("tmp",  BDB::CREATE | BDB::INIT_LOG,
+		     $env = BDB::Env.open("tmp",  BDB::CREATE | BDB::INIT_LOG | BDB::INIT_TXN,
 					  "thread" => false, 
 					  :set_lg_bsize => 10000,
 					  "set_lg_max" => 45000),
@@ -90,9 +90,11 @@ class TestLog < RUNIT::TestCase
    end
 
    def test_09_file
-      log_file = Dir.glob("tmp/log*")
-      $lsn.each do |ls|
-	 assert(log_file.include?(ls.log_file), "<include>")
+      if BDB::VERSION_MAJOR < 4
+	 log_file = Dir.glob("tmp/*")
+	 $lsn.each do |ls|
+	    assert(log_file.include?(ls.log_file), "<include>")
+	 end
       end
    end
 

@@ -123,6 +123,7 @@ bdb_intern_shift_pop(obj, depart, len)
 
     rb_secure(4);
     init_txn(txnid, obj, dbst);
+    MEMZERO(&key, DBT, 1);
     init_recno(dbst, key, recno);
     MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
@@ -428,18 +429,19 @@ bdb_sary_unshift_m(argc, argv, obj)
 	rb_raise(rb_eArgError, "wrong # of arguments(at least 1)");
     }
     if (argc > 0) {
+/* ++ */
 	GetDB(obj, dbst);
 	for (i = dbst->len - 1; i >= 0; i++) {
 	    tmp[0] = INT2NUM(i);
 	    tmp[1] = bdb_get(1, tmp, obj);
 	    tmp[0] = INT2NUM(i + argc);
 	    bdb_put(2, tmp, obj);
-	    dbst->len++;
 	}
 	for (i = 0; i < argc; i++) {
 	    tmp[0] = INT2NUM(i);
 	    tmp[1] = argv[i];
 	    bdb_put(2, tmp, obj);
+	    dbst->len++;
 	}
     }
     return obj;
@@ -484,9 +486,8 @@ bdb_sary_indexes(argc, argv, obj)
 
     indexes = rb_ary_new2(argc);
     for (i = 0; i < argc; i++) {
-	RARRAY(indexes)->ptr[i] = bdb_sary_entry(obj, argv[i]);
+	rb_ary_push(indexes, bdb_sary_entry(obj, argv[i]));
     }
-    RARRAY(indexes)->len = i;
     return indexes;
 }
 
@@ -607,6 +608,7 @@ bdb_sary_delete_at_m(obj, a)
     tmp = INT2NUM(pos);
     del = bdb_get(1, &tmp, obj);
     bdb_del(obj, tmp);
+    dbst->len--;
     return del;
 }
 
@@ -710,29 +712,42 @@ bdb_sary_cmp(obj, obj2)
     VALUE obj, obj2;
 {
     bdb_DB *dbst, *dbst2;
-    VALUE a, a2, tmp;
+    VALUE a, a2, tmp, ary;
     long i, len;
 
     if (obj == obj2) return INT2FIX(0);
-    if (!rb_obj_is_kind_of(obj2, bdb_cRecnum)) {
-	rb_raise(rb_eTypeError, "must be a BDB::Recnum");
-    }
     GetDB(obj, dbst);
-    GetDB(obj2, dbst2);
     len = dbst->len;
-    if (len > dbst2->len) {
-	len = dbst2->len;
+    if (!rb_obj_is_kind_of(obj2, bdb_cRecnum)) {
+	obj2 = rb_convert_type(obj2, T_ARRAY, "Array", "to_ary");
+	if (len > RARRAY(obj2)->len) {
+	    len = RARRAY(obj2)->len;
+	}
+	ary = Qtrue;
+    }
+    else {
+	GetDB(obj2, dbst2);
+	len = dbst->len;
+	if (len > dbst2->len) {
+	    len = dbst2->len;
+	}
+	ary = Qfalse;
     }
     for (i = 0; i < len; i++) {
 	tmp = INT2NUM(i);
 	a = bdb_get(1, &tmp, obj);
-	a2 = bdb_get(1, &tmp, obj2);
+	if (ary) {
+	    a2 = RARRAY(obj2)->ptr[i];
+	}
+	else {
+	    a2 = bdb_get(1, &tmp, obj2);
+	}
 	tmp = rb_funcall(a, id_cmp, 1, a2);
 	if (tmp != INT2FIX(0)) {
 	    return tmp;
 	}
     }
-    len = dbst->len - dbst2->len;
+    len = dbst->len - ary?RARRAY(obj2)->len:dbst2->len;
     if (len == 0) return INT2FIX(0);
     if (len > 0) return INT2FIX(1);
     return INT2FIX(-1);
@@ -938,7 +953,7 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecno, "to_ary", bdb_sary_to_a, 0);
     rb_define_method(bdb_cRecno, "pop", bdb_sary_pop, 0);
     /* QUEUE */
-#if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MAJOR >= 3
     rb_define_method(bdb_cQueue, "to_a", bdb_sary_to_a, 0);
     rb_define_method(bdb_cQueue, "to_ary", bdb_sary_to_a, 0);
 #endif

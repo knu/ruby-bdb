@@ -241,4 +241,24 @@ environment can then be identified by the name of that directory.
 --- stat()
      Return transaction subsystem statistics
 
+=== Only for DB >= 4
+
+--- rep_elect(sites, priority, timeout)
+--- elect(sites, priority, timeout)
+     Holds an election for the master of a replication group, returning the
+     new master's ID
+
+     Raise ((|BDB::RepUnavail|)) if the ((|timeout|)) expires
+
+--- rep_process_message(control, rec, envid)
+--- process_message(control, rec, envid)
+     Processes an incoming replication message sent by a member of the
+     replication group to the local database environment
+
+--- rep_start(cdata, flags)
+--- start(cdata, flags)
+     ((|cdata|)) is an identifier
+     ((|flags|)) must be one of ((|BDB::REP_CLIENT|)), ((|BDB::REP_MASTER|))
+     or ((|BDB::REP_LOGSONLY|))
+
 =end

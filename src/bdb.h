@@ -10,7 +10,7 @@
 #define BDB_DUP_COMPARE 32
 #define BDB_H_HASH 64
 
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
 #define BDB_ERROR_PRIVATE 44444
 #endif
 
@@ -30,11 +30,11 @@ extern VALUE bdb_mDb;
 extern VALUE bdb_cCommon, bdb_cBtree, bdb_cRecnum, bdb_cHash, bdb_cRecno, bdb_cUnknown;
 extern VALUE bdb_cDelegate;
 
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
 extern VALUE bdb_sKeyrange;
 #endif
 
-#if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MAJOR >= 3
 extern VALUE bdb_cQueue;
 #endif
 
@@ -54,9 +54,14 @@ typedef struct  {
     VALUE marshal;
     VALUE db_ary;
     DB_ENV *dbenvp;
-#if DB_VERSION_MAJOR < 3 || DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
-
+#if DB_VERSION_MAJOR < 3 || 					\
+    (DB_VERSION_MAJOR == 3 &&					\
+       (DB_VERSION_MINOR < 1 || 				\
+        (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)))
     u_int32_t fidp;
+#endif
+#if DB_VERSION_MAJOR >= 4
+    VALUE rep_transport;
 #endif
 } bdb_ENV;
 
@@ -125,6 +130,15 @@ struct deleg_class {
     VALUE key;
 };
 
+struct dblsnst {
+    VALUE env;
+    DB_LSN *lsn;
+#if DB_VERSION_MAJOR >= 4
+    DB_LOGC *cursor;
+    int flags;
+#endif
+};
+
 #if DB_VERSION_MAJOR < 3
 #define DB_QUEUE DB_RECNO
 #endif
@@ -161,7 +175,6 @@ struct deleg_class {
 {									\
     int _bdb_is_nil = 0;						\
     VALUE _bdb_tmp_;							\
-    MEMZERO(&(key), DBT, 1);						\
     if (dbst->marshal) {						\
         _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, a);		\
         if (TYPE(_bdb_tmp_) != T_STRING) {				\
@@ -181,7 +194,6 @@ struct deleg_class {
 
 #define test_recno(dbst, key, recno, a)		\
 {						\
-    MEMZERO(&(key), DBT, 1);			\
     if (RECNUM_TYPE(dbst)) {			\
         recno = NUM2INT(a) + dbst->array_base;	\
         key.data = &recno;			\
@@ -193,10 +205,10 @@ struct deleg_class {
 }
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+
 #define init_recno(dbst, key, recno)		\
 {						\
     recno = 1;					\
-    MEMZERO(&(key), DBT, 1);			\
     if (RECNUM_TYPE(dbst)) {			\
         key.data = &recno;			\
         key.size = sizeof(db_recno_t);		\
@@ -219,7 +231,6 @@ struct deleg_class {
 #define init_recno(dbst, key, recno)		\
 {						\
     recno = 1;					\
-    MEMZERO(&(key), DBT, 1);			\
     if (RECNUM_TYPE(dbst)) {			\
         key.data = &recno;			\
         key.size = sizeof(db_recno_t);		\
@@ -314,3 +325,4 @@ extern void bdb_init_cursor _((void));
 extern void bdb_init_lock _((void));
 extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
+extern VALUE MakeLsn _((VALUE));

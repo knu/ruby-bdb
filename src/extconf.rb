@@ -8,7 +8,8 @@ $CFLAGS += " -DBDB_NO_THREAD" if enable_config("thread") == false
 $CFLAGS += " -I#{incdir}" if incdir = with_config("db-include-dir")
 $LDFLAGS += " -I#{libdir}" if libdir = with_config("db-lib-dir")
 test = enable_config("test")
-unless (!test && (have_library("db3", "db_version") ||
+unless (!test && (have_library("db4", "db_version") ||
+		  have_library("db3", "db_version") ||
 		  have_library("db2", "db_version")) ||
 	have_library("db", "db_version"))
     raise "libdb.a not found"

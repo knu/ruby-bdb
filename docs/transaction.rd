@@ -21,6 +21,12 @@ The following option can be given when the environnement is created
  : ((|"set_tx_max"|))
    Set maximum number of transactions
 
+and with DB >= 4.0
+
+ : ((|"set_timeout"|))
+ : ((|"set_txn_timeout"|))
+ : ((|"set_lock_timeout"|))
+
 The transaction is created with ((<BDB::Env#begin|URL:env.html#begin>))
 or with ((<begin>)) 
 
@@ -63,6 +69,9 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
             ...
         end
 
+     An optional hash can be given with the possible keys ((|"flags"|)),
+     ((|"set_timeout"|)), ((|"set_txn_timeout"|)), ((|"set_lock_timeout"|))
+    
 
 --- commit([flags])
 --- close([flags])

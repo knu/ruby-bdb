@@ -6,6 +6,17 @@ static void lockid_mark(dblockid)
     rb_gc_mark(dblockid->env);
 }
 
+static void lockid_free(dblockid)
+    bdb_LOCKID *dblockid;
+{
+#if DB_VERSION_MAJOR >= 4
+    bdb_ENV *dbenvst;
+
+    GetEnvDB(dblockid->env, dbenvst);
+    bdb_test_error(dbenvst->dbenvp->lock_id_free(dbenvst->dbenvp, dblockid->lock));
+#endif
+}
+
 static VALUE
 bdb_env_lockid(obj)
     VALUE obj;
@@ -22,9 +33,13 @@ bdb_env_lockid(obj)
     }
     bdb_test_error(lock_id(dbenvst->dbenvp->lk_info, &idp));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->lock_id(dbenvst->dbenvp, &idp));
+#else
     bdb_test_error(lock_id(dbenvst->dbenvp, &idp));
 #endif
-    a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, lockid_mark, free, dblockid);
+#endif
+    a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, lockid_mark, lockid_free, dblockid);
     dblockid->lock = idp;
     dblockid->env = obj;
     return a;
@@ -52,23 +67,32 @@ bdb_env_lockdetect(argc, argv, obj)
     }
     bdb_test_error(lock_detect(dbenvst->dbenvp->lk_info, flags, atype));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->lock_detect(dbenvst->dbenvp, flags, atype, &aborted));
+#else
     bdb_test_error(lock_detect(dbenvst->dbenvp, flags, atype, &aborted));
+#endif
 #endif
     return INT2NUM(aborted);
 }
 
 static VALUE
-bdb_env_lockstat(obj)
-    VALUE obj;
+bdb_env_lockstat(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
     bdb_ENV *dbenvst;
     DB_LOCK_STAT *statp;
-    VALUE a;
+    VALUE a, b;
+    int flags;
 
     GetEnvDB(obj, dbenvst);
 #if DB_VERSION_MAJOR < 3
     if (!dbenvst->dbenvp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
+    }
+    if (argc != 0) {
+	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
     bdb_test_error(lock_stat(dbenvst->dbenvp->lk_info, &statp, 0));
     a = rb_hash_new();
@@ -86,10 +110,43 @@ bdb_env_lockstat(obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
 #else
+#if DB_VERSION_MAJOR >= 4
+    flags = 0;
+    if (rb_scan_args(argc, argv, "01", &b) == 1) {
+	flags = NUM2INT(b);
+    }
+    bdb_test_error(dbenvst->dbenvp->lock_stat(dbenvst->dbenvp, &statp, flags));
+    a = rb_hash_new();
+    rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxlocks"), INT2NUM(statp->st_maxlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxlockers"), INT2NUM(statp->st_maxlockers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxobjects"), INT2NUM(statp->st_maxobjects));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nlocks"), INT2NUM(statp->st_nlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxnlocks"), INT2NUM(statp->st_maxnlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nlockers"), INT2NUM(statp->st_nlockers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxnlockers"), INT2NUM(statp->st_maxnlockers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nobjects"), INT2NUM(statp->st_nobjects));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxnobjects"), INT2NUM(statp->st_maxnobjects));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nreleases"), INT2NUM(statp->st_nreleases));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nnowaits"), INT2NUM(statp->st_nnowaits));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
+    rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nlocktimeouts"), INT2NUM(statp->st_nlocktimeouts));
+    rb_hash_aset(a, rb_tainted_str_new2("st_ntxntimeouts"), INT2NUM(statp->st_ntxntimeouts));
+    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
+#else
+    if (argc != 0) {
+	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
+    }
 #if DB_VERSION_MINOR < 3
     bdb_test_error(lock_stat(dbenvst->dbenvp, &statp, 0));
 #else
     bdb_test_error(lock_stat(dbenvst->dbenvp, &statp));
+#endif
 #endif
     a = rb_hash_new();
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
@@ -186,8 +243,14 @@ bdb_lockid_get(argc, argv, obj)
     bdb_test_error(lock_get(dbenvst->dbenvp->lk_info, lockid->lock, flags,
 			&objet, lock_mode, &lock));
 #else
+#if DB_VERSION_MAJOR >= 4
+
+    bdb_test_error(dbenvst->dbenvp->lock_get(dbenvst->dbenvp, lockid->lock,
+					     flags, &objet, lock_mode, &lock));
+#else
     bdb_test_error(lock_get(dbenvst->dbenvp, lockid->lock, flags,
 			&objet, lock_mode, &lock));
+#endif
 #endif
     res = Data_Make_Struct(bdb_cLock, bdb_LOCK, lock_mark, lock_free, lockst);
 #if DB_VERSION_MAJOR < 3
@@ -262,6 +325,11 @@ bdb_lockid_each(obj, listobj)
 	MEMCPY(&list->lock, lockst->lock, DB_LOCK, 1);
 #endif
     }
+#if DB_VERSION_MAJOR >= 4
+    else if (strcmp(options, "timeout") == 0) {
+	list->timeout = rb_Integer(value);
+    }
+#endif
     return Qnil;
 }
 
@@ -308,8 +376,13 @@ bdb_lockid_vec(argc, argv, obj)
     err = lock_vec(dbenvst->dbenvp->lk_info, lockid->lock, flags,
 		   list, RARRAY(a)->len, NULL);
 #else
+#if DB_VERSION_MAJOR >= 4
+    err = dbenvst->dbenvp->lock_vec(dbenvst->dbenvp, lockid->lock, flags,
+		   list, RARRAY(a)->len, NULL);
+#else    
     err = lock_vec(dbenvst->dbenvp, lockid->lock, flags,
 		   list, RARRAY(a)->len, NULL);
+#endif
 #endif
     if (err != 0) {
 	for (i = 0; i < RARRAY(a)->len; i++) {
@@ -360,7 +433,11 @@ bdb_lock_put(obj)
     }
     bdb_test_error(lock_put(dbenvst->dbenvp->lk_info, lockst->lock));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->lock_put(dbenvst->dbenvp, lockst->lock));
+#else
     bdb_test_error(lock_put(dbenvst->dbenvp, lockst->lock));
+#endif
 #endif
     return Qnil;
 } 
@@ -369,7 +446,7 @@ void bdb_init_lock()
 {
     rb_define_method(bdb_cEnv, "lock_id", bdb_env_lockid, 0);
     rb_define_method(bdb_cEnv, "lock", bdb_env_lockid, 0);
-    rb_define_method(bdb_cEnv, "lock_stat", bdb_env_lockstat, 0);
+    rb_define_method(bdb_cEnv, "lock_stat", bdb_env_lockstat, -1);
     rb_define_method(bdb_cEnv, "lock_detect", bdb_env_lockdetect, -1);
     bdb_cLockid = rb_define_class_under(bdb_mDb, "Lockid", rb_cObject);
     rb_undef_method(CLASS_OF(bdb_cLockid), "new");

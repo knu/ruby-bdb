@@ -7,15 +7,18 @@
 VALUE bdb_cEnv;
 VALUE bdb_eFatal;
 VALUE bdb_eLock, bdb_eLockDead, bdb_eLockHeld, bdb_eLockGranted;
+#if DB_VERSION_MAJOR >= 4
+VALUE bdb_eRepUnavail;
+#endif
 VALUE bdb_mDb;
 VALUE bdb_cCommon, bdb_cBtree, bdb_cRecnum, bdb_cHash, bdb_cRecno, bdb_cUnknown;
 VALUE bdb_cDelegate;
 
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1) || DB_VERSION_MAJOR >= 4
 VALUE bdb_sKeyrange;
 #endif
 
-#if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MAJOR >= 3
 VALUE bdb_cQueue;
 #endif
 
@@ -82,11 +85,16 @@ bdb_test_error(comm)
     case DB_KEYEXIST:
 	return comm;
         break;
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2) || DB_VERSION_MAJOR >= 4
     case DB_INCOMPLETE:
 	comm = 0;
 	return comm;
         break;
+#endif
+#if DB_VERSION_MAJOR >= 4
+    case DB_REP_UNAVAIL:
+	error = bdb_eRepUnavail;
+	break;
 #endif
     case DB_LOCK_DEADLOCK:
     case EAGAIN:
@@ -100,7 +108,7 @@ bdb_test_error(comm)
 	error = bdb_eLockHeld;
 	break;
 #endif
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
     case BDB_ERROR_PRIVATE:
 	error = bdb_eFatal;
 	bdb_errcall = 1;
@@ -147,6 +155,9 @@ Init_bdb()
     bdb_eLockDead = rb_define_class_under(bdb_mDb, "LockDead", bdb_eLock);
     bdb_eLockHeld = rb_define_class_under(bdb_mDb, "LockHeld", bdb_eLock);
     bdb_eLockGranted = rb_define_class_under(bdb_mDb, "LockGranted",  bdb_eLock);
+#if DB_VERSION_MAJOR >= 4
+    bdb_eRepUnavail = rb_define_class_under(bdb_mDb, "RepUnavail", bdb_eFatal);
+#endif
 /* CONSTANT */
     rb_define_const(bdb_mDb, "VERSION", version);
     rb_define_const(bdb_mDb, "VERSION_MAJOR", INT2FIX(major));
@@ -363,6 +374,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "SET_RANGE", INT2FIX(DB_SET_RANGE));
     rb_define_const(bdb_mDb, "SET_RECNO", INT2FIX(DB_SET_RECNO));
     rb_define_const(bdb_mDb, "SNAPSHOT", INT2FIX(DB_SNAPSHOT));
+#ifdef DB_STAT_CLEAR
+    rb_define_const(bdb_mDb, "STAT_CLEAR", INT2FIX(DB_STAT_CLEAR));
+#endif
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "SYSTEM_MEM", INT2FIX(0));
 #else
@@ -412,7 +426,26 @@ Init_bdb()
     rb_define_const(bdb_mDb, "XIDDATASIZE", INT2FIX(DB_XIDDATASIZE));
 #endif
     rb_define_const(bdb_mDb, "TXN_COMMIT", INT2FIX(BDB_TXN_COMMIT));
-
+#ifdef DB_REGION_INIT
+    rb_define_const(bdb_mDb, "REGION_INIT", INT2FIX(DB_REGION_INIT));
+#endif
+#if DB_VERSION_MAJOR >= 4
+    rb_define_const(bdb_mDb, "REP_CLIENT", INT2FIX(DB_REP_CLIENT));
+    rb_define_const(bdb_mDb, "REP_DUPMASTER", INT2FIX(DB_REP_DUPMASTER));
+    rb_define_const(bdb_mDb, "REP_HOLDELECTION", INT2FIX(DB_REP_HOLDELECTION));
+    rb_define_const(bdb_mDb, "REP_LOGSONLY", INT2FIX(DB_REP_LOGSONLY));
+    rb_define_const(bdb_mDb, "REP_MASTER", INT2FIX(DB_REP_MASTER));
+    rb_define_const(bdb_mDb, "REP_NEWMASTER", INT2FIX(DB_REP_NEWMASTER));
+    rb_define_const(bdb_mDb, "REP_NEWSITE", INT2FIX(DB_REP_NEWSITE));
+    rb_define_const(bdb_mDb, "REP_OUTDATED", INT2FIX(DB_REP_OUTDATED));
+    rb_define_const(bdb_mDb, "REP_PERMANENT", INT2FIX(DB_REP_PERMANENT));
+    rb_define_const(bdb_mDb, "EID_BROADCAST", INT2FIX(DB_EID_BROADCAST));
+    rb_define_const(bdb_mDb, "EID_INVALID", INT2FIX(DB_EID_INVALID));
+    rb_define_const(bdb_mDb, "SET_LOCK_TIMEOUT", INT2FIX(DB_SET_LOCK_TIMEOUT));
+    rb_define_const(bdb_mDb, "SET_TXN_TIMEOUT", INT2FIX(DB_SET_TXN_TIMEOUT));
+    rb_define_const(bdb_mDb, "LOCK_GET_TIMEOUT", INT2FIX(DB_LOCK_GET_TIMEOUT));
+    rb_define_const(bdb_mDb, "LOCK_TIMEOUT", INT2FIX(DB_LOCK_TIMEOUT));
+#endif
     bdb_init_env();
     bdb_init_common();
     bdb_init_recnum();

@@ -1,10 +1,5 @@
 #include "bdb.h"
 
-struct dblsnst {
-    VALUE env;
-    DB_LSN *lsn;
-};
-
 static void
 mark_lsn(lsnst)
     struct dblsnst *lsnst;
@@ -16,11 +11,21 @@ static void
 free_lsn(lsnst)
     struct dblsnst *lsnst;
 {
+#if DB_VERSION_MAJOR >= 4
+    if (lsnst->cursor) {
+	bdb_ENV *dbenvst;
+	Data_Get_Struct(lsnst->env, bdb_ENV, dbenvst);
+	if (dbenvst->dbenvp) {
+	    bdb_test_error(lsnst->cursor->close(lsnst->cursor, 0));
+	}
+	lsnst->cursor = 0;
+    }
+#endif
     if (lsnst->lsn) free(lsnst->lsn);
     free(lsnst);
 }
 
-static VALUE
+VALUE
 MakeLsn(env)
     VALUE env;
 {
@@ -57,7 +62,11 @@ bdb_s_log_put_internal(obj, a, flag)
     }
     bdb_test_error(log_put(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flag));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->log_put(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+#else
     bdb_test_error(log_put(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+#endif
 #endif
     return ret;
 }
@@ -103,7 +112,11 @@ bdb_s_log_flush(argc, argv, obj)
 	}
 	bdb_test_error(log_flush(dbenvst->dbenvp->lg_info, NULL));
 #else
+#if DB_VERSION_MAJOR >= 4
+	bdb_test_error(dbenvst->dbenvp->log_flush(dbenvst->dbenvp, NULL));
+#else
 	bdb_test_error(log_flush(dbenvst->dbenvp, NULL));
+#endif
 #endif
 	return obj;
     }
@@ -124,24 +137,40 @@ bdb_s_log_curlsn(obj, a)
   
 
 static VALUE
-bdb_env_log_stat(obj)
-    VALUE obj;
+bdb_env_log_stat(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
     DB_LOG_STAT *stat;
     bdb_ENV *dbenvst;
-    VALUE res;
+    VALUE res, b;
+    int flags;
 
     GetEnvDB(obj, dbenvst);
 #if DB_VERSION_MAJOR < 3
     if (!dbenvst->dbenvp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
+    if (argc != 0) {
+	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
+    }
     bdb_test_error(log_stat(dbenvst->dbenvp->lg_info, &stat, 0));
 #else
+#if DB_VERSION_MAJOR >= 4
+    flags = 0;
+    if (rb_scan_args(argc, argv, "01", &b) == 1) {
+	flags = NUM2INT(b);
+    }
+    bdb_test_error(dbenvst->dbenvp->log_stat(dbenvst->dbenvp, &stat, flags));
+#else
+    if (argc != 0) {
+	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
+    }
 #if DB_VERSION_MINOR < 3
     bdb_test_error(log_stat(dbenvst->dbenvp, &stat, 0));
 #else
     bdb_test_error(log_stat(dbenvst->dbenvp, &stat));
+#endif
 #endif
 #endif
     res = rb_hash_new();
@@ -160,7 +189,7 @@ bdb_env_log_stat(obj)
     rb_hash_aset(res, rb_tainted_str_new2("st_wc_mbytes"), INT2NUM(stat->st_wc_mbytes));
     rb_hash_aset(res, rb_tainted_str_new2("st_wc_bytes"), INT2NUM(stat->st_wc_bytes));
     rb_hash_aset(res, rb_tainted_str_new2("st_wcount"), INT2NUM(stat->st_wcount));
-#if DB_VERSION_MAJOR == 3
+#if DB_VERSION_MAJOR >= 3
     rb_hash_aset(res, rb_tainted_str_new2("st_wcount_fill"), INT2NUM(stat->st_wcount_fill));
 #endif
     rb_hash_aset(res, rb_tainted_str_new2("st_scount"), INT2NUM(stat->st_scount));
@@ -168,9 +197,18 @@ bdb_env_log_stat(obj)
     rb_hash_aset(res, rb_tainted_str_new2("st_cur_offset"), INT2NUM(stat->st_cur_offset));
     rb_hash_aset(res, rb_tainted_str_new2("st_region_wait"), INT2NUM(stat->st_region_wait));
     rb_hash_aset(res, rb_tainted_str_new2("st_region_nowait"), INT2NUM(stat->st_region_nowait));
+#if DB_VERSION_MAJOR >= 4
+    rb_hash_aset(res, rb_tainted_str_new2("st_disk_file"), INT2NUM(stat->st_disk_file));
+    rb_hash_aset(res, rb_tainted_str_new2("st_disk_offset"), INT2NUM(stat->st_disk_offset));
+    rb_hash_aset(res, rb_tainted_str_new2("st_flushcommit"), INT2NUM(stat->st_flushcommit));
+    rb_hash_aset(res, rb_tainted_str_new2("st_maxcommitperflush"), INT2NUM(stat->st_maxcommitperflush));
+    rb_hash_aset(res, rb_tainted_str_new2("st_mincommitperflush"), INT2NUM(stat->st_mincommitperflush));
+#endif
     free(stat);
     return res;
 }
+
+#if DB_VERSION_MAJOR < 4
 
 static VALUE
 bdb_env_log_get(obj, a)
@@ -204,6 +242,12 @@ bdb_env_log_get(obj, a)
     return rb_assoc_new(res, lsn);
 }
 
+#endif
+
+#if DB_VERSION_MAJOR >= 4
+static VALUE bdb_log_cursor _((VALUE));
+#endif
+
 static VALUE
 bdb_i_each_log_get(obj, flag)
     VALUE obj;
@@ -215,11 +259,23 @@ bdb_i_each_log_get(obj, flag)
     VALUE lsn, res;
     int ret, init, flags;
 
+#if DB_VERSION_MAJOR < 4
     GetEnvDB(obj, dbenvst);
+#else
+    lsn = obj;
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+    if (lsnst->cursor == 0) {
+	bdb_log_cursor(obj);
+    }
+    flag = lsnst->flags;
+#endif
+
     init = 0; /* strange ??? */
     do {
+#if DB_VERSION_MAJOR < 4
 	lsn = MakeLsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
+#endif
 	MEMZERO(&data, DBT, 1);
 	data.flags |= DB_DBT_MALLOC;
 	if (!init) {
@@ -234,7 +290,11 @@ bdb_i_each_log_get(obj, flag)
 	}
 	ret = bdb_test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flags));
 #else
+#if DB_VERSION_MAJOR >= 4
+	ret = bdb_test_error(lsnst->cursor->get(lsnst->cursor, lsnst->lsn, &data, flags));
+#else
 	ret = bdb_test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flags));
+#endif
 #endif
 	if (ret == DB_NOTFOUND) {
 	    return Qnil;
@@ -246,6 +306,8 @@ bdb_i_each_log_get(obj, flag)
     return Qnil;
 }
 
+#if DB_VERSION_MAJOR < 4
+ 
 static VALUE
 bdb_env_log_each(obj) 
     VALUE obj;
@@ -259,6 +321,106 @@ bdb_env_log_hcae(obj)
 { 
     return bdb_i_each_log_get(obj, DB_PREV);
 }
+
+#else
+
+static VALUE
+bdb_log_cursor_close(obj)
+    VALUE obj;
+{
+    struct dblsnst *lsnst;
+
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+    if (lsnst->cursor) {
+	bdb_test_error(lsnst->cursor->close(lsnst->cursor, 0));
+	lsnst->cursor = 0;
+    }
+    return Qnil;
+}
+
+static VALUE
+bdb_log_cursor(lsn)
+    VALUE lsn;
+{
+    bdb_ENV *dbenvst;
+    struct dblsnst *lsnst;
+
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    GetEnvDB(lsnst->env, dbenvst);
+    bdb_test_error(dbenvst->dbenvp->log_cursor(dbenvst->dbenvp, &lsnst->cursor, 0));
+    return lsn;
+}
+    
+static VALUE
+bdb_env_log_cursor(obj)
+    VALUE obj;
+{
+    return bdb_log_cursor(MakeLsn(obj));
+}
+
+static VALUE
+bdb_log_i_get(obj)
+    VALUE obj;
+{
+    bdb_ENV *dbenvst;
+    struct dblsnst *lsnst;
+
+    bdb_log_cursor_close(obj);
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+    GetEnvDB(lsnst->env, dbenvst);
+    bdb_test_error(dbenvst->dbenvp->log_cursor(dbenvst->dbenvp, &lsnst->cursor, 0));
+    return bdb_i_each_log_get(obj, lsnst->flags);
+}
+
+static VALUE
+bdb_log_each(lsn)
+    VALUE lsn;
+{
+    struct dblsnst *lsnst;
+
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    lsnst->flags = DB_NEXT;
+    return bdb_log_i_get(lsn);
+}
+
+static VALUE
+bdb_env_log_each(obj)
+    VALUE obj;
+{
+    VALUE lsn;
+    struct dblsnst *lsnst;
+
+    lsn = MakeLsn(obj);
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    lsnst->flags = DB_NEXT;
+    return rb_ensure(bdb_log_i_get, lsn, bdb_log_cursor_close, lsn);
+}
+
+static VALUE
+bdb_log_hcae(lsn)
+    VALUE lsn;
+{
+    struct dblsnst *lsnst;
+
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    lsnst->flags = DB_PREV;
+    return bdb_log_i_get(lsn);
+}
+
+static VALUE
+bdb_env_log_hcae(obj)
+    VALUE obj;
+{
+    VALUE lsn;
+    struct dblsnst *lsnst;
+
+    lsn = MakeLsn(obj);
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    lsnst->flags = DB_PREV;
+    return rb_ensure(bdb_log_i_get, lsn, bdb_log_cursor_close, lsn);
+}
+
+#endif
  
 static VALUE
 bdb_env_log_archive(argc, argv, obj)
@@ -282,10 +444,14 @@ bdb_env_log_archive(argc, argv, obj)
     }
     bdb_test_error(log_archive(dbenvst->dbenvp->lg_info, &list, flag, NULL));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->log_archive(dbenvst->dbenvp, &list, flag));
+#else
 #if DB_VERSION_MINOR < 3
     bdb_test_error(log_archive(dbenvst->dbenvp, &list, flag, NULL));
 #else
     bdb_test_error(log_archive(dbenvst->dbenvp, &list, flag));
+#endif
 #endif
 #endif
     res = rb_ary_new();
@@ -317,7 +483,11 @@ bdb_lsn_log_file(obj)
     }
     bdb_test_error(log_file(dbenvst->dbenvp->lg_info, lsnst->lsn, name, 2048));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->log_file(dbenvst->dbenvp, lsnst->lsn, name, 2048));
+#else
     bdb_test_error(log_file(dbenvst->dbenvp, lsnst->lsn, name, 2048));
+#endif
 #endif
     return rb_tainted_str_new2(name);
 }
@@ -336,7 +506,11 @@ bdb_lsn_log_flush(obj)
     }
     bdb_test_error(log_flush(dbenvst->dbenvp->lg_info, lsnst->lsn));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->log_flush(dbenvst->dbenvp, lsnst->lsn));
+#else
     bdb_test_error(log_flush(dbenvst->dbenvp, lsnst->lsn));
+#endif
 #endif
     return obj;
 }
@@ -357,25 +531,41 @@ bdb_lsn_log_compare(obj, a)
 }
 
 static VALUE
-bdb_lsn_log_get(obj)
-    VALUE obj;
+bdb_lsn_log_get(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
     struct dblsnst *lsnst;
     bdb_ENV *dbenvst;
     DBT data;
-    VALUE res;
-    int ret;
+    VALUE res, a;
+    int ret, flags;
 
+    flags = DB_SET;
+    if (rb_scan_args(argc, argv, "01", &a) == 1) {
+	flags = NUM2INT(a);
+    }
+#if DB_VERSION_MAJOR < 4
     GetLsn(obj, lsnst, dbenvst);
+#else
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+    if (lsnst->cursor == 0) {
+	bdb_log_cursor(obj);
+    }
+#endif
     MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR < 3
     if (!dbenvst->dbenvp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    ret = bdb_test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, DB_SET));
+    ret = bdb_test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flags));
 #else
-    ret = bdb_test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, DB_SET));
+#if DB_VERSION_MAJOR >= 4
+    ret = bdb_test_error(lsnst->cursor->get(lsnst->cursor, lsnst->lsn, &data, flags));
+#else
+    ret = bdb_test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flags));
+#endif
 #endif
     if (ret == DB_NOTFOUND) {
 	return Qnil;
@@ -406,10 +596,14 @@ bdb_log_register(obj, a)
     }
     bdb_test_error(log_register(dbenvst->dbenvp->lg_info, dbst->dbp, RSTRING(a)->ptr, dbst->type, &dbenvst->fidp));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr));
+#else
 #if DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
     bdb_test_error(log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr, &dbenvst->fidp));
 #else
     bdb_test_error(log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr));
+#endif
 #endif
 #endif
     return obj;
@@ -433,10 +627,14 @@ bdb_log_unregister(obj)
     }
     bdb_test_error(log_unregister(dbenvst->dbenvp->lg_info, dbenvst->fidp));
 #else
+#if DB_VERSION_MAJOR >= 4
+    bdb_test_error(dbenvst->dbenvp->log_unregister(dbenvst->dbenvp, dbst->dbp));
+#else
 #if DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
     bdb_test_error(log_unregister(dbenvst->dbenvp, dbenvst->fidp));
 #else
     bdb_test_error(log_unregister(dbenvst->dbenvp, dbst->dbp));
+#endif
 #endif
 #endif
     return obj;
@@ -448,9 +646,13 @@ void bdb_init_log()
     rb_define_method(bdb_cEnv, "log_curlsn", bdb_s_log_curlsn, 0);
     rb_define_method(bdb_cEnv, "log_checkpoint", bdb_s_log_checkpoint, 1);
     rb_define_method(bdb_cEnv, "log_flush", bdb_s_log_flush, -1);
-    rb_define_method(bdb_cEnv, "log_stat", bdb_env_log_stat, 0);
+    rb_define_method(bdb_cEnv, "log_stat", bdb_env_log_stat, -1);
     rb_define_method(bdb_cEnv, "log_archive", bdb_env_log_archive, -1);
+#if DB_VERSION_MAJOR < 4
     rb_define_method(bdb_cEnv, "log_get", bdb_env_log_get, 1);
+#else
+    rb_define_method(bdb_cEnv, "log_cursor", bdb_env_log_cursor, 0);
+#endif
     rb_define_method(bdb_cEnv, "log_each", bdb_env_log_each, 0);
     rb_define_method(bdb_cEnv, "log_reverse_each", bdb_env_log_hcae, 0);
     rb_define_method(bdb_cCommon, "log_register", bdb_log_register, 1);
@@ -458,8 +660,18 @@ void bdb_init_log()
     bdb_cLsn = rb_define_class_under(bdb_mDb, "Lsn", rb_cObject);
     rb_include_module(bdb_cLsn, rb_mComparable);
     rb_undef_method(CLASS_OF(bdb_cLsn), "new");
-    rb_define_method(bdb_cLsn, "log_get", bdb_lsn_log_get, 0);
-    rb_define_method(bdb_cLsn, "get", bdb_lsn_log_get, 0);
+#if DB_VERSION_MAJOR >= 4
+    rb_define_method(bdb_cLsn, "log_cursor", bdb_log_cursor, 0);
+    rb_define_method(bdb_cLsn, "cursor", bdb_log_cursor, 0);
+    rb_define_method(bdb_cLsn, "log_close", bdb_log_cursor_close, 0);
+    rb_define_method(bdb_cLsn, "close", bdb_log_cursor_close, 0);
+    rb_define_method(bdb_cLsn, "log_each", bdb_log_each, 0);
+    rb_define_method(bdb_cLsn, "each", bdb_log_each, 0);
+    rb_define_method(bdb_cLsn, "log_reverse_each", bdb_log_hcae, 0);
+    rb_define_method(bdb_cLsn, "reverse_each", bdb_log_hcae, 0);
+#endif
+    rb_define_method(bdb_cLsn, "log_get", bdb_lsn_log_get, -1);
+    rb_define_method(bdb_cLsn, "get", bdb_lsn_log_get, -1);
     rb_define_method(bdb_cLsn, "log_compare", bdb_lsn_log_compare, 1);
     rb_define_method(bdb_cLsn, "compare", bdb_lsn_log_compare, 1);
     rb_define_method(bdb_cLsn, "<=>", bdb_lsn_log_compare, 1);
