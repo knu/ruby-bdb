@@ -18,19 +18,22 @@ if libdir = with_config("db-lib-dir")
    end
 end
 
-test = enable_config("test")
 unique = if with_config("uniquename")
 	    "_" + with_config("uniquename")
 	 else
 	    ""
 	 end
-unless (!test && (have_library("db-4", "db_version#{unique}") ||
-		  have_library("db4", "db_version#{unique}") ||
-		  have_library("db3", "db_version#{unique}") ||
-		  have_library("db2", "db_version")) ||
-	have_library("db", "db_version"))
-    raise "libdb.a not found"
+
+version  = with_config('db-version', "-4,4,3,2,").split(/,/, -1)
+
+catch(:done) do
+   version.each do |with_ver|
+      db_version = "db_version" + (("#{with_ver[-1,1]}" > "2") ? unique : "")
+      throw :done if have_library("db#{with_ver}", db_version)
+   end
+   raise "libdb#{version[-1]} not found"
 end
+
 create_makefile("bdb")
 begin
    make = open("Makefile", "a")

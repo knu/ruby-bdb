@@ -16,7 +16,9 @@ clean
 
 print "\nVERSION of BDB is #{BDB::VERSION}\n"
 
-class TestLog < RUNIT::TestCase
+Inh = defined?(RUNIT) ? RUNIT : Test::Unit
+
+class TestLog < Inh::TestCase
    def test_01_init
       assert_kind_of(BDB::Env, $env = BDB::Env.open("tmp", BDB::CREATE | BDB::INIT_LOG, "thread" => false) , "<env open>")
    end
@@ -105,4 +107,6 @@ class TestLog < RUNIT::TestCase
 
 end
 
-RUNIT::CUI::TestRunner.run(TestLog.suite)
+if defined?(RUNIT)
+   RUNIT::CUI::TestRunner.run(TestLog.suite)
+end

@@ -33,10 +33,10 @@ records, so that they can be modified after they have been read.</p>
 <dt><a name="label:10" id="label:10"><code>c_del()</code></a></dt><!-- RDLabel: "c_del" -->
 <dd>
 <p>Deletes the key/data pair currently referenced by the cursor.</p></dd>
-<dt><a name="label:11" id="label:11"><code>dup([<var>flags</var>])</code></a><!-- RDLabel: "dup" -->
-<dt><a name="label:12" id="label:12"><code>clone([<var>flags</var>])</code></a><!-- RDLabel: "clone" -->
-<dt><a name="label:13" id="label:13"><code>c_dup([<var>flags</var>])</code></a><!-- RDLabel: "c_dup" -->
-<dt><a name="label:14" id="label:14"><code>c_clone([<var>flags</var>])</code></a></dt><!-- RDLabel: "c_clone" -->
+<dt><a name="label:11" id="label:11"><code>dup(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "dup" -->
+<dt><a name="label:12" id="label:12"><code>clone(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "clone" -->
+<dt><a name="label:13" id="label:13"><code>c_dup(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "c_dup" -->
+<dt><a name="label:14" id="label:14"><code>c_clone(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "c_clone" -->
 <dd>
 <p>Creates new cursor that uses the same transaction and locker ID as
 the original cursor. This is useful when an application is using
@@ -49,8 +49,8 @@ the database as the original cursor and hold the same locks.</p></dd>
 <dt><a name="label:16" id="label:16"><code>c_first()</code></a></dt><!-- RDLabel: "c_first" -->
 <dd>
 <p>Same than <code>get(BDB::FIRST)</code></p></dd>
-<dt><a name="label:17" id="label:17"><code>get(<var>flags</var> [, <var>key</var> [, <var>value</var>]])</code></a><!-- RDLabel: "get" -->
-<dt><a name="label:18" id="label:18"><code>c_get(<var>flags</var> [, <var>key</var> [, <var>value</var>]])</code></a></dt><!-- RDLabel: "c_get" -->
+<dt><a name="label:17" id="label:17"><code>get(<var>flags</var>, <var>key</var> = <var>nil</var>, <var>value</var> = <var>nil</var>)</code></a><!-- RDLabel: "get" -->
+<dt><a name="label:18" id="label:18"><code>c_get(<var>flags</var>, <var>key</var> = <var>nil</var>, <var>value</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "c_get" -->
 <dd>
 <p>Retrieve key/data pair from the database</p>
 <p>See the description of <code>c_get</code> in the Berkeley distribution
@@ -66,8 +66,8 @@ for the different values of the <var>flags</var> parameter.</p>
 <dt><a name="label:22" id="label:22"><code>c_next()</code></a></dt><!-- RDLabel: "c_next" -->
 <dd>
 <p>Same than <code>get(BDB::NEXT)</code></p></dd>
-<dt><a name="label:23" id="label:23"><code>pget(<var>flags</var> [, <var>key</var> [, <var>value</var>]])</code></a><!-- RDLabel: "pget" -->
-<dt><a name="label:24" id="label:24"><code>c_pget(<var>flags</var> [, <var>key</var> [, <var>value</var>]])</code></a></dt><!-- RDLabel: "c_pget" -->
+<dt><a name="label:23" id="label:23"><code>pget(<var>flags</var>, <var>key</var> = <var>nil</var>, <var>value</var> = <var>nil</var>)</code></a><!-- RDLabel: "pget" -->
+<dt><a name="label:24" id="label:24"><code>c_pget(<var>flags</var>, <var>key</var> = <var>nil</var>, <var>value</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "c_pget" -->
 <dd>
 <p>Retrieve key/primary key/data pair from the database</p></dd>
 <dt><a name="label:25" id="label:25"><code>prev()</code></a><!-- RDLabel: "prev" -->

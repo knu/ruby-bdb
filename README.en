@@ -37,7 +37,7 @@
 
 * Documentation : see bdb.rd and bdb.html
 
-* Tests : if you have rubyunit
+* Tests : if you have rubyunit, or testunit
 
    make test
  

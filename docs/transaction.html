@@ -52,15 +52,15 @@ or with <a href="#label:11">begin</a> </p>
 <dt><a name="label:7" id="label:7"><code>txn_abort()</code></a></dt><!-- RDLabel: "txn_abort" -->
 <dd>
 <p>Abort the transaction. This is will terminate the transaction.</p></dd>
-<dt><a name="label:8" id="label:8"><code>assoc(<var>db</var> [, <var>db</var>, ...])</code></a><!-- RDLabel: "assoc" -->
-<dt><a name="label:9" id="label:9"><code>associate(<var>db</var> [, <var>db</var>, ...])</code></a><!-- RDLabel: "associate" -->
-<dt><a name="label:10" id="label:10"><code>txn_assoc(<var>db</var> [, <var>db</var>, ...])</code></a></dt><!-- RDLabel: "txn_assoc" -->
+<dt><a name="label:8" id="label:8"><code>assoc(<var>db</var>, ...)</code></a><!-- RDLabel: "assoc" -->
+<dt><a name="label:9" id="label:9"><code>associate(<var>db</var>, ...)</code></a><!-- RDLabel: "associate" -->
+<dt><a name="label:10" id="label:10"><code>txn_assoc(<var>db</var>, ...)</code></a></dt><!-- RDLabel: "txn_assoc" -->
 <dd>
 <p>Associate a database with the transaction, return a new database
 handle which is transaction protected.</p></dd>
-<dt><a name="label:11" id="label:11"><code>begin([<var>flags</var>, <var>db</var>, ...])</code></a><!-- RDLabel: "begin" -->
-<dt><a name="label:12" id="label:12"><code>begin([<var>flags</var>, <var>db</var>, ...]) { |<var>txn</var> [, <var>db</var>, ...]| ...}</code></a><!-- RDLabel: "begin" -->
-<dt><a name="label:13" id="label:13"><code>txn_begin([<var>flags</var>, <var>db</var>, ...])</code></a></dt><!-- RDLabel: "txn_begin" -->
+<dt><a name="label:11" id="label:11"><code>begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...) { |<var>txn</var>, <var>db</var>, ...| ...}</code></a><!-- RDLabel: "begin" -->
+<dt><a name="label:12" id="label:12"><code>begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...)</code></a><!-- RDLabel: "begin" -->
+<dt><a name="label:13" id="label:13"><code>txn_begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...)</code></a></dt><!-- RDLabel: "txn_begin" -->
 <dd>
 <p>begin a transaction (the transaction manager must be enabled). flags
 can have the value <var>DBD::TXN_COMMIT</var>, in this case the transaction
@@ -81,10 +81,10 @@ env.begin do |txn|
 end</pre>
 <p>An optional hash can be given with the possible keys <var>"flags"</var>,
 <var>"set_timeout"</var>, <var>"set_txn_timeout"</var>, <var>"set_lock_timeout"</var></p></dd>
-<dt><a name="label:14" id="label:14"><code>commit([<var>flags</var>])</code></a><!-- RDLabel: "commit" -->
-<dt><a name="label:15" id="label:15"><code>close([<var>flags</var>])</code></a><!-- RDLabel: "close" -->
-<dt><a name="label:16" id="label:16"><code>txn_commit([<var>flags</var>])</code></a><!-- RDLabel: "txn_commit" -->
-<dt><a name="label:17" id="label:17"><code>txn_close([<var>flags</var>])</code></a></dt><!-- RDLabel: "txn_close" -->
+<dt><a name="label:14" id="label:14"><code>commit(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "commit" -->
+<dt><a name="label:15" id="label:15"><code>close(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "close" -->
+<dt><a name="label:16" id="label:16"><code>txn_commit(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "txn_commit" -->
+<dt><a name="label:17" id="label:17"><code>txn_close(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "txn_close" -->
 <dd>
 <p>Commit the transaction. This will finish the transaction.
 The <var>flags</var> can have the value </p>

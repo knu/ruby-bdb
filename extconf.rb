@@ -31,15 +31,19 @@ SUBDIRS = #{subdirs.join(' ')}
 #{rule('site-install')}
 #{rule('unknown')}
 %.html: %.rd
-	rd2 $< > ${<:%.rd=%.html}
+\trd2 $< > ${<:%.rd=%.html}
 
    EOF
    make.print "HTML = bdb.html"
-   Dir.foreach('docs') do |x|
-      make.print " \\\n\tdocs/#{x}" if x.sub!(/\.rd$/, ".html")
-   end
+   docs = Dir['docs/*.rd']
+   docs.each {|x| make.print " \\\n\t#{x.sub(/\.rd$/, '.html')}" }
+   make.print "\n\nRDOC = bdb.rd"
+   docs.each {|x| make.print " \\\n\t#{x}" }
    make.puts
    make.print <<-EOF
+
+docs/doc/index.html: $(RDOC)
+\t@-(cd docs; b.rb; rdoc bdb.rb)
 
 html: $(HTML)
 

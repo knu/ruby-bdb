@@ -11,15 +11,38 @@ def clean
    end
 end
 
+module BDB
+   class AZ < Btree
+      def bdb_store_key(a)
+	 "xx_" + a
+      end
+      def bdb_fetch_key(a)
+	 a.sub(/^xx_/, '')
+      end
+      def bdb_store_value(a)
+	 "yy_" + a
+      end
+      def bdb_fetch_value(a)
+	 a.sub(/^yy_/, '')
+      end
+   end
+end
+
 $bdb, $env = nil, nil
 clean
 
 print "\nVERSION of BDB is #{BDB::VERSION}\n"
 
-class TestBtree < RUNIT::TestCase
+Inh = defined?(RUNIT) ? RUNIT : Test::Unit
+
+class TestBtree < Inh::TestCase
    def test_00_error
-      assert_error(BDB::Fatal, 'BDB::Btree.new(".", nil, "a")', "invalid name")
-      assert_error(BDB::Fatal, 'BDB::Btree.open("tmp/aa", nil, "env" => 1)', "invalid Env")
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Btree.new(".", nil, "a")
+      end
+      assert_raises(BDB::Fatal, "invalid Env") do
+	 BDB::Btree.open("tmp/aa", nil, "env" => 1)
+      end
    end
    def test_01_init
       assert_kind_of(BDB::Btree, $bdb = BDB::Btree.new("tmp/aa", nil, "a", "marshal" => Marshal), "<open>")
@@ -29,7 +52,7 @@ class TestBtree < RUNIT::TestCase
       assert_equal([12, "alpha"], $bdb["alpha"].to_orig, "<retrieve value>")
       assert_equal(nil, $bdb["gamma"] = nil, "<set nil>")
       assert_equal(nil, $bdb["gamma"].to_orig, "<retrieve nil>")
-      assert($bdb.key?("alpha"), "<has key>")
+      assert($bdb.key?("alpha") == [12, "alpha"], "<has key>")
       assert_equal(false, $bdb.key?("unknown"), "<has unknown key>")
       assert($bdb.value?(nil), "<has nil>")
       assert($bdb.value?([12, "alpha"]), "<has value>")
@@ -245,6 +268,32 @@ class TestBtree < RUNIT::TestCase
       assert_equal(["e", "f", {"a" => "c"}], $bdb["aa"].to_orig, "<change array>");
       assert_equal(6, $bdb.size, "<size after commit>")
    end
+
+   def test_17_sh
+      val = 'a' .. 'zz'
+      assert_equal(nil, $bdb.close, "<close>")
+      assert_kind_of(BDB::Btree, $bdb = BDB::AZ.open("tmp/aa", nil, "w"), "<sh>")
+      val.each do |l|
+	 assert_equal(l, $bdb[l] = l, "<store>")
+      end
+      $bdb.each do |k, v|
+	 assert_equal(k, v, "<fetch>")
+      end
+      assert_equal(nil, $bdb.close, "<close>")
+      assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("tmp/aa"), "<sh>")
+      val.each do |l|
+	 assert_equal("yy_#{l}", $bdb["xx_#{l}"], "<fetch value>")
+      end
+      $bdb.each do |k, v|
+	 assert_equal("xx_", k[0, 3], "<fetch key>")
+	 assert_equal("yy_", v[0, 3], "<fetch key>")
+      end
+      assert_equal(nil, $bdb.close, "<close>")
+      clean
+   end
+
 end
 
-RUNIT::CUI::TestRunner.run(TestBtree.suite)
+if defined?(RUNIT)
+   RUNIT::CUI::TestRunner.run(TestBtree.suite)
+end

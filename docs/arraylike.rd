@@ -3,13 +3,20 @@
 
 These are the methods for ((|BDB::Recnum|))
 
+# module BDB
+#^
 Don't mix these methods with methods of ((|BDB::Cursor|))
+#^
+##
+## All instance methods has the same syntax than the methods of Array
+# class Recnum < Common
+# class << self
 
 === Class Methods
 
---- create([name, subname, flags, mode, options])
---- new([name, subname, flags, mode, options])
---- open([name, subname, flags, mode, options])
+--- open(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+--- create(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+--- new(name = nil, subname = nil, flags = 0, mode = 0, options = {})
      open the database
 
 
@@ -21,112 +28,115 @@ Don't mix these methods with methods of ((|BDB::Cursor|))
                        "set_flags" => BDB::RENUMBER,
                        "set_array_base" => 0)
 
---- db_remove(name [, subname]) 
---- remove(name [, subname]) 
---- unlink(name [,subname]) 
+--- remove(name, subname = nil) 
+--- db_remove(name, subname = nil) 
+--- unlink(name, subname = nil) 
      Removes the database (or subdatabase) represented by the
      name and subname combination.
 
      If no subdatabase is specified, the physical file represented by name
      is removed, incidentally removing all subdatabases that it contained.
 
---- db_upgrade(name)
 --- upgrade(name)
+--- db_upgrade(name)
      Upgrade the database
+
+# end
 
 === Methods
 
 ((*All this methods has the same syntax than for the class ((|Array|))*))
 
-self[nth] 
+--- self[nth] 
 
-self[start..end] 
+--- self[start..end] 
 
-self[start, length] 
+--- self[start, length] 
 
+--- self[nth] = val 
 
-self[nth] = val 
+--- self[start..end] = val 
 
-self[start..end] = val 
+--- self[start, length] = val 
 
-self[start, length] = val 
+--- self + other 
 
-self + other 
+--- self * times 
 
-self * times 
+--- self - other 
 
-self - other 
+--- self & other 
 
-self & other 
+--- self | other 
 
-self | other 
+--- self << obj 
 
-self << obj 
+--- self <=> other 
 
-self <=> other 
+--- clear 
 
-clear 
+--- concat(other) 
 
-concat(other) 
+--- delete(val) 
 
-delete(val) 
+--- delete_at(pos) 
 
-delete_at(pos) 
+--- delete_if {...} 
 
-delete_if {...} 
+--- reject!{|x|...} 
 
-reject!{|x|...} 
+--- each {...} 
 
-each {...} 
+--- each_index {...} 
 
-each_index {...} 
+--- empty? 
 
-empty? 
+--- fill(val) 
 
-fill(val) 
+--- fill(val, start[, length]) 
 
-fill(val, start[, length]) 
+--- fill(val, start..end) 
 
-fill(val, start..end) 
+--- filter{|item| ..} 
 
-filter{|item| ..} 
+--- freeze 
 
-freeze 
+--- frozen 
 
-frozen 
+--- include?(val) 
 
-include?(val) 
+--- index(val) 
 
-index(val) 
+--- indexes(index_1,..., index_n) 
 
-indexes(index_1,..., index_n) 
+--- indices(index_1,..., index_n) 
 
-indices(index_1,..., index_n) 
+--- join([sep]) 
 
-join([sep]) 
-
-length
+--- length
  
-size 
+--- size 
 
-nitems 
+--- nitems 
 
-pop 
+--- pop 
 
-push(obj...) 
+--- push(obj...) 
 
-replace(other) 
+--- replace(other) 
 
-reverse 
+--- reverse 
 
-reverse! 
+--- reverse! 
 
-reverse_each {...} 
+--- reverse_each {...} 
 
-rindex(val) 
+--- rindex(val) 
 
-shift 
+--- shift 
 
-unshift(obj) 
+--- unshift(obj) 
 
+# end
+# end
 =end

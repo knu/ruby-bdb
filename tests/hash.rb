@@ -9,6 +9,21 @@ module BDB
 	 hash a
       end
    end
+
+   class AZ < Hash
+      def bdb_store_key(a)
+	 "xx_" + a
+      end
+      def bdb_fetch_key(a)
+	 a.sub(/^xx_/, '')
+      end
+      def bdb_store_value(a)
+	 "yy_" + a
+      end
+      def bdb_fetch_value(a)
+	 a.sub(/^yy_/, '')
+      end
+   end
 end
 
 def clean
@@ -24,10 +39,16 @@ clean
 
 print "\nVERSION of BDB is #{BDB::VERSION}\n"
 
-class TestHash < RUNIT::TestCase
+Inh = defined?(RUNIT) ? RUNIT : Test::Unit
+
+class TestHash < Inh::TestCase
    def test_00_error
-      assert_error(BDB::Fatal, 'BDB::Hash.new(".", nil, "a")', "invalid name")
-      assert_error(BDB::Fatal, 'BDB::Hash.open("tmp/aa", nil, "env" => 1)', "invalid Env")
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Hash.new(".", nil, "a")
+      end
+      assert_raises(BDB::Fatal, "invalid Env") do
+	 BDB::Hash.open("tmp/aa", nil, "env" => 1)
+      end
    end
    def test_01_init
       assert_kind_of(BDB::Hash, $bdb = BDB::Hash.new("tmp/aa", nil, "a"), "<open>")
@@ -37,7 +58,7 @@ class TestHash < RUNIT::TestCase
       assert_equal("alpha", $bdb["alpha"], "<retrieve value>")
       assert_equal(nil, $bdb["gamma"] = nil, "<set nil>")
       assert_equal(nil, $bdb["gamma"], "<retrieve nil>")
-      assert($bdb.key?("alpha"), "<has key>")
+      assert($bdb.key?("alpha") == "alpha", "<has key>")
       assert_equal(false, $bdb.key?("unknown"), "<has unknown key>")
       assert($bdb.value?(nil), "<has nil>")
       assert($bdb.value?("alpha"), "<has value>")
@@ -324,6 +345,32 @@ class TestHash < RUNIT::TestCase
 	 end
       end
    end
+
+   def test_21_sh
+      val = 'a' .. 'zz'
+      assert_equal(nil, $bdb.close, "<close>")
+      assert_kind_of(BDB::Hash, $bdb = BDB::AZ.open("tmp/aa", nil, "w"), "<sh>")
+      val.each do |l|
+	 assert_equal(l, $bdb[l] = l, "<store>")
+      end
+      $bdb.each do |k, v|
+	 assert_equal(k, v, "<fetch>")
+      end
+      assert_equal(nil, $bdb.close, "<close>")
+      assert_kind_of(BDB::Hash, $bdb = BDB::Hash.open("tmp/aa"), "<sh>")
+      val.each do |l|
+	 assert_equal("yy_#{l}", $bdb["xx_#{l}"], "<fetch value>")
+      end
+      $bdb.each do |k, v|
+	 assert_equal("xx_", k[0, 3], "<fetch key>")
+	 assert_equal("yy_", v[0, 3], "<fetch key>")
+      end
+      assert_equal(nil, $bdb.close, "<close>")
+      clean
+   end
+
 end
 
-RUNIT::CUI::TestRunner.run(TestHash.suite)
+if defined?(RUNIT)
+   RUNIT::CUI::TestRunner.run(TestHash.suite)
+end

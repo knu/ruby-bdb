@@ -138,7 +138,7 @@ bdb_intern_shift_pop(obj, depart, len)
     for (i = 0; i < len; i++) {
 	ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, depart | flags));
 	if (ret == DB_NOTFOUND) break;
-	rb_ary_push(res, bdb_test_load(dbst, data));
+	rb_ary_push(res, bdb_test_load(obj, data, FILTER_VALUE));
 	bdb_test_error(dbcp->c_del(dbcp, 0));
 	if (dbst->len > 0) dbst->len--;
     }

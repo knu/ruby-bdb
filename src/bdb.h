@@ -79,6 +79,9 @@ typedef struct {
     DB_TXN *parent;
 } bdb_TXN;
 
+#define FILTER_KEY 0
+#define FILTER_VALUE 1
+
 typedef struct {
     int options, no_thread;
     VALUE marshal;
@@ -87,6 +90,7 @@ typedef struct {
     VALUE env, orig, secondary;
     VALUE filename, database;
     VALUE bt_compare, bt_prefix, dup_compare, h_hash;
+    VALUE filter[4];
     DB *dbp;
     bdb_TXN *txn;
     long len;
@@ -176,28 +180,41 @@ struct dblsnst {
     }									\
 }
 
-#define test_dump(dbst, key, a)						\
+#define test_dump(obj, key, a, type_kv)					\
 {									\
+    bdb_DB *dbst;							\
     int _bdb_is_nil = 0;						\
-    VALUE _bdb_tmp_;							\
-    if (dbst->marshal) {						\
-        if (rb_obj_is_kind_of(a, bdb_cDelegate)) {			\
-	    _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump,		\
-				   1, bdb_deleg_to_orig(a));		\
+    VALUE _bdb_tmp_ = a;						\
+    Data_Get_Struct(obj, bdb_DB, dbst);					\
+    if (dbst->filter[type_kv]) {					\
+	if (FIXNUM_P(dbst->filter[type_kv])) {				\
+	    _bdb_tmp_ = rb_funcall(obj,					\
+				   NUM2INT(dbst->filter[type_kv]),	\
+                                   1, a);				\
 	}								\
-        else {								\
-           _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, a);	\
+	else {								\
+	    _bdb_tmp_ = rb_funcall(dbst->filter[type_kv],		\
+				   bdb_id_call, 1, a);			\
+	}								\
+    }									\
+    if (dbst->marshal) {						\
+        if (rb_obj_is_kind_of(_bdb_tmp_, bdb_cDelegate)) {		\
+	    _bdb_tmp_ = bdb_deleg_to_orig(_bdb_tmp_);			\
         }								\
+        _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, _bdb_tmp_);	\
         if (TYPE(_bdb_tmp_) != T_STRING) {				\
 	    rb_raise(rb_eTypeError, "dump() must return String");	\
 	}								\
     }									\
     else {								\
-        _bdb_tmp_ = rb_obj_as_string(a);				\
+        _bdb_tmp_ = rb_obj_as_string(_bdb_tmp_);			\
         if (a == Qnil)							\
             _bdb_is_nil = 1;						\
+        else if (dbst->filter[type_kv]) {				\
+            a = rb_obj_as_string(a);					\
+        }								\
         else								\
-            a = _bdb_tmp_;						\
+	    a = _bdb_tmp_;						\
     }									\
     (key).data = ALLOCA_N(char,						\
 			  RSTRING(_bdb_tmp_)->len + _bdb_is_nil + 1);	\
@@ -207,15 +224,17 @@ struct dblsnst {
     (key).size = RSTRING(_bdb_tmp_)->len + _bdb_is_nil;			\
 }
 
-#define test_recno(dbst, key, recno, a)		\
+#define test_recno(obj, key, recno, a)		\
 {						\
+    bdb_DB *dbst;				\
+    Data_Get_Struct(obj, bdb_DB, dbst);		\
     if (RECNUM_TYPE(dbst)) {			\
         recno = NUM2INT(a) + dbst->array_base;	\
         key.data = &recno;			\
         key.size = sizeof(db_recno_t);		\
     }						\
     else {					\
-        test_dump(dbst, key, a);		\
+        test_dump(obj, key, a, FILTER_KEY);	\
     }						\
 }
 
@@ -302,13 +321,15 @@ extern int bdb_errcall;
 extern int bdb_test_error _((int));
 extern VALUE bdb_obj_init _((int, VALUE *, VALUE));
 
+extern ID bdb_id_call;
+
 #if DB_VERSION_MAJOR < 3
 extern char *db_strerror _((int));
 #endif
 
 extern void bdb_mark _((bdb_DB *));
-extern VALUE bdb_assoc _((bdb_DB *, DBT, DBT));
-extern VALUE bdb_assoc3 _((bdb_DB *, DBT, DBT, DBT));
+extern VALUE bdb_assoc _((VALUE, DBT, DBT));
+extern VALUE bdb_assoc3 _((VALUE, DBT, DBT, DBT));
 extern VALUE bdb_assoc_dyna _((VALUE, DBT, DBT));
 extern VALUE bdb_clear _((VALUE));
 extern VALUE bdb_close _((int, VALUE *, VALUE));
@@ -319,6 +340,7 @@ extern VALUE bdb_each_eulav _((int, VALUE *, VALUE));
 extern VALUE bdb_each_key _((int, VALUE *, VALUE));
 extern VALUE bdb_each_value _((int, VALUE *, VALUE));
 extern VALUE bdb_each_valuec _((int, VALUE *, VALUE, int, VALUE));
+extern VALUE bdb_each_kvc _((int, VALUE *, VALUE, int, VALUE, int));
 extern void bdb_env_errcall _((const char *, char *));
 extern VALUE bdb_env_open_db _((int, VALUE *, VALUE));
 extern void bdb_free _((bdb_DB *));
@@ -329,7 +351,7 @@ extern VALUE bdb_index _((VALUE, VALUE));
 extern VALUE bdb_internal_value _((VALUE, VALUE, VALUE, int));
 extern VALUE bdb_put _((int, VALUE *, VALUE));
 extern VALUE bdb_s_new _((int, VALUE *, VALUE));
-extern VALUE bdb_test_load _((bdb_DB *, DBT));
+extern VALUE bdb_test_load _((VALUE, DBT, int));
 extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
 extern VALUE bdb_tree_stat _((int, VALUE *, VALUE));
 extern void bdb_init_env _((void));

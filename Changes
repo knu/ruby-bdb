@@ -154,3 +154,14 @@
 * add flags to Common#stat
 * add Common#verify (>= 3.3.11)
 * corrected no_thread for Common::open
+
+-- 0.3.1
+
+* added --with-db-version to extconf.rb 
+       (Thanks "Akinori MUSHA" <knu@iDaemons.org>)
+* patch from "akira yamada" <akira@debian.org> (Thanks)
+   - examples/cursor.rb
+   - BDB::Queue#stat (-1)
+   - test suite : specification of assert was changed
+* tests for RUNIT/Test::Unit
+* filter function like P language (bdb_{store,fetch}_{key,value})

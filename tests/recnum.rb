@@ -23,10 +23,16 @@ clean
 
 print "\nVERSION of BDB is #{BDB::VERSION}\n"
 
-class TestRecnum < RUNIT::TestCase
+Inh = defined?(RUNIT) ? RUNIT : Test::Unit
+
+class TestRecnum < Inh::TestCase
    def test_00_error
-      assert_error(BDB::Fatal, 'BDB::Recnum.new(".", nil, "a")', "invalid name")
-      assert_error(BDB::Fatal, 'BDB::Recnum.open("tmp/aa", nil, "env" => 1)', "invalid Env")
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Recnum.open("tmp/aa", nil, "env" => 1)
+      end
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Recnum.open("tmp/aa", nil, "env" => 1)
+      end
    end
    def test_01_init
       assert_kind_of(BDB::Recnum, $bdb = BDB::Recnum.new("tmp/aa", nil, "w"), "<open>")
@@ -163,7 +169,7 @@ class TestRecnum < RUNIT::TestCase
 	 i = rand($bdb.size)
 	 j = 1 + rand($bdb.size - i)
 	 if ! $array.slice(-i .. -j)
-	    assert_error(RangeError, '', "<invalid range>") { $bdb.slice!(-i .. -j) }
+	    assert_raises(RangeError, "<invalid range>") { $bdb.slice!(-i .. -j) }
 	    another += 1
 	    redo if another < 10
 	    another = 0
@@ -299,7 +305,7 @@ class TestRecnum < RUNIT::TestCase
 	 i = rand($bdb.size)
 	 j = i + rand($bdb.size - i)
 	 if ! $array.slice(i .. j)
-	    assert_error(RangeError, '', "<invalid range>") { $bdb.fill(k, i .. j) }
+	    assert_raises(RangeError, "<invalid range>") { $bdb.fill(k, i .. j) }
 	    another += 1
 	    redo if another < 10
 	    another = 0
@@ -316,7 +322,7 @@ class TestRecnum < RUNIT::TestCase
 	 i = rand($bdb.size)
 	 j = 1 + rand($bdb.size - i)
 	 if ! $array.slice(-i .. -j)
-	    assert_error(RangeError, '', "<invalid range>") { $bdb.fill(k, -i .. -j) }
+	    assert_raises(RangeError, "<invalid range>") { $bdb.fill(k, -i .. -j) }
 	    another += 1
 	    redo if another < 10
 	    another = 0
@@ -364,4 +370,6 @@ class TestRecnum < RUNIT::TestCase
       
 end
 
-RUNIT::CUI::TestRunner.run(TestRecnum.suite)
+if defined?(RUNIT)
+   RUNIT::CUI::TestRunner.run(TestRecnum.suite)
+end

@@ -20,10 +20,16 @@ if BDB::VERSION_MAJOR < 3
    exit
 end
 
-class TestQueue < RUNIT::TestCase
+Inh = defined?(RUNIT) ? RUNIT : Test::Unit
+
+class TestQueue < Inh::TestCase
    def test_00_error
-      assert_error(BDB::Fatal, 'BDB::Queue.new(".", nil, "a")', "invalid name")
-      assert_error(BDB::Fatal, 'BDB::Queue.open("tmp/aa", nil, "env" => 1)', "invalid Env")
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Queue.open("tmp/aa", nil, "env" => 1)
+      end
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Queue.open("tmp/aa", nil, "env" => 1)
+      end
    end
    def test_01_init
       assert_kind_of(BDB::Queue, $bdb = BDB::Queue.new("tmp/aa", nil, "a"), "<open>")
@@ -33,7 +39,7 @@ class TestQueue < RUNIT::TestCase
       assert_equal("alpha", $bdb[1], "<retrieve value>")
       assert_equal(nil, $bdb[2] = nil, "<set nil>")
       assert_equal(nil, $bdb[2], "<retrieve nil>")
-      assert($bdb.key?(1), "<has key>")
+      assert($bdb.key?(1) == "alpha", "<has key>")
       assert_equal(false, $bdb.key?(3), "<has unknown key>")
       assert($bdb.value?(nil), "<has nil>")
       assert($bdb.value?("alpha"), "<has value>")
@@ -231,4 +237,7 @@ class TestQueue < RUNIT::TestCase
    end
 end
 
-RUNIT::CUI::TestRunner.run(TestQueue.suite)
+if defined?(RUNIT)
+   RUNIT::CUI::TestRunner.run(TestQueue.suite)
+end
+

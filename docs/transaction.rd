@@ -1,6 +1,9 @@
 =begin
 == BDB::Txn
 
+# module BDB
+#^
+
 The transaction subsystem makes operations atomic, consistent,
 isolated, and durable in the face of system and application
 failures. The subsystem requires that the data be properly logged and
@@ -29,9 +32,11 @@ and with DB >= 4.0
 
 The transaction is created with ((<BDB::Env#begin|URL:env.html#begin>))
 or with ((<begin>)) 
+#^
 
 See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
 ((<BDB::Env#txn_checkpoint|URL:env.html#txn_checkpoint>))
+# class Txn
 
 === Methods
 
@@ -39,15 +44,15 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
 --- txn_abort()
     Abort the transaction. This is will terminate the transaction.
 
---- assoc(db [, db, ...])
---- associate(db [, db, ...])
---- txn_assoc(db [, db, ...])
+--- assoc(db, ...)
+--- associate(db, ...)
+--- txn_assoc(db, ...)
     Associate a database with the transaction, return a new database
     handle which is transaction protected.
 
---- begin([flags, db, ...])
---- begin([flags, db, ...]) { |txn [, db, ...]| ...}
---- txn_begin([flags, db, ...])
+--- begin(flags = 0, db, ...) { |txn, db, ...| ...}
+--- begin(flags = 0, db, ...)
+--- txn_begin(flags = 0, db, ...)
      begin a transaction (the transaction manager must be enabled). flags
      can have the value ((|DBD::TXN_COMMIT|)), in this case the transaction
      will be commited at end.
@@ -73,10 +78,10 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
      ((|"set_timeout"|)), ((|"set_txn_timeout"|)), ((|"set_lock_timeout"|))
     
 
---- commit([flags])
---- close([flags])
---- txn_commit([flags])
---- txn_close([flags])
+--- commit(flags = 0)
+--- close(flags = 0)
+--- txn_commit(flags = 0)
+--- txn_close(flags = 0)
      Commit the transaction. This will finish the transaction.
      The ((|flags|)) can have the value 
 
@@ -121,5 +126,8 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
     manager. Only after the distributed transaction manager receives
     successful responses from all of its prepare messages should it issue
     any commit messages.
+
+# end
+# end
 
 =end

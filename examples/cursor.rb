@@ -6,7 +6,7 @@ indice = 0
 File.foreach("wordlist") do |line|
     line.chomp!
     line = format("%05d", indice) + line
-    db[line] = line.reverse
+    db[indice] = line.reverse
     indice += 1
 end
 print "======== db.stat\n"

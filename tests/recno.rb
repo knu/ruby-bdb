@@ -16,10 +16,16 @@ clean
 
 print "\nVERSION of BDB is #{BDB::VERSION}\n"
 
-class TestRecno < RUNIT::TestCase
+Inh = defined?(RUNIT) ? RUNIT : Test::Unit
+
+class TestRecno < Inh::TestCase
    def test_00_error
-      assert_error(BDB::Fatal, 'BDB::Recno.new(".", nil, "a")', "invalid name")
-      assert_error(BDB::Fatal, 'BDB::Recno.open("tmp/aa", nil, "env" => 1)', "invalid Env")
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Recno.open("tmp/aa", nil, "env" => 1)
+      end
+      assert_raises(BDB::Fatal, "invalid name") do
+	 BDB::Recno.open("tmp/aa", nil, "env" => 1)
+      end
    end
    def test_01_init
       assert_kind_of(BDB::Recno, $bdb = BDB::Recno.new("tmp/aa", nil, "a"), "<open>")
@@ -29,7 +35,7 @@ class TestRecno < RUNIT::TestCase
       assert_equal("alpha", $bdb[1], "<retrieve value>")
       assert_equal(nil, $bdb[2] = nil, "<set nil>")
       assert_equal(nil, $bdb[2], "<retrieve nil>")
-      assert($bdb.key?(1), "<has key>")
+      assert($bdb.key?(1) == "alpha", "<has key>")
       assert_equal(false, $bdb.key?(3), "<has unknown key>")
       assert($bdb.value?(nil), "<has nil>")
       assert($bdb.value?("alpha"), "<has value>")
@@ -398,4 +404,6 @@ class TestRecno < RUNIT::TestCase
    end
 end
 
-RUNIT::CUI::TestRunner.run(TestRecno.suite)
+if defined?(RUNIT)
+   RUNIT::CUI::TestRunner.run(TestRecno.suite)
+end

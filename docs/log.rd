@@ -2,6 +2,8 @@
 
 == Logging subsystem
 
+# module BDB
+#^
 This subsystem is used when recovery from application or system
 failure is necessary.
 
@@ -27,12 +29,15 @@ The following options can be given when the environnement is created
 
   : ((|"set_lg_max"|))
     Set log file size
+#^
+
+# class Env
 
 === BDB::Env
 
 ==== Methods
 
---- lock_archive([flags])
+--- lock_archive(flags = 0)
     The log_archive function return an array of log or database file names.
 
     ((|flags|)) value must be set to 0 or the value ((|BDB::ARCH_DATA|))
@@ -64,7 +69,7 @@ The following options can be given when the environnement is created
     ((|flag|)) can has the value ((|BDB::CHECKPOINT|)), ((|BDB::FIRST|)), 
     ((|BDB::LAST|)), ((|BDB::NEXT|)), ((|BDB::PREV|)), ((|BDB::CURRENT|))
 
---- log_put(string [, flag])
+--- log_put(string, flag = 0)
 
     The ((|log_put|)) function appends records to the log. It return
     an object ((|BDB::Lsn|))
@@ -81,6 +86,10 @@ The following options can be given when the environnement is created
 
     return log statistics
 
+# end
+
+# class Common
+
 === BDB::Common
 
 ==== Methods
@@ -92,6 +101,9 @@ The following options can be given when the environnement is created
 --- log_unregister()
   
     The ((|log_unregister|)) function unregisters a file name.
+# end
+# class Lsn
+# include Comparable
 
 === BDB::Lsn
 
@@ -119,6 +131,7 @@ include Comparable
 
     return the ((|String|)) associated with this ((|BDB::Lsn|))
 
-
+# end
+# end
 
 =end

@@ -573,7 +573,7 @@ bdb_txn_set_timeout(obj, a)
 void bdb_init_transaction()
 {
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);
-    bdb_cTxnCatch = rb_define_class("DBTxnCatch", bdb_cTxn);
+    bdb_cTxnCatch = rb_define_class_under(bdb_mDb, "DBTxnCatch", bdb_cTxn);
     rb_undef_method(CLASS_OF(bdb_cTxn), "new");
     rb_define_method(bdb_cEnv, "begin", bdb_env_begin, -1);
     rb_define_method(bdb_cEnv, "txn_begin", bdb_env_begin, -1);

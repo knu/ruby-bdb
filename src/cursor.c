@@ -183,15 +183,15 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
     else if (flags == DB_SET || flags == DB_SET_RANGE) {
         if (cnt != 2)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbst, key, recno, b);
+        test_recno(dbcst->db, key, recno, b);
 	data.flags |= DB_DBT_MALLOC;
     }
 #if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
     else if (flags == DB_GET_BOTH) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbst, key, recno, b);
-        test_dump(dbst, data, c);
+        test_recno(dbcst->db, key, recno, b);
+        test_dump(dbcst->db, data, c, FILTER_VALUE);
     }
 #endif
     else {
@@ -218,7 +218,7 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qnil;
     if (c_pget) {
-	return bdb_assoc3(dbst, key, pkey, data);
+	return bdb_assoc3(dbcst->db, key, pkey, data);
     }
     else {
 	return bdb_assoc_dyna(dbcst->db, key, data);
@@ -351,12 +351,12 @@ bdb_cursor_put(argc, argv, obj)
     if (flags & (DB_KEYFIRST | DB_KEYLAST)) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
-        test_recno(dbst, key, recno, b);
-        test_dump(dbst, data, c);
+        test_recno(dbcst->db, key, recno, b);
+        test_dump(dbcst->db, data, c, FILTER_VALUE);
 	f = c;
     }
     else {
-        test_dump(dbst, data, b);
+        test_dump(dbcst->db, data, b, FILTER_VALUE);
 	f = b;
     }
     set_partial(dbst, data);
