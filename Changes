@@ -217,3 +217,7 @@
 
 * better interface at exit
 * dbconfig for <= 2
+
+--- 0.4.0
+
+* adapted for debian (extconf.rb)

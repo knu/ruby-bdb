@@ -893,6 +893,27 @@ xb_con_index(VALUE obj, VALUE a, VALUE b, VALUE c)
 }
 
 static VALUE
+xb_con_index_get(VALUE obj, VALUE a)
+{
+    xcon *con;
+    DbTxn *txn;
+    std::string uri, name, index;
+    bool val;
+    VALUE res;
+
+    GetConTxn(obj, con, txn);
+    PROTECT(val = con->con->getIndexDeclaration(txn, INT2FIX(a), uri, name, index));
+    res = Qnil;
+    if (val) {
+	res = rb_ary_new2(3);
+	rb_ary_push(res, rb_tainted_str_new2(uri.c_str()));
+	rb_ary_push(res, rb_tainted_str_new2(name.c_str()));
+	rb_ary_push(res, rb_tainted_str_new2(index.c_str()));
+    }
+    return res;
+}
+
+static VALUE
 xb_con_name(VALUE obj)
 {
     xcon *con;
@@ -1133,35 +1154,59 @@ xb_con_i_alloc(VALUE obj, VALUE name)
 }
 
 static VALUE
-xb_con_remove(VALUE obj, VALUE a)
+xb_con_remove(int argc, VALUE *argv, VALUE obj)
 {
-    VALUE b;
+    VALUE a, b, c;
+    int flags = 0;
     xcon *con;
     DbTxn *txn = NULL;
 
     rb_secure(2);
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	flags = NUM2INT(b);
+    }
     Check_SafeStr(a);
-    b = xb_con_i_alloc(obj, a);
-    GetConTxn(b, con, txn);
-    PROTECT(con->con->remove(txn));
+    c = xb_con_i_alloc(obj, a);
+    GetConTxn(c, con, txn);
+    PROTECT(con->con->remove(txn, flags));
     return Qnil;
 }
 
 static VALUE
-xb_con_rename(VALUE obj, VALUE a, VALUE b)
+xb_con_rename(int argc, VALUE *argv, VALUE obj)
 {
-    VALUE c;
+    VALUE a, b, c, d;
+    int flags = 0;
     xcon *con;
     char *str;
     DbTxn *txn = NULL;
 
     rb_secure(2);
+    if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
+	flags = NUM2INT(c);
+    }
     Check_SafeStr(a);
-    c = xb_con_i_alloc(obj, a);
+    d = xb_con_i_alloc(obj, a);
     Check_SafeStr(b);
     str = STR2CSTR(b);
+    GetConTxn(d, con, txn);
+    PROTECT(con->con->rename(txn, str, flags));
+    return Qnil;
+}
+
+static VALUE
+xb_con_s_name(VALUE obj, VALUE a, VALUE b)
+{
+    VALUE c;
+    xcon *con;
+    DbTxn *txn;
+    char *str;
+
+    Check_SafeStr(a);
+    c = xb_con_i_alloc(obj, a);
     GetConTxn(c, con, txn);
-    PROTECT(con->con->rename(txn, str));
+    str = STR2CSTR(a);
+    PROTECT(con->con->name(str));
     return Qnil;
 }
 
@@ -1399,8 +1444,8 @@ extern "C" {
 	rb_define_method(xb_cTxn, "begin", RMF(xb_env_begin), -1);
 	rb_define_method(xb_cTxn, "txn_begin", RMF(xb_env_begin), -1);
 	rb_define_method(xb_cTxn, "transaction", RMF(xb_env_begin), -1);
-	rb_define_method(xb_cTxn, "rename_xml", RMF(xb_con_rename), 2);
-	rb_define_method(xb_cTxn, "remove_xml", RMF(xb_con_remove), 1);
+	rb_define_method(xb_cTxn, "rename_xml", RMF(xb_con_rename), -1);
+	rb_define_method(xb_cTxn, "remove_xml", RMF(xb_con_remove), -1);
 	xb_mXML = rb_define_module_under(xb_mDb, "XML");
 	rb_define_const(xb_mXML, "VERSION", version);
 	rb_define_const(xb_mXML, "VERSION_MAJOR", INT2FIX(major));
@@ -1415,8 +1460,9 @@ extern "C" {
 #endif
 	rb_define_singleton_method(xb_cCon, "new", RMF(xb_con_s_new), -1);
 	rb_define_singleton_method(xb_cCon, "open", RMF(xb_con_s_new), -1);
-	rb_define_singleton_method(xb_cCon, "rename", RMF(xb_con_rename), 2);
-	rb_define_singleton_method(xb_cCon, "remove", RMF(xb_con_remove), 1);
+	rb_define_singleton_method(xb_cCon, "set_name", RMF(xb_con_s_name), 2);
+	rb_define_singleton_method(xb_cCon, "rename", RMF(xb_con_rename), -1);
+	rb_define_singleton_method(xb_cCon, "remove", RMF(xb_con_remove), -1);
 	rb_define_singleton_method(xb_cCon, "dump", RMF(xb_con_dump), -1);
 	rb_define_singleton_method(xb_cCon, "load", RMF(xb_con_load), -1);
 	rb_define_singleton_method(xb_cCon, "verify", RMF(xb_con_verify), 1);
@@ -1426,6 +1472,7 @@ extern "C" {
 	rb_define_private_method(xb_cCon, "__txn_dup__", RMF(xb_con_txn_dup), 1);
 	rb_define_private_method(xb_cCon, "__txn_close__", RMF(xb_con_txn_close), 2);
 	rb_define_method(xb_cCon, "index", RMF(xb_con_index), 3);
+	rb_define_method(xb_cCon, "index[]", RMF(xb_con_index_get), 1);
 	rb_define_method(xb_cCon, "name", RMF(xb_con_name), 0);
 	rb_define_method(xb_cCon, "[]", RMF(xb_con_get), -1);
 	rb_define_method(xb_cCon, "get", RMF(xb_con_get), -1);

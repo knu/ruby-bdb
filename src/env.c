@@ -826,7 +826,7 @@ bdb_env_s_i_options(obj, flags)
     }
 #ifdef DB_CLIENT
     else if (strcmp(options, "set_rpc_server") == 0 ||
-	     strcmp(options, "set_server")) {
+	     strcmp(options, "set_server") == 0) {
 	*flags |= DB_CLIENT;
     }
 #endif

@@ -3,6 +3,7 @@
 #include <rubysig.h>
 #include <db.h>
 #include <errno.h>
+#include "bdb_version.h"
 
 #if RUBY_VERSION_CODE >= 172
 #define ruby_xmalloc(x) malloc(x)

@@ -1,0 +1,3 @@
+
+* ::rename, ::remove : added flags
+* new Con::set_name, Con#index[]

@@ -1,5 +1,13 @@
 #!/usr/bin/ruby
 require 'mkmf'
+
+def bdb_version(db_version)
+   a = File.new("bdb_version.h", "w")
+   a.puts "#define BDB_DB_VERSION #{db_version}"
+ensure
+   a.close
+end
+
 stat_lib = if CONFIG.key?("LIBRUBYARG_STATIC")
 	      $LDFLAGS += " -L#{CONFIG['libdir']}"
 	      CONFIG["LIBRUBYARG_STATIC"]
@@ -33,12 +41,21 @@ unique = if with_config("uniquename")
 	    ""
 	 end
 
-version  = with_config('db-version', "-4,4,3,2,").split(/,/, -1)
+version  = with_config('db-version', "-4.1,-4.0,-4,4,3,2,").split(/,/, -1)
 
 catch(:done) do
    version.each do |with_ver|
-      db_version = "db_version" + (("#{with_ver[-1,1]}" > "2") ? unique : "")
+      db_version = "db_version" + unique
+      bdb_version(db_version)
       throw :done if have_library("db#{with_ver}", db_version)
+      if with_ver != "" && unique == ""
+	 /(\d)\.?(\d)?/ =~ with_ver
+	 major = $1.to_i
+	 minor = $2.to_i
+	 db_version = "db_version_" + (1000 * major + minor).to_s
+	 bdb_version(db_version)
+	 throw :done if have_library("db#{with_ver}", db_version)
+      end
    end
    raise "libdb#{version[-1]} not found"
 end

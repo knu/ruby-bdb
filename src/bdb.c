@@ -148,7 +148,7 @@ Init_bdb()
     if (rb_const_defined_at(rb_cObject, rb_intern("BDB"))) {
 	rb_raise(rb_eNameError, "module already defined");
     }
-    version = rb_tainted_str_new2(db_version(&major, &minor, &patch));
+    version = rb_tainted_str_new2(BDB_DB_VERSION(&major, &minor, &patch));
     if (major != DB_VERSION_MAJOR || minor != DB_VERSION_MINOR
 	|| patch != DB_VERSION_PATCH) {
         rb_raise(rb_eNotImpError, "\nBDB needs compatible versions of libdb & db.h\n\tyou have db.h version %d.%d.%d and libdb version %d.%d.%d\n",
