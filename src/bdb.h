@@ -278,6 +278,7 @@ extern char *db_strerror _((int));
 
 extern void bdb_mark _((bdb_DB *));
 extern VALUE bdb_assoc _((bdb_DB *, DBT, DBT));
+extern VALUE bdb_assoc3 _((bdb_DB *, DBT, DBT, DBT));
 extern VALUE bdb_assoc_dyna _((VALUE, DBT, DBT));
 extern VALUE bdb_clear _((VALUE));
 extern VALUE bdb_close _((int, VALUE *, VALUE));

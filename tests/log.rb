@@ -61,7 +61,7 @@ class TestLog < RUNIT::TestCase
       assert_kind_of(BDB::Env, 
 		     $env = BDB::Env.open("tmp",  BDB::CREATE | BDB::INIT_LOG,
 					  "thread" => false, 
-					  "set_lg_bsize" => 10000,
+					  :set_lg_bsize => 10000,
 					  "set_lg_max" => 45000),
 		     "<open>")
    end

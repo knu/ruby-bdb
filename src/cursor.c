@@ -148,14 +148,15 @@ bdb_cursor_count(obj)
 }
 
 static VALUE
-bdb_cursor_get(argc, argv, obj)
+bdb_cursor_get_common(argc, argv, obj, c_pget)
     int argc;
     VALUE *argv;
     VALUE obj;
+    int c_pget;
 {
     VALUE a, b, c;
     int flags, cnt, ret;
-    DBT key, data;
+    DBT key, data, pkey;
     bdb_DBC *dbcst;
     bdb_DB *dbst;
     db_recno_t recno;
@@ -163,6 +164,8 @@ bdb_cursor_get(argc, argv, obj)
     cnt = rb_scan_args(argc, argv, "12", &a, &b, &c);
     flags = NUM2INT(a);
     memset(&key, 0, sizeof(key));
+    memset(&pkey, 0, sizeof(pkey));
+    pkey.flags |= DB_DBT_MALLOC;
     memset(&data, 0, sizeof(data));
     GetCursorDB(obj, dbcst, dbst);
     if (flags == DB_SET_RECNO) {
@@ -199,11 +202,42 @@ bdb_cursor_get(argc, argv, obj)
 	data.flags |= DB_DBT_MALLOC;
     }
     set_partial(dbst, data);
-    ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key, &data, flags));
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    if (c_pget) {
+	if (dbst->secondary != Qnil) {
+	    rb_raise(bdb_eFatal, "pget must be used with a secondary index");
+	}
+	ret = bdb_test_error(dbcst->dbc->c_pget(dbcst->dbc, &key, &pkey, &data, flags));
+    }
+    else
+#endif
+    {
+
+	ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key, &data, flags));
+    }
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qnil;
-    return bdb_assoc_dyna(dbcst->db, key, data);
+    if (c_pget) {
+	return bdb_assoc3(dbst, key, pkey, data);
+    }
+    else {
+	return bdb_assoc_dyna(dbcst->db, key, data);
+    }
 }
+
+static VALUE
+bdb_cursor_get(argc, argv, obj)
+{
+    return bdb_cursor_get_common(argc, argv, obj, 0);
+}
+
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+static VALUE
+bdb_cursor_pget(argc, argv, obj)
+{
+    return bdb_cursor_get_common(argc, argv, obj, 1);
+}
+#endif
 
 static VALUE
 bdb_cursor_set_xxx(obj, a, flag)
@@ -366,6 +400,10 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_count", bdb_cursor_count, 0);
     rb_define_method(bdb_cCursor, "get", bdb_cursor_get, -1);
     rb_define_method(bdb_cCursor, "c_get", bdb_cursor_get, -1);
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    rb_define_method(bdb_cCursor, "pget", bdb_cursor_pget, -1);
+    rb_define_method(bdb_cCursor, "c_pget", bdb_cursor_pget, -1);
+#endif
     rb_define_method(bdb_cCursor, "put", bdb_cursor_put, -1);
     rb_define_method(bdb_cCursor, "c_put", bdb_cursor_put, -1);
     rb_define_method(bdb_cCursor, "c_next", bdb_cursor_next, 0);

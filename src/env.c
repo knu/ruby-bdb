@@ -3,6 +3,7 @@
 struct db_stoptions {
     bdb_ENV *env;
     VALUE config;
+    int lg_max, lg_bsize;
 };
 
 VALUE
@@ -129,15 +130,11 @@ bdb_env_i_options(obj, db_stobj)
 #endif
     }
     else if (strcmp(options, "set_lg_max") == 0) {
-#if DB_VERSION_MAJOR < 3
-	dbenvp->lg_max = NUM2INT(value);
-#else
-        bdb_test_error(dbenvp->set_lg_max(dbenvp, NUM2INT(value)));
-#endif
+	db_st->lg_max = NUM2INT(value);
     }
 #if DB_VERSION_MAJOR == 3
     else if (strcmp(options, "set_lg_bsize") == 0) {
-        bdb_test_error(dbenvp->set_lg_bsize(dbenvp, NUM2INT(value)));
+	db_st->lg_bsize = NUM2INT(value);
     }
     else if (strcmp(options, "set_data_dir") == 0) {
 	char *tmp;
@@ -425,7 +422,26 @@ static VALUE
 bdb_env_each_options(args)
     VALUE *args;
 {
-    return rb_iterate(rb_each, args[0], bdb_env_i_options, args[1]);
+    VALUE res;
+    DB_ENV *dbenvp;
+    struct db_stoptions *db_st;
+
+    res = rb_iterate(rb_each, args[0], bdb_env_i_options, args[1]);
+    Data_Get_Struct(args[1], struct db_stoptions, db_st);
+    dbenvp = db_st->env->dbenvp;
+#if DB_VERSION_MAJOR == 3
+    if (db_st->lg_bsize) {
+	bdb_test_error(dbenvp->set_lg_bsize(dbenvp, db_st->lg_bsize));
+    }
+#endif
+    if (db_st->lg_max) {
+#if DB_VERSION_MAJOR < 3
+	dbenvp->lg_max = db_st->lg_max;
+#else
+	bdb_test_error(dbenvp->set_lg_max(dbenvp, db_st->lg_max));
+#endif
+    }
+    return res;
 }
 
 static VALUE

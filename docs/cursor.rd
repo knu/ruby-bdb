@@ -66,6 +66,10 @@ See also iterators in ((<Acces Methods|URL:docs/access.html#each>))
 --- c_next()
      Same than (({get(BDB::NEXT)}))
 
+--- pget(flags [, key [, value]])
+--- c_pget(flags [, key [, value]])
+    Retrieve key/primary key/data pair from the database
+
 --- prev()
 --- c_prev()
      Same than (({get(BDB::PREV)}))

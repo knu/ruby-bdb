@@ -27,5 +27,10 @@ aux.reverse_each_primary do |sk, pk, pv|
    puts "pk : #{pk} pv : #{pv.inspect} sk : #{sk}"
 end
 
+cursor = aux.cursor
+while pkv = cursor.pget(BDB::NEXT)
+   sk, pk, pv = pkv
+   puts "pk : #{pk.inspect} pv : #{pv.inspect} sk : #{sk}"
+end
 
 

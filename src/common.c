@@ -1093,7 +1093,7 @@ bdb_assoc2(dbst, skey, pkey, data)
 	bdb_test_load(dbst, data));
 }
 
-static VALUE
+VALUE
 bdb_assoc3(dbst, skey, pkey, data)
     bdb_DB *dbst;
     DBT skey, pkey, data;
@@ -2739,7 +2739,7 @@ bdb_call_secondary(secst, pkey, pdata, skey)
 	rb_raise(bdb_eFatal, "BUG (secondary index) : current_db not set");
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
-    if (!dbst->dbp || !dbst->secondary) return DB_DONOTINDEX;
+    if (!dbst->dbp || !RTEST(dbst->secondary)) return DB_DONOTINDEX;
     for (i = 0; i < RARRAY(dbst->secondary)->len; i++) {
 	ary = RARRAY(dbst->secondary)->ptr[i];
 	if (RARRAY(ary)->len != 2) continue;
@@ -2795,6 +2795,9 @@ bdb_associate(argc, argv, obj)
 	rb_raise(bdb_eFatal, "associate expect a BDB object");
     }
     GetDB(second, secondst);
+    if (RTEST(secondst->secondary)) {
+	rb_raise(bdb_eFatal, "associate with a primary index");
+    }
     GetDB(obj, dbst);
     bdb_test_error(dbst->dbp->associate(dbst->dbp, secondst->dbp, 
 					bdb_call_secondary, flags));
@@ -2803,6 +2806,7 @@ bdb_associate(argc, argv, obj)
 	dbst->secondary = rb_ary_new();
     }
     rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_f_lambda()));
+    secondst->secondary = Qnil;
     return obj;
 }
 

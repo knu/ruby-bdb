@@ -162,19 +162,34 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "UNKNOWN", INT2FIX(DB_UNKNOWN));
     rb_define_const(bdb_mDb, "AFTER", INT2FIX(DB_AFTER));
+#ifdef DB_AGGRESSIVE
+    rb_define_const(bdb_mDb, "AGGRESSIVE", INT2FIX(DB_AGGRESSIVE));
+#endif
     rb_define_const(bdb_mDb, "APPEND", INT2FIX(DB_APPEND));
     rb_define_const(bdb_mDb, "ARCH_ABS", INT2FIX(DB_ARCH_ABS));
     rb_define_const(bdb_mDb, "ARCH_DATA", INT2FIX(DB_ARCH_DATA));
     rb_define_const(bdb_mDb, "ARCH_LOG", INT2FIX(DB_ARCH_LOG));
     rb_define_const(bdb_mDb, "BEFORE", INT2FIX(DB_BEFORE));
+#ifdef DB_CACHED_COUNTS
+    rb_define_const(bdb_mDb, "CACHED_COUNTS", INT2FIX(DB_CACHED_COUNTS));
+#endif
+#ifdef DB_CDB_ALLDB
+    rb_define_const(bdb_mDb, "CDB_ALLDB", INT2FIX(DB_CDB_ALLDB));
+#endif
     rb_define_const(bdb_mDb, "CHECKPOINT", INT2FIX(DB_CHECKPOINT));
+#ifdef DB_CLIENT
+    rb_define_const(bdb_mDb, "CLIENT", INT2FIX(DB_CLIENT));
+#endif
+#ifdef DB_CONFIG
+    rb_define_const(bdb_mDb, "CONFIG", INT2FIX(DB_CONFIG));
+#endif
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "CONSUME", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "CONSUME", INT2FIX(DB_CONSUME));
-#ifdef DB_CDB_ALLDB
-    rb_define_const(bdb_mDb, "CDB_ALLDB", INT2FIX(DB_CDB_ALLDB));
 #endif
+#ifdef DB_CONSUME_WAIT
+    rb_define_const(bdb_mDb, "CONSUME_WAIT", INT2FIX(DB_CONSUME_WAIT));
 #endif
     rb_define_const(bdb_mDb, "CREATE", INT2FIX(DB_CREATE));
     rb_define_const(bdb_mDb, "CURLSN", INT2FIX(DB_CURLSN));
@@ -184,17 +199,6 @@ Init_bdb()
 #else
     rb_define_const(bdb_mDb, "DIRTY_READ", INT2FIX(0));
 #endif
-#if DB_VERSION_MAJOR < 3
-    rb_define_const(bdb_mDb, "DB_VERB_CHKPOINT", INT2FIX(1));
-    rb_define_const(bdb_mDb, "DB_VERB_DEADLOCK", INT2FIX(1));
-    rb_define_const(bdb_mDb, "DB_VERB_RECOVERY", INT2FIX(1));
-    rb_define_const(bdb_mDb, "DB_VERB_WAITSFOR", INT2FIX(1));
-#else
-    rb_define_const(bdb_mDb, "DB_VERB_CHKPOINT", INT2FIX(DB_VERB_CHKPOINT));
-    rb_define_const(bdb_mDb, "DB_VERB_DEADLOCK", INT2FIX(DB_VERB_DEADLOCK));
-    rb_define_const(bdb_mDb, "DB_VERB_RECOVERY", INT2FIX(DB_VERB_RECOVERY));
-    rb_define_const(bdb_mDb, "DB_VERB_WAITSFOR", INT2FIX(DB_VERB_WAITSFOR));
-#endif
     rb_define_const(bdb_mDb, "DBT_MALLOC", INT2FIX(DB_DBT_MALLOC));
     rb_define_const(bdb_mDb, "DBT_PARTIAL", INT2FIX(DB_DBT_PARTIAL));
 #if DB_VERSION_MAJOR < 3
@@ -203,11 +207,23 @@ Init_bdb()
     rb_define_const(bdb_mDb, "DBT_REALLOC", INT2FIX(DB_DBT_REALLOC));
 #endif
     rb_define_const(bdb_mDb, "DBT_USERMEM", INT2FIX(DB_DBT_USERMEM));
+#ifdef DB_DONOTINDEX
+    rb_define_const(bdb_mDb, "DONOTINDEX", INT2FIX(DB_DONOTINDEX));
+#endif
     rb_define_const(bdb_mDb, "DUP", INT2FIX(DB_DUP));
 #ifdef DB_DUPSORT
     rb_define_const(bdb_mDb, "DUPSORT", INT2FIX(DB_DUPSORT));
 #endif
+#ifdef DB_EXCL
+    rb_define_const(bdb_mDb, "EXCL", INT2FIX(DB_EXCL));
+#endif
+#ifdef DB_FAST_STAT
+    rb_define_const(bdb_mDb, "FAST_STAT", INT2FIX(DB_FAST_STAT));
+#endif
     rb_define_const(bdb_mDb, "FIRST", INT2FIX(DB_FIRST));
+#ifdef DB_FIXEDLEN
+    rb_define_const(bdb_mDb, "FIXEDLEN", INT2FIX(DB_FIXEDLEN));
+#endif
     rb_define_const(bdb_mDb, "FLUSH", INT2FIX(DB_FLUSH));
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "FORCE", INT2FIX(1));
@@ -220,6 +236,12 @@ Init_bdb()
     rb_define_const(bdb_mDb, "GET_BOTH", INT2FIX(DB_GET_BOTH));
 #endif
     rb_define_const(bdb_mDb, "GET_RECNO", INT2FIX(DB_GET_RECNO));
+#ifdef DB_HOME
+    rb_define_const(bdb_mDb, "HOME", INT2FIX(DB_HOME));
+#endif
+#ifdef DB_INCOMPLETE
+    rb_define_const(bdb_mDb, "INCOMPLETE", INT2FIX(DB_INCOMPLETE));
+#endif
 #ifdef DB_INIT_CDB
     rb_define_const(bdb_mDb, "INIT_CDB", INT2FIX(DB_INIT_CDB));
 #endif
@@ -228,8 +250,14 @@ Init_bdb()
     rb_define_const(bdb_mDb, "INIT_MPOOL", INT2FIX(DB_INIT_MPOOL));
     rb_define_const(bdb_mDb, "INIT_TXN", INT2FIX(DB_INIT_TXN));
     rb_define_const(bdb_mDb, "INIT_TRANSACTION", INT2FIX(BDB_INIT_TRANSACTION));
+#ifdef DB_JOINENV
+    rb_define_const(bdb_mDb, "JOINENV", INT2FIX(DB_JOINENV));
+#endif
 #ifdef DB_JOIN_ITEM
     rb_define_const(bdb_mDb, "JOIN_ITEM", INT2FIX(DB_JOIN_ITEM));
+#endif
+#ifdef DB_JOIN_NOSORT
+    rb_define_const(bdb_mDb, "JOIN_NOSORT", INT2FIX(DB_JOIN_NOSORT));
 #endif
     rb_define_const(bdb_mDb, "KEYFIRST", INT2FIX(DB_KEYFIRST));
     rb_define_const(bdb_mDb, "KEYLAST", INT2FIX(DB_KEYLAST));
@@ -256,22 +284,61 @@ Init_bdb()
     rb_define_const(bdb_mDb, "LOCK_IWRITE", INT2FIX(DB_LOCK_IWRITE));
     rb_define_const(bdb_mDb, "LOCK_IREAD", INT2FIX(DB_LOCK_IREAD));
     rb_define_const(bdb_mDb, "LOCK_IWR", INT2FIX(DB_LOCK_IWR));
+#ifdef DB_LSN
+    rb_define_const(bdb_mDb, "LSN", INT2FIX(DB_LSN));
+#endif
+    rb_define_const(bdb_mDb, "MPOOL_CLEAN", INT2FIX(DB_MPOOL_CLEAN));
     rb_define_const(bdb_mDb, "MPOOL_CREATE", INT2FIX(DB_MPOOL_CREATE));
+    rb_define_const(bdb_mDb, "MPOOL_DIRTY", INT2FIX(DB_MPOOL_DIRTY));
+    rb_define_const(bdb_mDb, "MPOOL_DISCARD", INT2FIX(DB_MPOOL_DISCARD));
     rb_define_const(bdb_mDb, "MPOOL_LAST", INT2FIX(DB_MPOOL_LAST));
     rb_define_const(bdb_mDb, "MPOOL_NEW", INT2FIX(DB_MPOOL_NEW));
+#ifdef DB_MPOOL_PRIVATE
+    rb_define_const(bdb_mDb, "MPOOL_PRIVATE", INT2FIX(DB_MPOOL_PRIVATE));
+#endif
     rb_define_const(bdb_mDb, "NEXT", INT2FIX(DB_NEXT));
 #if DB_NEXT_DUP
     rb_define_const(bdb_mDb, "NEXT_DUP", INT2FIX(DB_NEXT_DUP));
 #endif
+#ifdef DB_NEXT_NODUP
+    rb_define_const(bdb_mDb, "NEXT_NODUP", INT2FIX(DB_NEXT_NODUP));
+#endif
+#ifdef DB_NODUPDATA
+    rb_define_const(bdb_mDb, "NODUPDATA", INT2FIX(DB_NODUPDATA));
+#endif
     rb_define_const(bdb_mDb, "NOMMAP", INT2FIX(DB_NOMMAP));
+#ifdef DB_NOORDERCHK
+    rb_define_const(bdb_mDb, "NOORDERCHK", INT2FIX(DB_NOORDERCHK));
+#endif
     rb_define_const(bdb_mDb, "NOOVERWRITE", INT2FIX(DB_NOOVERWRITE));
+#ifdef DB_NOSERVER
+    rb_define_const(bdb_mDb, "NOSERVER", INT2FIX(DB_NOSERVER));
+#endif
+#ifdef DB_NOSERVER_HOME
+    rb_define_const(bdb_mDb, "NOSERVER_HOME", INT2FIX(DB_NOSERVER_HOME));
+#endif
+#ifdef DB_NOSERVER_ID
+    rb_define_const(bdb_mDb, "NOSERVER_ID", INT2FIX(DB_NOSERVER_ID));
+#endif
     rb_define_const(bdb_mDb, "NOSYNC", INT2FIX(DB_NOSYNC));
+#ifdef DB_OLD_VERSION
+    rb_define_const(bdb_mDb, "OLD_VERSION", INT2FIX(DB_OLD_VERSION));
+#endif
+#ifdef DB_ORDERCHKONLY
+    rb_define_const(bdb_mDb, "ORDERCHKONLY", INT2FIX(DB_ORDERCHKONLY));
+#endif
+#ifdef DB_PAD
+    rb_define_const(bdb_mDb, "PAD", INT2FIX(DB_PAD));
+#endif
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "POSITION", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "POSITION", INT2FIX(DB_POSITION));
 #endif
     rb_define_const(bdb_mDb, "PREV", INT2FIX(DB_PREV));
+#ifdef DB_PREV_NODUP
+    rb_define_const(bdb_mDb, "PREV_NODUP", INT2FIX(DB_PREV_NODUP));
+#endif
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "PRIVATE", INT2FIX(0));
 #else
@@ -284,11 +351,15 @@ Init_bdb()
     rb_define_const(bdb_mDb, "RECOVER_FATAL", INT2FIX(DB_RECOVER_FATAL));
     rb_define_const(bdb_mDb, "RENUMBER", INT2FIX(DB_RENUMBER));
     rb_define_const(bdb_mDb, "RMW", INT2FIX(DB_RMW));
+#ifdef DB_SALVAGE
+    rb_define_const(bdb_mDb, "SALVAGE", INT2FIX(DB_SALVAGE));
+#endif
 #ifdef DB_SECONDARY_BAD
     rb_define_const(bdb_mDb, "SECONDARY_BAD", INT2FIX(DB_SECONDARY_BAD));
 #else
     rb_define_const(bdb_mDb, "SECONDARY_BAD", INT2FIX(0));
 #endif
+    rb_define_const(bdb_mDb, "SET", INT2FIX(DB_SET));
     rb_define_const(bdb_mDb, "SET_RANGE", INT2FIX(DB_SET_RANGE));
     rb_define_const(bdb_mDb, "SET_RECNO", INT2FIX(DB_SET_RECNO));
     rb_define_const(bdb_mDb, "SNAPSHOT", INT2FIX(DB_SNAPSHOT));
@@ -299,17 +370,46 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "THREAD", INT2FIX(DB_THREAD));
     rb_define_const(bdb_mDb, "TRUNCATE", INT2FIX(DB_TRUNCATE));
+#ifdef DB_TXN_ABORT
+    rb_define_const(bdb_mDb, "TXN_ABORT", INT2FIX(DB_TXN_ABORT));
+#endif
+#ifdef DB_TXN_BACKWARD_ROLL
+    rb_define_const(bdb_mDb, "TXN_BACKWARD_ROLL", INT2FIX(DB_TXN_BACKWARD_ROLL));
+#endif
+#ifdef DB_TXN_FORWARD_ROLL
+    rb_define_const(bdb_mDb, "TXN_FORWARD_ROLL", INT2FIX(DB_TXN_FORWARD_ROLL));
+#endif
     rb_define_const(bdb_mDb, "TXN_NOSYNC", INT2FIX(DB_TXN_NOSYNC));
+#ifdef DB_UPGRADE
+    rb_define_const(bdb_mDb, "UPGRADE", INT2FIX(DB_UPGRADE));
+#endif
     rb_define_const(bdb_mDb, "USE_ENVIRON", INT2FIX(DB_USE_ENVIRON));
     rb_define_const(bdb_mDb, "USE_ENVIRON_ROOT", INT2FIX(DB_USE_ENVIRON_ROOT));
 #if DB_VERSION_MAJOR < 3
     rb_define_const(bdb_mDb, "TXN_NOWAIT", INT2FIX(0));
     rb_define_const(bdb_mDb, "TXN_SYNC", INT2FIX(0));
+    rb_define_const(bdb_mDb, "VERB_CHKPOINT", INT2FIX(1));
+    rb_define_const(bdb_mDb, "VERB_DEADLOCK", INT2FIX(1));
+    rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(1));
+    rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(1));
     rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "TXN_NOWAIT", INT2FIX(DB_TXN_NOWAIT));
     rb_define_const(bdb_mDb, "TXN_SYNC", INT2FIX(DB_TXN_SYNC));
+    rb_define_const(bdb_mDb, "VERB_CHKPOINT", INT2FIX(DB_VERB_CHKPOINT));
+    rb_define_const(bdb_mDb, "VERB_DEADLOCK", INT2FIX(DB_VERB_DEADLOCK));
+    rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(DB_VERB_RECOVERY));
+    rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(DB_VERB_WAITSFOR));
     rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(DB_WRITECURSOR));
+#endif
+#ifdef DB_VERIFY
+    rb_define_const(bdb_mDb, "VERIFY", INT2FIX(DB_VERIFY));
+#endif
+#ifdef DB_XA_CREATE
+    rb_define_const(bdb_mDb, "XA_CREATE", INT2FIX(DB_XA_CREATE));
+#endif
+#ifdef DB_XIDDATASIZE
+    rb_define_const(bdb_mDb, "XIDDATASIZE", INT2FIX(DB_XIDDATASIZE));
 #endif
     rb_define_const(bdb_mDb, "TXN_COMMIT", INT2FIX(BDB_TXN_COMMIT));
 

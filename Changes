@@ -106,3 +106,10 @@
 
 * delegator also for #each, #each_dup, #duplicates, etc
 * #get_dup (without delegator)
+
+-- 0.2.5
+
+* corrected lg_max, lg_bsize (Thanks Joseph McDonald <joe@vpop.net>)
+* added Cursor#pget
+* added some tests for secondary indexes
+* corrected constants
