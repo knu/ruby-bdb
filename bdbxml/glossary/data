@@ -1,0 +1,14 @@
+<entry index='d'>
+<name>Data</name>
+<reference>function</reference>
+<reference>object</reference>
+<reference>ruby</reference>
+<content>
+    Wrapper to show pointer at C level as ((Ruby)) ((object|Object)).
+    It is made of C pointer, the mark function, and the free function.
+    The person who tries to add the ((function|Function)) to ((Ruby)) by C
+    should master the usage of this class, by all means.
+    Contrary to that, it is a class that have no business with a person
+    whose schedule has no chance to try it.
+</content>
+</entry>

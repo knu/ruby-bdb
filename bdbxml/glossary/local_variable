@@ -1,0 +1,24 @@
+<entry index='l'>
+<name>Local Variable</name>
+<reference>block</reference>
+<reference>ruby</reference>
+<reference>variable</reference>
+<reference>method</reference>
+<content>
+    ((Variable)) which can be referred only within a certain range.
+    The range is called 'Scope'. The scope of ((Ruby)) is among:
+
+     * The entire program
+     * Class and module definition
+     * ((Method)) definition
+     * ((Block))
+
+    and only ((block|Block))
+    can access the local variable in the outside scope.
+    An effective range of the local variable is
+    from the place where the first substitution in scope appeared
+    to an end of the scope.
+    The effective range is fixed statically, and is unrelated
+    whether actually executed.
+</content>
+</entry>

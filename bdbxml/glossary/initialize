@@ -1,0 +1,19 @@
+<entry index='i'>
+<name>Initialize</name>
+<reference>block</reference>
+<reference>method</reference>
+<reference>object</reference>
+<content>
+    Put the ((object|Object)) (or "something")
+    into "ready-to-use-it" state.
+    The '((|initialize|))' ((method|Method)) should be redefined
+    to initialize the ((instance|Instance)).
+    The default definition of the method '((|new|))' of the class is
+    to execute Initialize to the newly generated instance.
+    The argument to ((|new|)) is tossed to initialize as it is.
+    Moreover, when ((|new|)) is called with the ((block|Block)),
+    the block is given to initialize as it is.
+
+    This surely means Class#new is not to have to be redefined.
+</content>
+</entry>

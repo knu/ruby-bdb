@@ -6,7 +6,7 @@ be either String, Float, true, false, BDB::XML::Documents or BDB::XML::Nodes
 # module BDB
 # module XML
 # class Results
-
+# include Enumerable
 === Methods
 
 --- each {|val| ... }

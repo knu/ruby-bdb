@@ -1,0 +1,16 @@
+<entry index='v'>
+<name>Variable</name>
+<reference>local variable</reference>
+<reference>global variable</reference>
+<reference>instance variable</reference>
+<reference>object</reference>
+<reference>constant</reference>
+<content>
+    A tag attached to an ((object|Object)).
+
+    ((Ruby)) has ((global|Global Variable)), ((local|Local Variable)),
+    class, and ((instance|Instance Variable)) variables.
+    ((Constant)) has the same implication of tag, though
+    it's not variable, since its value cannot be changed.
+</content>
+</entry>

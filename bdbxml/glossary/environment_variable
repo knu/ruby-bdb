@@ -1,0 +1,13 @@
+<entry index='e'>
+<name>Environment Variable</name>
+<content>
+    Value which is delivered from parent process to offspring process.
+    It is accessed with ((|((ENV))|)).
+    What is delivered to the offspring process is
+    a copy of the environment ((variable|Variable)),
+    so it is not possible to pass informations
+    from the offspring process to the parent
+    by using the environment variable.
+    The parent will not listen to the child.
+</content>
+</entry>

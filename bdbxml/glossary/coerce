@@ -1,0 +1,19 @@
+<entry index='c'>
+<name>Coerce</name>
+<reference>instance</reference>
+<reference>method</reference>
+<reference>ruby</reference>
+<content>
+    ((Method)) of converting type of numerical value.
+    The numeric calculation method is set on, when
+    the ((instance|Instance)) which it doesn't know is passed as an argument,
+    which the coerce method is used to convert it.
+    The coerce method returns a pair of
+    given (, and converted) value and
+    itself (a converted value, if necessary), as its arguments.
+
+    The converting order of numerical types of the library of ((Ruby)) is
+    as follows:
+        Fixnum -> Bignum -> Rational -> Float -> Complex
+</content>
+</entry>

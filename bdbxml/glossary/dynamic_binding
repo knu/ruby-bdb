@@ -1,0 +1,19 @@
+<entry index='d'>
+<name>Dynamic Binding</name>
+<reference>variable</reference>
+<reference>paradigm</reference>
+<reference>object-oriented</reference>
+<reference>object</reference>
+<reference>data</reference>
+<reference>method</reference>
+<reference>ruby</reference>
+<content>
+    To select an appropriate procedure (((method|Method))) on the operation
+    according to the ((data|Data)) type of its ((object|Object)).
+    The flexibility of the program is effected to be improved.
+    One of the requirements
+    for ((object-oriented|Object-Oriented)) ((paradigm|Paradigm)).
+    Dynamic binding is inevitable in ((Ruby))
+    because there is no type in the ((variable|Variable)).
+</content>
+</entry>

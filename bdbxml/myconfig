@@ -1,29 +1,26 @@
-XDB = "/ts/db/dbxml-0.5.0"
-
 # directories for cpp
 
+$base = "/home/ts/local"
+
 $include = {
-   'db' => ["#{XDB}/lib/db-4.1.24/build_unix", "#{XDB}/lib/db-4.1.24/dbinc"],
-   'dbxml' => "#{XDB}/include",
-   'antlr' => "#{XDB}/lib/antlr-2.7.1/lib/cpp",
-#   'dbg' => "#{XDB}/lib/dbg-1.07",
-   'expat' => "#{XDB}/lib/expat-1.95.4/lib",
-   'pathan' => "#{XDB}/lib/libpathan-1.1/include",
-   'xerces' => "#{XDB}/lib/xerces-c-src2_1_0/include"
+   'db' => "#{$base}/db4.1.24/include",
+   'dbxml' => "#{$base}/dbxml/include",
+   'xercesc' => "#{$base}/xercesc/include"
 }
 
 # [directory, library] for ld
 
+# it's important to have xercesc compiled with -rnone 
+# (i.e. *without* threads)
+
 $library = {
-   'db' => ["#{XDB}/lib/db-4.1.24/build_unix/.libs", ["db-4.1", "db_cxx-4.1"]],
-   'dbxml' => ["#{XDB}/build_unix", "dbxml-1.0"],
-   'antlr' => ["#{XDB}/lib/antlr-2.7.1/lib/cpp/src/.libs", "antlr"],
-#   'dbg' => [],
-   'expat' => ["#{XDB}/lib/expat-1.95.4/lib/.libs", "expat"],
-   'pathan' => ["#{XDB}/lib/libpathan-1.1/lib", "pathan"],
-   'xerces' => ["#{XDB}/lib/xerces-c-src2_1_0/lib", "xerces-c"]
+   'db' => ["#{$base}/db4.1.24/lib", ["db-4.1", "db_cxx-4.1"]],
+   'dbxml' => ["#{$base}/dbxml/lib", "dbxml-1.0"],
+   'expat' => [nil, "expat"],
+   'pathan' => ["#{$base}/pathan/lib", "pathan"],
+   'xercesc' => ["#{$base}/xercesc/lib", "xerces-c"]
 }
 
-# order for ld
+# order for ld (don't change it)
 
-$order = ['dbxml', 'antlr', 'db', 'expat', 'pathan', 'xerces']
+$order = ['dbxml', 'db', 'expat', 'pathan', 'xercesc']

@@ -7,13 +7,17 @@ def addld(path, lib)
 	  else
 	     "-l#{lib}"
 	  end
-   case Config::CONFIG["arch"]
-   when /solaris2/
-      $LDFLAGS += " -L#{path} -R#{path} #{libs}"
-   when /linux/
-      $LDFLAGS += " -Wl,-rpath,#{path} -L#{path} #{libs}"
+   if path
+      case Config::CONFIG["arch"]
+      when /solaris2/
+	 $LDFLAGS += " -L#{path} -R#{path} #{libs}"
+      when /linux/
+	 $LDFLAGS += " -Wl,-rpath,#{path} -L#{path} #{libs}"
+      else
+	 $LDFLAGS += " -L#{path} #{libs}"
+      end
    else
-      $LDFLAGS = " -L#{path} #{libs}"
+      $LDFLAGS += " #{libs}"
    end
 end
 
@@ -73,7 +77,13 @@ rd2: html
 
 html: $(HTML)
 
+test: $(DLLIB)
    EOF
+   Dir.foreach('tests') do |x|
+      next if /^\./ =~ x || /(_\.rb|~)$/ =~ x
+      next if FileTest.directory?(x)
+      make.print "\truby tests/#{x}\n"
+   end
 ensure
    make.close
 end

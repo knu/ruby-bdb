@@ -1,24 +1,25 @@
 #include <ruby.h>
 #include "bdb.h"
 
-#include "dbxml/DbXml.hpp"
+#include <fstream>
+#include "DbXml.hpp"
 
 using namespace DbXml;
 
 #define RMF(func) RUBY_METHOD_FUNC(func)
 #define RDF RUBY_DATA_FUNC
 
-#define PROTECT2(comm, libr)				\
-  try {							\
-    comm;						\
-  }							\
-  catch (XmlException &e) {				\
-    VALUE xb_err = Qnil;				\
-    libr;						\
-    if ((xb_err = bdb_return_err()) != Qnil) {		\
-      rb_raise(xb_eFatal, RSTRING(xb_err)->ptr);	\
-    }							\
-    rb_raise(xb_eFatal, e.what());			\
+#define PROTECT2(comm, libr)                            \
+  try {                                                 \
+    comm;                                               \
+  }                                                     \
+  catch (XmlException &e) {                             \
+    VALUE xb_err = Qnil;                                \
+    libr;                                               \
+    if ((xb_err = bdb_return_err()) != Qnil) {          \
+      rb_raise(xb_eFatal, RSTRING(xb_err)->ptr);        \
+    }                                                   \
+    rb_raise(xb_eFatal, e.what());                      \
   }
 
 #define PROTECT(comm) PROTECT2(comm,)

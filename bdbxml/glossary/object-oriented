@@ -1,0 +1,26 @@
+<entry index='o'>
+<name>Object-Oriented</name>
+<reference>paradigm</reference>
+<reference>object</reference>
+<reference>japanese</reference>
+<reference>inheritance</reference>
+<reference>encapsulation</reference>
+<reference>polymorphism</reference>
+<reference>dynamic binding</reference>
+<content>
+    ((In Japanese|Japanese (language))),
+    an adjective "Object-Oriented" has transcolored to an abstract noun,
+    which means "the ((object|Object))-based ((paradigm|Paradigm))."
+
+    Any kind of view looks OK at first
+    as long as the object is the central concept,
+    but in general, it seems that the ((paradigm|Paradigm)) needs
+     * ((Inheritance)),
+     * ((Encapsulation)),
+     * and ((Polymorphism)) (or ((Dynamic Binding))).
+    Someone deals it as a wild card or a kind of magic,
+    but our life has a lot more.
+    Twenty-odd years since the dawn, through all our fortunes,
+    there comes to be a first stage of pragmatic use...perhaps...agreed?
+</content>
+</entry>

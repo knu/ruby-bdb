@@ -1,0 +1,28 @@
+<entry index='s'>
+<name>super</name>
+<reference>variable</reference>
+<reference>overridde</reference>
+<reference>method</reference>
+<content>
+    Technique to call upper level ((method|Method))
+    from ((overridden|Override)) method.
+    When argument is omitted, super'ed slave can be called by
+    the same argument as that of the master's method.
+
+    : Question:
+      If you change the value of ((variable|Variable)) given as an argument,
+      which 'super' gets, the original value, or the changed?
+
+        def foo(a)
+           print a 
+        end
+        def self.foo(a)
+           a=25
+           super
+        end
+        foo(5)        # 5 or 25?
+
+    : Answer
+      the original one(((%5%)))
+</content>
+</entry>

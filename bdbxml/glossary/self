@@ -1,0 +1,15 @@
+<entry index='s'>
+<name>self</name>
+<reference>method</reference>
+<reference>receiver</reference>
+<reference>smalltalk</reference>
+<content>
+    Expression which refers to ((receiver|Receiver)).
+
+    Why it's called '((|self|))'?
+    By one account, the ((receiver|Receiver)) is the subject of the sentence
+    where ((method|Method)) is the verb, so from the method's standpoint
+    it's itself, though it is strongly suspected that it's the mimic
+    of ((Smalltalk)) without deep account.
+</content>
+</entry>

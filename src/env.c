@@ -607,7 +607,7 @@ bdb_env_close(obj)
 	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
     GetEnvDB(obj, dbenvst);
     bdb_final(dbenvst);
-    return Qtrue;
+    return Qnil;
 }
 
 static void

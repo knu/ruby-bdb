@@ -1,0 +1,8 @@
+<entry index='g'>
+<name>Global Variable</name>
+<reference>variable</reference>
+<content>
+    ((Variable)) which can be referred to anywhere in the program.
+    ((*Danger!*)) Overuse deadlock.
+</content>
+</entry>

@@ -1,0 +1,15 @@
+<entry index='c'>
+<name>Class Method</name>
+<reference>self</reference>
+<reference>method</reference>
+<content>
+    ((Method)) of class.
+    It is defined in class Class of all classes.
+    Though there is a method which is common in all classes
+    and a ((singleton method|Singleton Method))
+    which is proper to each class.
+    that's not much of a problem.
+    Do not misunderstand than
+    '((|((self))|))' in the class method is a class.
+</content>
+</entry>

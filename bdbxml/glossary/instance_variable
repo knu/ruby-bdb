@@ -1,0 +1,14 @@
+<entry index='i'>
+<name>Instance Variable</name>
+<reference>method</reference>
+<reference>instance</reference>
+<reference>object</reference>
+<reference>variable</reference>
+<reference>ruby</reference>
+<content>
+    Intrinsic ((variable|Variable)) to ((object|Object)).
+    The ((instance|Instance)) variable of ((Ruby)) is the one
+    that applies @ just before the identifier.
+    It can be referred only from inside of the ((method|Method)).
+</content>
+</entry>

@@ -1,0 +1,12 @@
+<entry index='m'>
+<name>MatchingData</name>
+<reference>object</reference>
+<reference>variable</reference>
+<content>
+    ((Object)) which shows state concerning match of regular expression.
+    Value of ((variable|Variable)) ((|$~|)).
+    When the value of this variable is changed,
+    the value of variable group (((|$1|)),((|$2|))...,etc)
+    concerning the regular expression changes, too.
+</content>
+</entry>

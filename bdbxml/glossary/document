@@ -1,0 +1,13 @@
+<entry index='d'>
+<name>document</name>
+<reference>bugs</reference>
+<reference>matz</reference>
+<content>
+    The one that ((matz)) is really bad at.
+    He always says
+    "the source itself should be the document.
+    It even describes ((bugs|Bug)) perfectly."
+    But no one agrees.
+    This is the programmers' use and wont. Sigh.
+</content>
+</entry>

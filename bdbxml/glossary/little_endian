@@ -1,0 +1,12 @@
+<entry index='l'>
+<name>Little Endian</name>
+<reference>byte order</reference>
+<reference>data</reference>
+<content>
+    At first there're ten children and decreases one by one.
+    In the computer industry,
+    it is one of the forms when CPU etc. arrange ((data|Data)).
+    A certain CPU maker with very big share is said that
+    they will like Little endian. See also "((byte order|Byte Order))."
+</content>
+</entry>

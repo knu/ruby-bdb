@@ -3,10 +3,7 @@
 
 A Document is the unit of storage within a Container. 
 
-A Document contains a stream of bytes that may be of type XML
-or BYTES. The Container only indexes the content of Documents
-that contain XML. The BYTES type is supported to allow the storage
-of arbitrary content along with XML content.
+A Document contains a stream of bytes.
 
 Document supports annotation attributes.
 
@@ -46,9 +43,8 @@ Document supports annotation attributes.
 --- id
     Return the ID
 
---- initialize(type = BDB::XML::XML)
 --- initialize(content = "")
-    Initialize the document with the type (or the content) specified
+    Initialize the document with the content specified
 
 --- name
     Return the name of the document

@@ -1,0 +1,22 @@
+<entry index='m'>
+<name>main</name>
+<reference>self</reference>
+<reference>singleton method</reference>
+<reference>instance</reference>
+<reference>object</reference>
+<content>
+    '((|((self))|))' at top level.
+
+    Since it can't be without self,
+    it is a mere ((instance|Instance)) of an ((Object)) class,
+    only for being there.
+    Some ((singleton methods|Singleton Method)) are defined
+    to operate the Object class.
+
+    Defined ((singleton method|Singleton Method)):
+
+     * private
+     * public
+     * include
+</content>
+</entry>

@@ -1,0 +1,15 @@
+<entry index='r'>
+<name>Receiver</name>
+<reference>self</reference>
+<reference>variable</reference>
+<reference>instance variable</reference>
+<reference>method</reference>
+<content>
+    Operational subject of the ((method|Method)).
+    It is on the left of '((|.|))' or '((|::|))' of method call expression.
+
+    In a method, it can be referred as '((|((self))|)).'
+    The ((instance variable|Instance Variable)) of the receiver is
+    accessible in the form '((|@|))((variable|Variable))_name.'
+</content>
+</entry>

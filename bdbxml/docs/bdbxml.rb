@@ -86,14 +86,20 @@ end
 def  encoding
 end
 
+#Return the value of an attribute. <em>uri</em> specify the namespace
+#where reside the attribute.
+#
+def  get(uri = "", attr)
+end
+
 #Return the ID
 #
 def  id
 end
 
-#Initialize the document with the type (or the content) specified
+#Initialize the document with the content specified
 #
-def  initialize(type = BDB::XML::XML)
+def  initialize(content = "")
 end
 
 #Return the name of the document
@@ -106,6 +112,22 @@ end
 def  name=(val)
 end
 
+#Return the default prefix for the namespace
+#
+def  prefix
+end
+
+#Set the default prefix used by <em>set</em>
+#
+def  prefix=(val)
+end
+
+#Set an attribute in the namespace <em>uri</em>. <em>prefix</em> is the prefix
+#for the namespace
+#
+def  set(uri = "", prefix = "", attr, value)
+end
+
 #Return the document as a String object
 #
 def  to_s
@@ -114,14 +136,14 @@ end
 def  to_str
 end
 
-#Return the type of the document
+#Return the default namespace
 #
-def  types
+def  uri
 end
 
-#Set the type of the document
+#Set the default namespace used by <em>set</em> and <em>get</em>
 #
-def  types=(val)
+def  uri=(val)
 end
 end
 end
@@ -129,6 +151,7 @@ end
 module BDB
 module XML
 class Container
+include Enumerable
 class << self
 
 #
@@ -153,6 +176,40 @@ class << self
 #
 def  allocate(name = nil, options = {})
 end
+
+#Dump the container <em>name</em> into the specified file.
+#
+def  dump(name, filename)
+end
+
+#Load data from the specified file into the container <em>name</em>
+#
+def  load(name, filename)
+end
+
+#Remove the container <em>name</em>
+#
+def  remove(name)
+end
+
+#Rename the container <em>name</em>
+#
+def  rename(name, newname)
+end
+
+#Verify the container <em>name</em>, and save the content in <em>filename</em>
+#
+#* <em>flags</em>
+#  flags can has the value <em>BDB::AGGRESSIVE</em>
+#
+def  salvage(name, filename, flags = 0)
+end
+
+#Verify the container <em>name</em>
+#
+#
+def  verify(name)
+end
 end
 
 #close an open container
@@ -174,14 +231,9 @@ end
 def  delete(document, flags = 0)
 end
 
-#Iterate over the result of a query
+#Iterate over all documents
 #
-#<em>returntype</em> can have the values <em>BDB::XML::Content::Document</em>
-#or <em>BDB::XML::Content::Values</em>
-#
-#the query is evaluated lazily
-#
-def  each(xpath, returntype = BDB::XML::Content::Document) 
+def  each 
 yield doc
 end
 
@@ -201,6 +253,9 @@ end
 
 #Declare the indexing required for a particular element type.   
 #
+#* <em>uri</em>
+#  The namespace for the element
+#
 #* <em>element</em>
 #  The element parameter provides the fully qualified element type
 #  to be indexed.
@@ -209,20 +264,25 @@ end
 #  The index string is a comma separated list of the following indexing
 #  strategy names
 #
-#  * none-none-none-none
-#  * node-element-presence-none
-#  * node-element-equality-string
-#  * node-element-equality-number
-#  * node-element-substring-string
-#  * edge-element-presence-none
-#  * node-attribute-presence-none
-#  * node-attribute-equality-string
-#  * node-attribute-equality-number
-#  * node-attribute-substring-string
-#  * edge-attribute-presence-none
+#  * none-none-none-none 
+#  * node-element-presence 
+#  * node-attribute-presence 
+#  * node-element-equality-string 
+#  * node-element-equality-number 
+#  * node-element-substring-string 
+#  * node-attribute-equality-string 
+#  * node-attribute-equality-number 
+#  * node-attribute-substring-string 
+#  * edge-element-presence 
+#  * edge-attribute-presence 
+#  * edge-element-equality-string 
+#  * edge-element-equality-number 
+#  * edge-element-substring-string 
+#  * edge-attribute-equality-string 
+#  * edge-attribute-equality-number 
+#  * edge-attribute-substring-string 
 #
-#
-def  index(element, index)
+def  index(uri, element, index)
 end
 
 #open the container
@@ -284,14 +344,14 @@ end
 def  query(xpath, flags = 0)
 end
 
-#Remove the container
+#Iterate over the result of a query
 #
-def  remove
-end
-
-#Rename the container
+#<em>returntype</em> can have the values <em>BDB::XML::Content::Document</em>
+#or <em>BDB::XML::Content::Values</em>
 #
-def  rename(newname)
+#the query is evaluated lazily
+def  search(xpath, returntype = BDB::XML::Content::Document) 
+yield doc
 end
 end
 end
@@ -299,6 +359,7 @@ end
 module BDB
 module XML
 class Results
+include Enumerable
 
 #Iterate on each values
 #

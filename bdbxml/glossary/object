@@ -1,0 +1,20 @@
+<entry index='o'>
+<name>Object</name>
+<reference>awk</reference>
+<reference>paradigm</reference>
+<reference>object-oriented</reference>
+<reference>encapsulation</reference>
+<reference>abstract data type</reference>
+<content>
+    A thing. The matter.
+
+    Love, perhaps, is not an object, but love letter is an object.
+    Whether something is an object or not strongly depends on YOUR philosophy.
+    Might the cause that
+    ((object-oriented|Object-Oriented)) ((paradigm|Paradigm)) is difficult.
+    Someone in the computer industry calls a specific space in computer memory
+    as 'object.' ((Awk|AWK))ward guys...
+
+    See also "((Encapsulation))," and "((Abstract Data Type))."
+</content>
+</entry>

@@ -1,0 +1,15 @@
+<entry index='o'>
+<name>Override</name>
+<reference>method</reference>
+<reference>super</reference>
+<reference>redefinition</reference>
+<content>
+    ((Redefinition)).
+
+    Define a ((method|Method)) same name as the one
+    defined on the super class or included method.
+
+    In overridden method, '((|((super))|))' can invoke
+    the superior method with same name.
+</content>
+</entry>

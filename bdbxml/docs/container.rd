@@ -11,6 +11,7 @@ directory used will be the current working directory.
 # module BDB
 # module XML
 # class Container
+# include Enumerable
 # class << self
 
 === Class Methods
@@ -36,6 +37,28 @@ directory used will be the current working directory.
       : ((|set_pagesize|))
         Set the pagesize of the primary database (512 < size < 64K)
 
+--- dump(name, filename)
+    Dump the container ((|name|)) into the specified file.
+
+--- load(name, filename)
+    Load data from the specified file into the container ((|name|))
+
+--- remove(name)
+    Remove the container ((|name|))
+
+--- rename(name, newname)
+    Rename the container ((|name|))
+
+--- salvage(name, filename, flags = 0)
+    Verify the container ((|name|)), and save the content in ((|filename|))
+
+    : ((|flags|))
+      flags can has the value ((|BDB::AGGRESSIVE|))
+
+--- verify(name)
+    Verify the container ((|name|))
+
+
 # end
 
 === Methods
@@ -55,13 +78,8 @@ directory used will be the current working directory.
     : ((|flags|))
       flags can has the value 0 or ((|BDB::AUTO_COMMIT|))
 
---- each(xpath, returntype = BDB::XML::Content::Document) {|doc| ... }
-    Iterate over the result of a query
-
-    ((|returntype|)) can have the values ((|BDB::XML::Content::Document|))
-    or ((|BDB::XML::Content::Values|))
-
-    the query is evaluated lazily
+--- each {|doc| ... }
+    Iterate over all documents
 
 --- self[id]
 --- get(id, flags = 0)
@@ -153,12 +171,13 @@ directory used will be the current working directory.
 
     return a ((|BDB::XML::Results|)) object
 
---- remove
-    Remove the container
+--- search(xpath, returntype = BDB::XML::Context::Document) {|doc| ... }
+    Iterate over the result of a query
 
---- rename(newname)
-    Rename the container
+    ((|returntype|)) can have the values ((|BDB::XML::Context::Document|))
+    or ((|BDB::XML::Context::Values|))
 
+    the query is evaluated lazily
 # end
 # end
 # end

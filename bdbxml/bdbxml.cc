@@ -14,6 +14,22 @@ xb_s_new(int argc, VALUE *argv, VALUE obj)
   return res;
 }
 
+static VALUE
+xb_int_close(VALUE obj)
+{
+    return rb_funcall2(obj, rb_intern("close"), 0, 0);
+}
+
+static VALUE
+xb_s_open(int argc, VALUE *argv, VALUE obj)
+{
+    VALUE res = rb_funcall2(obj, rb_intern("new"), argc, argv);
+    if (rb_block_given_p()) {
+	return rb_ensure(RMF(rb_yield), res, RMF(xb_int_close), res);
+    }
+    return res;
+}
+
 static void
 xb_doc_free(xdoc *doc)
 {
@@ -112,7 +128,7 @@ xb_doc_get(int argc, VALUE *argv, VALUE obj)
   if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
     uri = STR2CSTR(b);
   }
-  name = STR2CSTR(b);
+  name = STR2CSTR(a);
   if (doc->doc->getMetaData(uri, name, val)) {
     return xb_xml_val(&val, 0);
   }
@@ -147,7 +163,7 @@ xb_doc_set(int argc, VALUE *argv, VALUE obj)
     d = c;
     break;
   case 2:
-    name = STR2CSTR(c);
+    name = STR2CSTR(a);
     d = b;
     break;
   }
@@ -483,11 +499,12 @@ xb_res_mark(xres *xes)
 }
 
 static VALUE
-xb_res_each(VALUE obj)
+xb_res_search(VALUE obj)
 {
   xres *xes;
   XmlValue val;
   DbTxn *txn = 0;
+  VALUE res = Qnil;
 
   Data_Get_Struct(obj, xres, xes);
   if (xes->txn_val) {
@@ -495,12 +512,35 @@ xb_res_each(VALUE obj)
     GetTxnDBErr(xes->txn_val, txnst, xb_eFatal);
     txn = static_cast<DbTxn *>(txnst->txn_cxx);
   }
-  try {xes->res->reset(); } catch (...) {}
-  for (xes->res->next(txn, val); !val.isNull(); 
-       xes->res->next(txn, val)) {
-    rb_yield(xb_xml_val(&val, xes->cxt_val));
+  if (!rb_block_given_p()) {
+    res = rb_ary_new();
   }
-  return obj;
+  try {xes->res->reset(); } catch (...) {}
+  while (true) {
+    PROTECT(xes->res->next(txn, val));
+    if (val.isNull()) {
+      break;
+    }
+    if (NIL_P(res)) {
+      rb_yield(xb_xml_val(&val, xes->cxt_val));
+    }
+    else {
+      rb_ary_push(res, xb_xml_val(&val, xes->cxt_val));
+    }
+  }
+  if (NIL_P(res)) {
+    return obj;
+  }
+  return res;
+}
+
+static VALUE
+xb_res_each(VALUE obj)
+{
+  if (!rb_block_given_p()) {
+    rb_raise(rb_eArgError, "block not supplied");
+  }
+  return xb_res_search(obj);
 }
 
 static void
@@ -542,7 +582,7 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
 #ifndef BDB_NO_THREAD
   con->flag |= DB_THREAD;
 #endif
-  nargc = 0;
+  nargc = argc;
   if (argc && TYPE(argv[argc - 1]) == T_HASH) {
     VALUE env = Qfalse;
     VALUE v, f = argv[argc - 1];
@@ -695,11 +735,13 @@ xb_con_close(int argc, VALUE *argv, VALUE obj)
     rb_raise(rb_eSecurityError, "Insecure: can't close the container");
   }
   Data_Get_Struct(obj, xcon, con);
-  if (rb_scan_args(argc, argv, "01", &a)) {
-    flags = NUM2INT(a);
+  if (!con->closed) {
+    if (rb_scan_args(argc, argv, "01", &a)) {
+      flags = NUM2INT(a);
+    }
+    PROTECT(con->con->close(flags));
+    con->closed = Qtrue;
   }
-  PROTECT(con->con->close(flags));
-  con->closed = Qtrue;
   return Qnil;
 }
 
@@ -758,12 +800,12 @@ xb_con_get(int argc, VALUE *argv, VALUE obj)
   VALUE a, b, res;
   int flags = 0;
 
-  if (rb_scan_args(argc, argv, "11", &a, &b) == 1) {
+  if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
     flags = NUM2INT(b);
   }
   u_int32_t id = NUM2INT(a);
   GetConTxn(obj, con, txn);
-  res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_free, (RDF)xb_doc_free, doc);
+  res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark, (RDF)xb_doc_free, doc);
   PROTECT(doc->doc = new XmlDocument(con->con->getDocument(txn, id, flags)));
   return res;
 }
@@ -804,9 +846,9 @@ xb_con_parse(int argc, VALUE *argv, VALUE obj)
   xcon *con;
   DbTxn *txn;
   VALUE a, b;
-  char *str;
+  std::string str;
   XPathExpression *pat;
-  XmlQueryContext *cxt = NULL;
+  XmlQueryContext tmp, *cxt;
 
   GetConTxn(obj, con, txn);
   if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
@@ -814,6 +856,10 @@ xb_con_parse(int argc, VALUE *argv, VALUE obj)
       rb_raise(xb_eFatal, "Expected a Context object");
     }
     Data_Get_Struct(b, XmlQueryContext, cxt);
+  }
+  else {
+    tmp = XmlQueryContext();
+    cxt = &tmp;
   }
   str = STR2CSTR(a);
   PROTECT(pat = new XPathExpression(con->con->parseXPathExpression(txn, str, cxt)));
@@ -872,7 +918,7 @@ xb_con_query(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-xb_con_each(int argc, VALUE *argv, VALUE obj)
+xb_con_search(int argc, VALUE *argv, VALUE obj)
 {
   int nargc;
   VALUE *nargv;
@@ -896,7 +942,17 @@ xb_con_each(int argc, VALUE *argv, VALUE obj)
     nargc = argc;
     nargv = argv;
   }
-  return xb_res_each(xb_con_query(nargc, nargv, obj));
+  return xb_res_search(xb_con_query(nargc, nargv, obj));
+}
+
+static VALUE
+xb_con_each(VALUE obj)
+{
+  VALUE query = rb_str_new2("//*");
+  if (!rb_block_given_p()) {
+    rb_raise(rb_eArgError, "block not supplied");
+  }
+  return xb_con_search(1, &query, obj);
 }
 
 static VALUE
@@ -925,30 +981,136 @@ xb_con_delete(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-xb_con_remove(VALUE obj)
+xb_con_i_alloc(VALUE obj, VALUE name)
 {
+  int argc;
+  VALUE klass, argv[2];
+
+  argc = 1;
+  argv[0] = name;
+  klass = obj;
+  if (rb_obj_is_kind_of(obj, xb_cTxn)) {
+    argc = 2;
+    klass = xb_cCon;
+    argv[1] = rb_hash_new();
+    rb_hash_aset(argv[1], rb_tainted_str_new2("txn"), obj);
+  }
+  return rb_funcall2(klass, rb_intern("allocate"), argc, argv);
+}
+
+static VALUE
+xb_con_remove(VALUE obj, VALUE a)
+{
+  VALUE b;
   xcon *con;
   DbTxn *txn = NULL;
 
   rb_secure(2);
-  GetConTxn(obj, con, txn);
+  Check_SafeStr(a);
+  b = xb_con_i_alloc(obj, a);
+  GetConTxn(b, con, txn);
   PROTECT(con->con->remove(txn));
-  return obj;
+  return Qnil;
 }
 
 static VALUE
-xb_con_rename(VALUE obj, VALUE a)
+xb_con_rename(VALUE obj, VALUE a, VALUE b)
 {
+  VALUE c;
   xcon *con;
   char *str;
   DbTxn *txn = NULL;
 
   rb_secure(2);
   Check_SafeStr(a);
-  str = STR2CSTR(a);
-  GetConTxn(obj, con, txn);
+  c = xb_con_i_alloc(obj, a);
+  Check_SafeStr(b);
+  str = STR2CSTR(b);
+  GetConTxn(c, con, txn);
   PROTECT(con->con->rename(txn, str));
-  return obj;
+  return Qnil;
+}
+
+static VALUE
+xb_con_dump(int argc, VALUE *argv, VALUE obj)
+{
+  xcon *con;
+  VALUE a, b, c;
+  u_int32_t flags = 0;
+  DbTxn *txn = NULL;
+
+  if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
+    flags = NUM2INT(c);
+  }
+  c = xb_con_i_alloc(obj, a);
+  GetConTxn(c, con, txn);
+  Check_Type(b, T_STRING);
+  char *name = STR2CSTR(b);
+  std::ofstream out(name);
+  PROTECT2(con->con->dump(&out, flags), out.close());
+  out.close();
+  return Qnil;
+}
+
+static VALUE
+xb_con_load(int argc, VALUE *argv, VALUE obj)
+{
+  xcon *con;
+  VALUE a, b, c, d;
+  u_int32_t flags = 0;
+  unsigned long lineno = 0;
+  DbTxn *txn = NULL;
+
+  switch (rb_scan_args(argc, argv, "22", &a, &b, &c, &d)) {
+  case 4:
+    flags = NUM2INT(d);
+    /* ... */
+  case 3:
+    lineno = NUM2INT(c);
+  }
+  c = xb_con_i_alloc(obj, a);
+  GetConTxn(c, con, txn);
+  Check_Type(b, T_STRING);
+  char *name = STR2CSTR(b);
+  std::ifstream in(name);
+  PROTECT2(con->con->load(&in, &lineno, flags), in.close());
+  in.close();
+  return Qnil;
+}
+
+static VALUE
+xb_con_verify(VALUE obj, VALUE a)
+{
+  xcon *con;
+  std::ofstream out;
+  DbTxn *txn = NULL;
+
+  a = xb_con_i_alloc(obj, a);
+  GetConTxn(a, con, txn);
+  PROTECT(con->con->verify(&out, 0));
+  return Qnil;
+}
+
+static VALUE
+xb_con_verify_salvage(int argc, VALUE *argv, VALUE obj)
+{
+  xcon *con;
+  VALUE a, b, c;
+  u_int32_t flags = 0;
+  DbTxn *txn = NULL;
+
+  if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 2) {
+    flags = NUM2INT(c);
+  }
+  c = xb_con_i_alloc(obj, a);
+  GetConTxn(c, con, txn);
+  flags |= DB_SALVAGE;
+  Check_Type(b, T_STRING);
+  char *name = STR2CSTR(b);
+  std::ofstream out(name);
+  PROTECT2(con->con->verify(&out, flags), out.close());
+  out.close();
+  return Qnil;
 }
 
 static VALUE
@@ -1078,18 +1240,26 @@ extern "C" {
     rb_define_method(xb_cTxn, "begin", RMF(xb_env_begin), -1);
     rb_define_method(xb_cTxn, "txn_begin", RMF(xb_env_begin), -1);
     rb_define_method(xb_cTxn, "transaction", RMF(xb_env_begin), -1);
+    rb_define_method(xb_cTxn, "rename_xml", RMF(xb_con_rename), 2);
+    rb_define_method(xb_cTxn, "remove_xml", RMF(xb_con_remove), 1);
     xb_mXML = rb_define_module_under(xb_mDb, "XML");
     xb_cCon = rb_define_class_under(xb_mXML, "Container", rb_cObject);
     rb_include_module(xb_cCon, rb_mEnumerable);
     rb_define_singleton_method(xb_cCon, "allocate", RMF(xb_con_s_alloc), -1);
     rb_define_singleton_method(xb_cCon, "new", RMF(xb_s_new), -1);
+    rb_define_singleton_method(xb_cCon, "open", RMF(xb_s_open), -1);
+    rb_define_singleton_method(xb_cCon, "rename", RMF(xb_con_rename), 2);
+    rb_define_singleton_method(xb_cCon, "remove", RMF(xb_con_remove), 1);
+    rb_define_singleton_method(xb_cCon, "dump", RMF(xb_con_dump), -1);
+    rb_define_singleton_method(xb_cCon, "load", RMF(xb_con_load), -1);
+    rb_define_singleton_method(xb_cCon, "verify", RMF(xb_con_verify), 1);
+    rb_define_singleton_method(xb_cCon, "salvage", RMF(xb_con_verify_salvage), -1);
+    rb_define_singleton_method(xb_cCon, "verify_and_salvage", RMF(xb_con_verify_salvage), -1);
     rb_define_private_method(xb_cCon, "initialize", RMF(xb_con_init), -1);
-    rb_define_method(xb_cCon, "rename", RMF(xb_con_rename), 1);
-    rb_define_method(xb_cCon, "remove", RMF(xb_con_remove), 0);
     rb_define_private_method(xb_cCon, "__txn_dup__", RMF(xb_con_txn_dup), 1);
     rb_define_private_method(xb_cCon, "__txn_close__", RMF(xb_con_txn_close), 2);
     rb_define_method(xb_cCon, "index", RMF(xb_con_index), 3);
-    rb_define_method(xb_cCon, "name", RMF(xb_con_name), 1);
+    rb_define_method(xb_cCon, "name", RMF(xb_con_name), 0);
     rb_define_method(xb_cCon, "[]", RMF(xb_con_get), -1);
     rb_define_method(xb_cCon, "get", RMF(xb_con_get), -1);
     rb_define_method(xb_cCon, "push", RMF(xb_con_push), -1);
@@ -1098,7 +1268,8 @@ extern "C" {
     rb_define_method(xb_cCon, "query", RMF(xb_con_query), -1);
     rb_define_method(xb_cCon, "delete", RMF(xb_con_delete), -1);
     rb_define_method(xb_cCon, "close", RMF(xb_con_close), -1);
-    rb_define_method(xb_cCon, "each", RMF(xb_con_each), -1);
+    rb_define_method(xb_cCon, "search", RMF(xb_con_search), -1);
+    rb_define_method(xb_cCon, "each", RMF(xb_con_each), 0);
     xb_cDoc = rb_define_class_under(xb_mXML, "Document", rb_cObject);
     /*
     rb_define_const(xb_cDoc, "UNKNOWN", INT2FIX(XmlDocument::UNKNOWN));

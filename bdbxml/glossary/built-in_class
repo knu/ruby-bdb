@@ -1,0 +1,36 @@
+<entry index='b'>
+<name>Built-In Class</name>
+<reference>object</reference>
+<reference>instance</reference>
+<reference>ruby</reference>
+<reference>data</reference>
+<reference>hash</reference>
+<reference>thread</reference>
+<content>
+    ((Ruby)) interpreter built-in class which the structure of
+    ((instance|Instance)) is different from usual ((object|Object)).
+    To define the class which inherits these classes is not recommended.
+
+    A built-in class of ((Ruby)) is as follows:
+
+     * Array
+     * Bignum
+     * Class
+     * ((Data))
+     * FalseClass
+     * File
+     * Fixnum
+     * Float
+     * ((Hash))
+     * IO
+     * ((MatchingData))
+     * Module
+     * NilClass
+     * Proc
+     * Regexp
+     * String
+     * Struct
+     * ((Thread))
+     * TrueClass
+</content>
+</entry>

@@ -5,13 +5,14 @@
 
 * Installation
 
-.... first build bdb which is in 'bdb-0.3.6/src', and use this version of 
+.... first build bdb which is in 'bdb-0.3.7/src', and use this version of 
      bdb for use with bdbxml
 
 
 .... modify 'bdb-0.3.6/bdbxml/myconfig' to adapt it to your configuration
+     IMPORTANT : you must use a version of xercesc compiled *without* threads
 
-.... This version must be used with [db-4.1.24, DbXml 0.5.0]
+.... This version must be used with [db-4.1.24, DbXml 1.0.5]
 
 .... ruby extconf.rb
      make

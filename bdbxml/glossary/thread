@@ -1,0 +1,9 @@
+<entry index='t'>
+<name>Thread</name>
+<reference>ruby</reference>
+<content>
+    ((*Thread of control*)), in original; a chain of control processes.
+
+    In ((Ruby)), more than one thread can exist in a program.
+</content>
+</entry>

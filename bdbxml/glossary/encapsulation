@@ -1,0 +1,16 @@
+<entry index='e'>
+<name>Encapsulation</name>
+<reference>instance variable</reference>
+<reference>method</reference>
+<reference>data</reference>
+<reference>ruby</reference>
+<content>
+    To hide the algorithm of an internal structure and processing from outside,
+    by the immediate operation to ((data|Data)) only from a specific procedure
+    (called the ((method|Method))) which accompanies the type of data.
+    See also "((Abstract Data Type))."
+
+    In ((Ruby)) it can be said that encapsulation will be compelled
+    since it is impossible to refer to the ((instance variable|Instance Variable)) from non-method.
+</content>
+</entry>

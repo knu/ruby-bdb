@@ -1,0 +1,18 @@
+<entry index='m'>
+<name>Method</name>
+<reference>self</reference>
+<reference>built-in class</reference>
+<reference>receiver</reference>
+<reference>object</reference>
+<reference>ruby</reference>
+<content>
+    Operation to ((object|Object)).
+    You can refer to the object ((receiver|Receiver))
+    to be operated with ((self)).
+    In ((Ruby)), if you exclude the object
+    of a ((built-in class|Built-In Class)),
+    since the structure of the object is dynamically determined,
+    the character of a certain object is determined
+    by the method defined in the object.
+</content>
+</entry>
