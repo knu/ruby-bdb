@@ -127,6 +127,17 @@ directory used will be the current working directory.
     : ((|mode|))
       mode for creation (see chmod(2))
 
+--- modify(mod, context = nil, flags = 0)
+    in-place modification of all documents according to the state of the 
+    ((|BDB::XML::Modify|)) object, which contains an XPath expression to 
+    target document nodes, as well as specification of the modifications 
+    to perform
+
+    ((|context|)) is an optional ((|BDB::XML::Context|)) used for the update
+    operations on the container.
+
+    ((|flags|)) must be set to zero or ((|BDB::RMW|)) to acquire a write lock
+
 --- name
     return the name of the container
 

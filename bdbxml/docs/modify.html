@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Untitled</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::Modify</a></h2><!-- RDLabel: "BDB::XML::Modify" -->
+<p>Modify encapsulates the context within which a set of documents specified by
+a query can be modified in place. </p>
+<p>The modification is performed using the methods 
+<var>BDB::XML::Container#modify</var> and <var>BDB::XML::Document#modify</var></p>
+<p>There are two parts to the object -- the query and the operation. 
+The query identifies target nodes against which the operation is run. 
+The operation specifies what modifications to perform.</p>
+<h3><a name="label-1" id="label-1">Class Methods</a></h3><!-- RDLabel: "Class Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>allocate</code></a></dt><!-- RDLabel: "allocate" -->
+<dd>
+Allocate a new object</dd>
+</dl>
+<h3><a name="label-3" id="label-3">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-4" id="label-4"><code>count</code></a></dt><!-- RDLabel: "count" -->
+<dd>
+return the number of node hits in the specified query.</dd>
+<dt><a name="label-5" id="label-5"><code>initialize(<var>xpath</var>, <var>operation</var>, <var>type</var> = <var>BDB</var>::<var>XML</var>::<var>Modify</var>::<var>None</var>, <var>name</var> = "", <var>content</var> = "", <var>location</var> = -<var>1</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "initialize" -->
+<dd>
+<p><var>xpath</var> is a <var>String</var>, or an <var>BDB::XML::Context</var> object</p>
+<p><var>operation</var> can have the value <var>BDB::XML::Modify::InsertAfter</var>, 
+<var>BDB::XML::Modify::InsertBefore</var>, <var>BDB::XML::Modify::Append</var>,
+<var>BDB::XML::Modify::Update</var>, <var>BDB::XML::Modify::Remove</var> or 
+<var>BDB::XML::Modify::Rename</var>.</p>
+<p><var>type</var> can have the value <var>BDB::XML::Modify::Element</var>, 
+<var>BDB::XML::Modify::Attribute</var>, <var>BDB::XML::Modify::Text</var>,
+<var>BDB::XML::Modify::ProcessingInstruction</var>, <var>BDB::XML::Modify::Comment</var> or
+<var>BDB::XML::Modify::None</var>.</p>
+<p><var>name</var> is the name for the new content.</p>
+<p><var>content</var> the content for operations that require content.</p>
+<p><var>location</var> indicate where a new child node will be placed for the
+append operation</p>
+<p><var>context</var> is valid only when a String is given as the first argument.
+This must be a <var>BDB::XML::Context</var> which  contains the variable 
+bindings, the namespace prefix to URI mapping, and the query processing
+flags.</p></dd>
+<dt><a name="label-6" id="label-6"><code>encoding=(<var>string</var>)</code></a></dt><!-- RDLabel: "encoding=" -->
+<dd>
+Specify a new character encoding for the modified documents.</dd>
+</dl>
+
+</body>
+</html>

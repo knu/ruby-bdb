@@ -74,6 +74,22 @@ that the caller may manage the variable to value bindings.
 # class Context
 # end
 
+((<BDB::XML::Modify|URL:docs/modify.html>))
+
+#^
+Modify encapsulates the context within which a set of documents specified by
+a query can be modified in place. 
+
+The modification is performed using the methods 
+((|BDB::XML::Container#modify|)) and ((|BDB::XML::Document#modify|))
+
+There are two parts to the object -- the query and the operation. 
+The query identifies target nodes against which the operation is run. 
+The operation specifies what modifications to perform.
+#^
+# class Modify
+# end
+
 ((<BDB::XML::Results|URL:docs/results.html>))
 #^
 

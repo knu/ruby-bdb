@@ -95,15 +95,13 @@ class TestXML < Inh::TestCase
    end
 
    def test_05_names
-      assert_kind_of(BDB::XML::Context,
-		     cxt = BDB::XML::Context.new(BDB::XML::Context::Values))
       assert_kind_of(BDB::XML::Results,
-		     query = $glo.query("//*//@dbxml:name", cxt))
-      file = query.collect{|name| name}
+		     query = $glo.query("//*"))
+      file = query.collect{|name| name.name}
       names = $id.collect{|id| id[0]}
       assert_equal(names.sort, file.sort)
       ids = []
-      $glo.search("//*//@dbxml:id", BDB::XML::Context::Values) {|i| ids << i}
+      $glo.search("//*") {|i| ids << i.id}
       id = $id.collect{|id| id[1]}
       assert_equal(ids.sort, id.sort)
    end
@@ -151,16 +149,103 @@ class TestXML < Inh::TestCase
       $glo.close
       $env.close
       clean
-      Dir.chdir('tmp')
-      $base = ".."
-      $reference.each {|k,v| v.clear}
-      assert_kind_of(BDB::XML::Container, $glo = BDB::XML::Container.new("glossary", "a"))
-      test_01_doc
-      test_02_each
-      test_03_search
-      test_04_query
+      begin
+	 Dir.chdir('tmp')
+	 $base = ".."
+	 $reference.each {|k,v| v.clear}
+	 assert_kind_of(BDB::XML::Container, $glo = BDB::XML::Container.new("glossary", "a"))
+	 test_01_doc
+	 test_02_each
+	 test_03_search
+	 test_04_query
+      ensure
+	 Dir.chdir("..")
+      end
    end
 
+   def expr_modify(content, expression, result)
+      assert_kind_of(BDB::XML::Document, xml = BDB::XML::Document.new(content))
+      assert_kind_of(BDB::XML::Modify, modify = eval(expression))
+      assert_equal(xml, xml.modify(modify))
+      assert_equal(result, xml.to_s, "<modify>")
+   end
+
+   def test_10_modify
+      return if !defined?(BDB::XML::Modify)
+      $glo.close
+      clean
+      data = File.new('tests/data.t')
+      begin
+	 expression, content, result = nil, nil, nil
+	 while line = data.gets
+	    next if /\A#\s*\z/ =~ line || /\A\s*\z/ =~ line
+	    if /\A#\s*Content/i =~ line
+	       while line = data.gets
+		  next if /\A#\s*\z/ =~ line
+		  break
+	       end
+	       content = line
+	       while line = data.gets
+		  break if /\A#\s*\z/ =~ line
+		  content << line
+	       end
+	       content.gsub!(/\n/, '')
+	    end
+	    if /\A#\s*BDB::XML::Modify/ =~ line
+	       expression = line.gsub(/\A#\s*/, '')
+	       while line = data.gets
+		  next if /\A#\s*\z/ =~ line
+		  break
+	       end
+	       result = line
+	       while line = data.gets
+		  break if /\A#\s*\z/ =~ line
+		  result << line
+	       end
+	       result.gsub!(/\n/, '')
+	    end
+	    if result
+	       expr_modify(content, expression, result)
+	       result = nil
+	    end
+	 end
+      ensure
+	 data.close
+      end
+   end
+
+   def expr_modify_error(content, expression)
+      assert_kind_of(BDB::XML::Document, xml = BDB::XML::Document.new(content))
+      assert_kind_of(BDB::XML::Modify, modify = eval(expression))
+      assert_raises(BDB::Fatal) { xml.modify(modify) }
+   end
+
+   def test_11_modify_error
+      return if !defined?(BDB::XML::Modify)
+      data = File.new('tests/data.e')
+      begin
+	 content = nil
+	 while line = data.gets
+	    next if /\A#\s*\z/ =~ line || /\A\s*\z/ =~ line
+	    if /\A#\s*Content/i =~ line
+	       while line = data.gets
+		  next if /\A#\s*\z/ =~ line
+		  break
+	       end
+	       content = line
+	       while line = data.gets
+		  break if /\A#\s*\z/ =~ line
+		  content << line
+	       end
+	       content.gsub!(/\n/, '')
+	    end
+	    next if /\A#/ =~ line || /\A\s*\z/ =~ line
+	    expr_modify_error(content, line.chomp)
+	 end
+      ensure
+	 data.close
+      end
+   end
 
 end
 

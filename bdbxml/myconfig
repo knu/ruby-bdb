@@ -3,8 +3,8 @@
 $base = "/home/ts/local"
 
 $include = {
-   'db' => "#{$base}/db4.1.25/include",
-   'dbxml' => "#{$base}/dbxml1/include/dbxml",
+   'db' => "#{$base}/db4.2.50/include",
+   'dbxml' => "#{$base}/dbxml1.2/include",
    'xercesc' => "#{$base}/xercesc/include"
 }
 
@@ -14,8 +14,8 @@ $include = {
 # (i.e. *without* threads)
 
 $library = {
-   'db' => ["#{$base}/db4.1.25/lib", ["db-4.1", "db_cxx-4.1"]],
-   'dbxml' => ["#{$base}/dbxml1/lib", "dbxml-1.1"],
+   'db' => ["#{$base}/db4.2.50/lib", ["db-4.2", "db_cxx-4.2"]],
+   'dbxml' => ["#{$base}/dbxml1.2/lib", "dbxml-1.2"],
    'pathan' => ["#{$base}/pathan/lib", "pathan"],
    'xercesc' => ["#{$base}/xercesc/lib", "xerces-c"]
 }

@@ -8,14 +8,16 @@ clean_ary(txnst, result)
     VALUE result;
 {
     VALUE *ary;
-    int i;
+    int i, len;
 
     if (txnst->db_ary.ptr) {
 	ary = txnst->db_ary.ptr;
 	txnst->db_ary.ptr = 0;
-	for (i = 0; i < txnst->db_ary.len; i++) {
+	len = txnst->db_ary.len;
+	txnst->db_ary.len = 0;
+	for (i = 0; i < len; i++) {
 	    if (rb_respond_to(ary[i], id_txn_close)) {
-		rb_funcall(ary[i], id_txn_close, 2, result, Qtrue);
+		rb_funcall(ary[i], id_txn_close, 2, result, Qfalse);
 	    }
 	}
 	free(ary);
@@ -23,7 +25,9 @@ clean_ary(txnst, result)
     if (txnst->db_assoc.ptr) {
 	ary = txnst->db_assoc.ptr;
 	txnst->db_assoc.ptr = 0;
-	for (i = 0; i < txnst->db_assoc.len; i++) {
+	len = txnst->db_assoc.len;
+	txnst->db_assoc.len = 0;
+	for (i = 0; i < len; i++) {
 	    if (rb_respond_to(ary[i], id_txn_close)) {
 		rb_funcall(ary[i], id_txn_close, 2, result, Qfalse);
 	    }
@@ -32,8 +36,8 @@ clean_ary(txnst, result)
     }
 }
 
-static void 
-bdb_txn_free(txnst)
+static VALUE 
+txn_free(txnst)
     bdb_TXN *txnst;
 {
     if (txnst->txnid && txnst->parent == NULL) {
@@ -48,6 +52,14 @@ bdb_txn_free(txnst)
 #endif
     }
     clean_ary(txnst, Qfalse);
+    return Qnil;
+}
+
+static void
+bdb_txn_free(txnst)
+    bdb_TXN *txnst;
+{
+    rb_protect(txn_free, (VALUE)txnst, 0);
     free(txnst);
 }
 

@@ -42,6 +42,14 @@ to URI mapping.</p>
 <p>The XPath syntax also permits expressions to refer to variables, but not
 to define them. The Context class provides a number of methods so
 that the caller may manage the variable to value bindings.</p>
+<p><a href="docs/modify.html">BDB::XML::Modify</a></p>
+<p>Modify encapsulates the context within which a set of documents specified by
+a query can be modified in place. </p>
+<p>The modification is performed using the methods 
+<var>BDB::XML::Container#modify</var> and <var>BDB::XML::Document#modify</var></p>
+<p>There are two parts to the object -- the query and the operation. 
+The query identifies target nodes against which the operation is run. 
+The operation specifies what modifications to perform.</p>
 <p><a href="docs/results.html">BDB::XML::Results</a></p>
 <p>The results of a query are a collection of values. The values could
 be either String, Float, true, false, BDB::XML::Documents or BDB::XML::Nodes</p>

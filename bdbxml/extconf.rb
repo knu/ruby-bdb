@@ -101,10 +101,10 @@ html: $(HTML)
 
 test: $(DLLIB)
    EOF
-   Dir.foreach('tests') do |x|
-      next if /^\./ =~ x || /(_\.rb|~)$/ =~ x
+   Dir.glob('tests/*.rb') do |x|
+      next if /(_\.rb|~)$/ =~ x
       next if FileTest.directory?(x)
-      make.print "\t#{CONFIG['RUBY_INSTALL_NAME']} tests/#{x}\n"
+      make.print "\t#{CONFIG['RUBY_INSTALL_NAME']} #{x}\n"
    end
 ensure
    make.close

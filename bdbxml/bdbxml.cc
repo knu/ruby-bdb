@@ -2,7 +2,7 @@
 
 static VALUE xb_eFatal, xb_cTxn, xb_cEnv, xb_cRes;
 static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_cPat, xb_cTmp;
-static VALUE xb_cInd, xb_cUpd;
+static VALUE xb_cInd, xb_cUpd, xb_cMod;
 
 #if defined(DBXML_DOM_XERCES2)
 #if BDBXML_VERSION < 10101
@@ -423,13 +423,17 @@ xb_nol_free(xnol *nol)
     ::free(nol);
 }
 
+#if BDBXML_VERSION < 10101
+
+#if defined(DBXML_DOM_XERCES2)
+
 static void
 xb_nol_mark(xnol *nol)
 {
     rb_gc_mark(nol->cxt_val);
 }
 
-#if BDBXML_VERSION < 10101
+#endif
 
 static VALUE
 xb_nol_size(VALUE obj)
@@ -509,9 +513,8 @@ xb_xml_val(XmlValue *val, VALUE cxt_val)
 {
     VALUE res;
     xdoc *doc;
-#if defined(DBXML_DOM_XERCES2)
+#if defined(DBXML_DOM_XERCES2) && BDBXML_VERSION < 10101
     xnol *nol;
-    XCNQ DOMNode *nod;
 #endif
     xcxt *cxt;
     XmlQueryContext *qcxt = 0;
@@ -785,6 +788,27 @@ xb_cxt_eval_set(VALUE obj, VALUE a)
     return a;
 }
 
+#if BDBXML_VERSION >= 10200
+
+static VALUE
+xb_cxt_meta_get(VALUE obj)
+{
+    xcxt *cxt;
+    Data_Get_Struct(obj, xcxt, cxt);
+    return cxt->cxt->getWithMetaData()?Qtrue:Qfalse;
+}
+
+static VALUE
+xb_cxt_meta_set(VALUE obj, VALUE a)
+{
+    xcxt *cxt;
+    Data_Get_Struct(obj, xcxt, cxt);
+    PROTECT(cxt->cxt->setWithMetaData(RTEST(a)));
+    return a;
+}
+
+#endif
+
 static void
 xb_res_free(xres *xes)
 {
@@ -828,7 +852,7 @@ xb_res_search(VALUE obj)
 	Data_Get_Struct(xes->cxt_val, xcxt, cxt);
 	rt = cxt->cxt->getReturnType();
     }
-    try {xes->res->reset(); } catch (...) {}
+    try { xes->res->reset(); } catch (...) {}
     while (true) {
 	tmp = Qnil;
 	switch (rt) {
@@ -886,7 +910,6 @@ xb_res_size(VALUE obj)
 {
     xres *xes;
     size_t siz;
-    VALUE res;
 
     Data_Get_Struct(obj, xres, xes);
     try { siz = xes->res->size(); } catch (...) { return Qnil; }
@@ -908,41 +931,61 @@ xb_con_mark(xcon *con)
 static void
 xb_con_i_close(xcon *con, int flags, bool protect)
 {
-    VALUE db_ary;
     bdb_ENV *envst;
     bdb_TXN *txnst;
-    int i;
 
     if (!con->closed) {
 	if (RTEST(con->txn_val)) {
+	    int opened = 0;
+
 	    Data_Get_Struct(con->txn_val, bdb_TXN, txnst);
-	    if (!bdb_ary_delete(&txnst->db_ary, con->ori_val)) {
-		bdb_ary_delete(&txnst->db_assoc, con->ori_val);
+	    opened = bdb_ary_delete(&txnst->db_ary, con->ori_val);
+	    if (!opened) {
+		opened = bdb_ary_delete(&txnst->db_assoc, con->ori_val);
+	    }
+	    if (opened) {
+		if (txnst->options & BDB_TXN_COMMIT) {
+		    rb_funcall2(con->txn_val, rb_intern("commit"), 0, 0);
+		}
+		else {
+		    rb_funcall2(con->txn_val, rb_intern("abort"), 0, 0);
+		}
 	    }
 	}
-	else if (con->env_val) {
-	    Data_Get_Struct(con->env_val, bdb_ENV, envst);
-	    bdb_ary_delete(&envst->db_ary, con->ori_val);
-	}
-	if (protect) {
-	    try { con->con->close(flags); } catch (...) {}
-	}
 	else {
-	    con->closed = Qtrue;
-	    PROTECT(con->con->close(flags));
+	    if (con->env_val) {
+		Data_Get_Struct(con->env_val, bdb_ENV, envst);
+		bdb_ary_delete(&envst->db_ary, con->ori_val);
+	    }
+	    if (protect) {
+		try { con->con->close(flags); } catch (...) {}
+	    }
+	    else {
+		con->closed = Qtrue;
+		PROTECT(con->con->close(flags));
+	    }
 	}
     }
+    con->closed = true;
 }
 
-static void
-xb_con_free(xcon *con)
+static VALUE
+con_free(VALUE tmp)
 {
+    xcon *con = (xcon *)tmp;
     if (!con->closed && con->con) {
 	xb_con_i_close(con, 0, true);
 	if (!NIL_P(con->closed)) {
 	  delete con->con;
 	}
     }
+    return Qnil;
+}
+
+static void
+xb_con_free(xcon *con)
+{
+    rb_protect(con_free, (VALUE)con, 0);
     ::free(con);
 }
 
@@ -1067,11 +1110,9 @@ static VALUE
 xb_con_init(int argc, VALUE *argv, VALUE obj)
 {
     xcon *con;
-    DB_ENV *envp = NULL;
     DbTxn *txn = 0;
     int flags = 0;
     int mode = 0;
-    char *name = NULL;
     VALUE a, b, c, hash_arg;
 
     GetConTxn(obj, con, txn);
@@ -1389,7 +1430,6 @@ xb_ind_find(int argc, VALUE *argv, VALUE obj)
     XmlIndexSpecification *ind;
     char *uri, *name;
     std::string index;
-    VALUE ret;
 
     Data_Get_Struct(obj, XmlIndexSpecification, ind);
     if (argc == 1) {
@@ -1475,7 +1515,6 @@ xb_int_update(int argc, VALUE *argv, VALUE obj, XmlUpdateContext *upd)
     xdoc *doc;
     DbTxn *txn;
     VALUE a;
-    XmlDocument *document;
 
     rb_secure(4);
     GetConTxn(obj, con, txn);
@@ -1563,6 +1602,7 @@ xb_con_parse(int argc, VALUE *argv, VALUE obj)
 static bool
 xb_test_txn(VALUE env, DbTxn **txn)
 {
+#if BDBXML_VERSION < 10101
   bdb_ENV *envst;
   DbEnv *envcc;
 
@@ -1574,6 +1614,7 @@ xb_test_txn(VALUE env, DbTxn **txn)
 	  return true;
       }
   }
+#endif
   return false;
 }
 
@@ -1919,10 +1960,10 @@ xb_con_is_open(VALUE obj)
 {
     xcon *con;
     Data_Get_Struct(obj, xcon, con);
-    if (con->closed || !con->con || con->con->isOpen()) {
-	return Qtrue;
+    if (con->closed || !con->con || !con->con->isOpen()) {
+	return Qfalse;
     }
-    return Qfalse;
+    return Qtrue;
 }
 
 static void
@@ -2070,12 +2111,170 @@ xb_env_begin(int argc, VALUE *argv, VALUE obj)
     return bdb_env_rslbl_begin((VALUE)&txnr, argc, argv, obj);
 }
 
+#if BDBXML_VERSION >= 10102
+
+static void
+xb_mod_free(XmlModify *mod)
+{
+    if (mod) {
+	delete mod;
+    }
+}
+
+static VALUE
+xb_mod_s_alloc(VALUE obj)
+{
+    return Data_Wrap_Struct(obj, 0, xb_mod_free, 0);
+}
+
+static VALUE
+xb_mod_init(int argc, VALUE *argv, VALUE obj)
+{
+    XmlQueryExpression *expression = 0;
+    std::string xpath;
+    XmlModify::ModificationType operation;
+    XmlModify::XmlObject type = XmlModify::None;
+    std::string name = "", content = "";
+    int32_t location = -1;
+    XmlQueryContext *context = 0;
+    XmlModify *modify;
+    xcxt *cxt;
+    VALUE a, b, c, d, e, f, g;
+
+    switch(rb_scan_args(argc, argv, "25", &a, &b, &c, &d, &e, &f, &g)) {
+    case 7:
+	if (TYPE(g) != T_DATA || RDATA(g)->dfree != (RDF)xb_cxt_free) {
+	    rb_raise(xb_eFatal, "Expected a Context object");
+	}
+	Data_Get_Struct(g, xcxt, cxt);
+	context = cxt->cxt;
+	/* ... */
+    case 6:
+	location = NUM2INT(f);
+	/* ... */
+    case 5:
+	if (!NIL_P(e)) {
+	    content = StringValuePtr(e);
+	}
+	/* ... */
+    case 4:
+	if (!NIL_P(d)) {
+	    name = StringValuePtr(d);
+	}
+	/* ... */
+    case 3:
+	if (!NIL_P(c)) {
+	    type = XmlModify::XmlObject(NUM2INT(c));
+	}
+
+    }
+    operation = XmlModify::ModificationType(NUM2INT(b));
+    if (TYPE(a) == T_DATA && (RDF)RDATA(a)->dfree == xb_pat_free) {
+	Data_Get_Struct(a, XmlQueryExpression, expression);
+    }
+    else {
+	xpath = StringValuePtr(a);
+    }
+    if (expression) {
+	PROTECT(modify = new XmlModify(*expression, operation, type, name,
+				       content, location));
+    }
+    else {
+	PROTECT(modify = new XmlModify(xpath, operation, type, name,
+				       content, location, context));
+    }
+    DATA_PTR(obj) = modify;
+    return obj;
+}
+
+static VALUE
+xb_mod_count(VALUE obj)
+{
+    XmlModify *modify;
+    int result = 0;
+
+    Data_Get_Struct(obj, XmlModify, modify);
+    if (modify) {
+	PROTECT(result = modify->getNumModifications());
+    }
+    return INT2NUM(result);
+}
+
+static VALUE
+xb_mod_encoding(VALUE obj, VALUE a)
+{
+    XmlModify *modify;
+
+    Data_Get_Struct(obj, XmlModify, modify);
+    if (modify) {
+	PROTECT(modify->setNewEncoding(StringValuePtr(a)));
+    }
+    return a;
+}
+
+static VALUE
+xb_con_modify(int argc, VALUE *argv, VALUE obj)
+{
+    xcon *con;
+    DbTxn *txn;
+    VALUE a, b, c;
+    const XmlModify *modify;
+    XmlUpdateContext *context = 0;
+    u_int32_t flags = 0;
+
+    GetConTxn(obj, con, txn);
+    switch(rb_scan_args(argc, argv, "12", &a, &b, &c)) {
+    case 3:
+	flags = NUM2INT(c);
+	/* ... */
+    case 2:
+	if (!NIL_P(b)) {
+	    xupd *upd;
+
+	    if (TYPE(b) != T_DATA || RDATA(b)->dfree != (RDF)xb_upd_free) {
+		rb_raise(rb_eArgError, "Expected an update context");
+	    }
+	    Data_Get_Struct(b, xupd, upd);
+	    context = upd->upd;
+	}
+    }
+    if (TYPE(a) != T_DATA || RDATA(a)->dfree != (RDF)xb_mod_free) {
+	rb_raise(xb_eFatal, "Expected a Modify object");
+    }
+    Data_Get_Struct(a, XmlModify, modify);
+    if (modify) {
+	PROTECT(con->con->modifyDocument(txn, *modify, context, flags));
+    }
+    return obj;
+}
+
+static VALUE
+xb_doc_modify(VALUE obj, VALUE a)
+{
+    xdoc *doc;
+    XmlModify *modify;
+
+    Data_Get_Struct(obj, xdoc, doc);
+    if (TYPE(a) != T_DATA || RDATA(a)->dfree != (RDF)xb_mod_free) {
+	rb_raise(xb_eFatal, "Expected a Modify object");
+    }
+    Data_Get_Struct(a, XmlModify, modify);
+    if (modify) {
+	PROTECT(doc->doc->modifyDocument(*modify));
+    }
+    return obj;
+}
+
+    
+
+#endif
+
 extern "C" {
   
     static VALUE
     xb_con_txn_dup(VALUE obj, VALUE a)
     {
-	xcon *con, *con1;
+	xcon *con;
 	VALUE res;
 	bdb_TXN *txnst;
 	VALUE argv[2];
@@ -2201,7 +2400,7 @@ extern "C" {
 	}
 	xb_cCon = rb_define_class_under(xb_mXML, "Container", rb_cObject);
 	rb_include_module(xb_cCon, rb_mEnumerable);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_define_alloc_func(xb_cCon, RMFS(xb_con_s_alloc));
 #else
 	rb_define_singleton_method(xb_cCon, "allocate", RMFS(xb_con_s_alloc), 0);
@@ -2251,8 +2450,11 @@ extern "C" {
 	rb_define_method(xb_cCon, "is_open?", RMF(xb_con_is_open), 0);
 	rb_define_method(xb_cCon, "context", RMF(xb_con_context), 0);
 	rb_define_method(xb_cCon, "update_context", RMF(xb_con_context), 0);
+#if BDBXML_VERSION >= 10102
+	rb_define_method(xb_cCon, "modify", RMF(xb_con_modify), -1);
+#endif
 	xb_cInd = rb_define_class_under(xb_mXML, "Index", rb_cObject);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_define_alloc_func(xb_cInd, RMFS(xb_ind_s_alloc));
 #else
 	rb_define_singleton_method(xb_cInd, "allocate", RMFS(xb_ind_s_alloc), 0);
@@ -2281,7 +2483,7 @@ extern "C" {
 	rb_define_method(xb_cTmp, "[]", RMF(xb_cxt_name_get), 1);
 	rb_define_method(xb_cTmp, "[]=", RMF(xb_cxt_name_set), 2);
 	xb_cDoc = rb_define_class_under(xb_mXML, "Document", rb_cObject);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_define_alloc_func(xb_cDoc, RMFS(xb_doc_s_alloc));
 #else
 	rb_define_singleton_method(xb_cDoc, "allocate", RMFS(xb_doc_s_alloc), 0);
@@ -2306,6 +2508,9 @@ extern "C" {
 	rb_define_method(xb_cDoc, "prefix", RMF(xb_doc_prefix_get), 0);
 	rb_define_method(xb_cDoc, "prefix=", RMF(xb_doc_prefix_set), 1);
 	rb_define_method(xb_cDoc, "query", RMF(xb_doc_query), -1);
+#if BDBXML_VERSION >= 10102
+	rb_define_method(xb_cDoc, "modify", RMF(xb_doc_modify), 1);
+#endif
 	xb_cCxt = rb_define_class_under(xb_mXML, "Context", rb_cObject);
 	rb_const_set(xb_mXML, rb_intern("QueryContext"), xb_cCxt);
 	rb_define_const(xb_cCxt, "Documents", INT2FIX(XmlQueryContext::ResultDocuments));
@@ -2314,7 +2519,7 @@ extern "C" {
 	rb_define_const(xb_cCxt, "DocumentsAndValues", INT2FIX(XmlQueryContext::ResultDocumentsAndValues));
 	rb_define_const(xb_cCxt, "Eager", INT2FIX(XmlQueryContext::Eager));
 	rb_define_const(xb_cCxt, "Lazy", INT2FIX(XmlQueryContext::Lazy));
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_define_alloc_func(xb_cCxt, RMFS(xb_cxt_s_alloc));
 #else
 	rb_define_singleton_method(xb_cCxt, "allocate", RMFS(xb_cxt_s_alloc), 0);
@@ -2333,6 +2538,12 @@ extern "C" {
 	rb_define_method(xb_cCxt, "returntype=", RMF(xb_cxt_return_set), 1);
 	rb_define_method(xb_cCxt, "evaltype", RMF(xb_cxt_eval_get), 0);
 	rb_define_method(xb_cCxt, "evaltype=", RMF(xb_cxt_eval_set), 1);
+#if BDBXML_VERSION >= 10200
+	rb_define_method(xb_cCxt, "metadata", RMF(xb_cxt_meta_get), 0);
+	rb_define_method(xb_cCxt, "metadata=", RMF(xb_cxt_meta_set), 1);
+	rb_define_method(xb_cCxt, "with_metadata", RMF(xb_cxt_meta_get), 0);
+	rb_define_method(xb_cCxt, "with_metadata=", RMF(xb_cxt_meta_set), 1);
+#endif
 	xb_cPat = rb_define_class_under(xb_mXML, "XPath", rb_cObject);
 	rb_undef_method(CLASS_OF(xb_cPat), "allocate");
 	rb_undef_method(CLASS_OF(xb_cPat), "new");
@@ -2348,7 +2559,7 @@ extern "C" {
 #if defined(DBXML_DOM_XERCES2)
 	xb_mDom = rb_define_class_under(xb_mDb, "DOM", rb_cObject);
 	xb_cNod = rb_define_class_under(xb_mDom, "Node", rb_cObject);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_undef_method(CLASS_OF(xb_cNod), "allocate");
 #endif
 	rb_undef_method(CLASS_OF(xb_cNod), "new");
@@ -2359,7 +2570,7 @@ extern "C" {
 	xb_cNol = rb_define_class_under(xb_mDom, "NodeList", rb_cObject);
 	rb_const_set(xb_mDom, rb_intern("List"), xb_cNol);
 	rb_include_module(xb_cNol, rb_mEnumerable);
-#if RUBY_VERSION_CODE >= 180
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_undef_method(CLASS_OF(xb_cNol), "allocate");
 #endif
 	rb_undef_method(CLASS_OF(xb_cNol), "new");
@@ -2374,6 +2585,32 @@ extern "C" {
 	rb_define_method(xb_cNol, "to_ary", RMF(xb_nol_to_ary), 0);
 #endif
 #endif
+#if BDBXML_VERSION >= 10102
+	xb_cMod = rb_define_class_under(xb_mXML, "Modify", rb_cObject);
+	rb_define_const(xb_cMod, "InsertAfter", INT2NUM(XmlModify::InsertAfter));
+	rb_define_const(xb_cMod, "InsertBefore", INT2NUM(XmlModify::InsertBefore));
+	rb_define_const(xb_cMod, "Append", INT2NUM(XmlModify::Append));
+	rb_define_const(xb_cMod, "Update", INT2NUM(XmlModify::Update));
+	rb_define_const(xb_cMod, "Remove", INT2NUM(XmlModify::Remove));
+	rb_define_const(xb_cMod, "Rename", INT2NUM(XmlModify::Rename));
+	rb_define_const(xb_cMod, "Element", INT2NUM(XmlModify::Element));
+	rb_define_const(xb_cMod, "Attribute", INT2NUM(XmlModify::Attribute));
+	rb_define_const(xb_cMod, "Text", INT2NUM(XmlModify::Text));
+	rb_define_const(xb_cMod, "ProcessingInstruction", INT2NUM(XmlModify::ProcessingInstruction));
+	rb_define_const(xb_cMod, "PI", INT2NUM(XmlModify::ProcessingInstruction));
+	rb_define_const(xb_cMod, "Comment", INT2NUM(XmlModify::Comment));
+	rb_define_const(xb_cMod, "None", INT2NUM(XmlModify::None));
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+	rb_define_alloc_func(xb_cMod, RMFS(xb_mod_s_alloc));
+#else
+	rb_define_singleton_method(xb_cMod, "allocate", RMFS(xb_mod_s_alloc), 0);
+#endif
+	rb_define_singleton_method(xb_cMod, "new", RMF(xb_s_new), -1);
+	rb_define_private_method(xb_cMod, "initialize", RMF(xb_mod_init), -1);
+	rb_define_method(xb_cMod, "encoding=", RMF(xb_mod_encoding), 1);
+	rb_define_method(xb_cMod, "count", RMF(xb_mod_count), 0);
+#endif
+
     }
 }
     

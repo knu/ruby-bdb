@@ -716,23 +716,30 @@ bdb_i_close(dbst, flags)
     if (dbst->dbp) {
 	if (RTEST(dbst->txn)) {
 	    bdb_TXN *txnst;
+	    int opened = 0;
+
 	    Data_Get_Struct(dbst->txn, bdb_TXN, txnst);
-	    if (!bdb_ary_delete(&txnst->db_ary, dbst->ori_val)) {
-		bdb_ary_delete(&txnst->db_assoc, dbst->ori_val);
+	    opened = bdb_ary_delete(&txnst->db_ary, dbst->ori_val);
+	    if (!opened) {
+		opened = bdb_ary_delete(&txnst->db_assoc, dbst->ori_val);
 	    }
-	    if (txnst->options & BDB_TXN_COMMIT) {
-		rb_funcall2(dbst->txn, rb_intern("commit"), 0, 0);
-	    }
-	    else {
-		rb_funcall2(dbst->txn, rb_intern("abort"), 0, 0);
+	    if (opened) {
+		if (txnst->options & BDB_TXN_COMMIT) {
+		    rb_funcall2(dbst->txn, rb_intern("commit"), 0, 0);
+		}
+		else {
+		    rb_funcall2(dbst->txn, rb_intern("abort"), 0, 0);
+		}
 	    }
 	}
-	else if (dbst->env) {
-	    Data_Get_Struct(dbst->env, bdb_ENV, envst);
-	    bdb_ary_delete(&envst->db_ary, dbst->ori_val);
-	}
-	if (!(dbst->options & BDB_NOT_OPEN)) {
-	    bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
+	else {
+	    if (dbst->env) {
+		Data_Get_Struct(dbst->env, bdb_ENV, envst);
+		bdb_ary_delete(&envst->db_ary, dbst->ori_val);
+	    }
+	    if (!(dbst->options & BDB_NOT_OPEN)) {
+		bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
+	    }
 	}
     }
     dbst->dbp = NULL;
@@ -748,6 +755,14 @@ bdb_local_aref()
     return obj;
 }
 
+static VALUE
+i_close(dbst)
+    bdb_DB *dbst;
+{
+    bdb_i_close(dbst, 0);
+    return Qnil;
+}
+
 static void
 bdb_free(dbst)
     bdb_DB *dbst;
@@ -756,7 +771,7 @@ bdb_free(dbst)
     bdb_DB *thst;
     int status;
 
-    bdb_i_close(dbst, 0);
+    rb_protect(i_close, (VALUE)dbst, 0);
     free(dbst);
     obj = rb_protect(bdb_local_aref, 0, &status);
     if (!status) {

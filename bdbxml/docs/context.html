@@ -58,14 +58,23 @@ Initialize the object with the optional evaluation type
 <var>BDB::XML::Context::Lazy</var> or <var>BDB::XML::Context::Eager</var>
 and return type <var>BDB::XML::Context::Documents</var>,
 <var>BDB::XML::Context::Values</var> or <var>BDB::XML::Context::Candidates</var></dd>
-<dt><a name="label-14" id="label-14"><code>returntype</code></a></dt><!-- RDLabel: "returntype" -->
+<dt><a name="label-14" id="label-14"><code>metadata</code></a></dt><!-- RDLabel: "metadata" -->
+<dt><a name="label-15" id="label-15"><code>with_metadata</code></a></dt><!-- RDLabel: "with_metadata" -->
+<dd>
+return <var>true</var> if the metadata is added to the document</dd>
+<dt><a name="label-16" id="label-16"><code>metadata=(<var>with</var>)</code></a></dt><!-- RDLabel: "metadata=" -->
+<dt><a name="label-17" id="label-17"><code>with_metadata=(<var>with</var>)</code></a></dt><!-- RDLabel: "with_metadata=" -->
+<dd>
+The <var>with</var> parameter specifies whether or not to add the document
+metadata prior to the query.</dd>
+<dt><a name="label-18" id="label-18"><code>returntype</code></a></dt><!-- RDLabel: "returntype" -->
 <dd>
 Return the return type</dd>
-<dt><a name="label-15" id="label-15"><code>returntype=(<var>type</var>)</code></a></dt><!-- RDLabel: "returntype=" -->
+<dt><a name="label-19" id="label-19"><code>returntype=(<var>type</var>)</code></a></dt><!-- RDLabel: "returntype=" -->
 <dd>
 Set the return type</dd>
-<dt><a name="label-16" id="label-16"><code>namespace[name]=(<var>uri</var>)</code></a></dt><!-- RDLabel: "namespace[name]=" -->
-<dt><a name="label-17" id="label-17"><code>set_namespace(<var>name</var>, <var>uri</var>)</code></a></dt><!-- RDLabel: "set_namespace" -->
+<dt><a name="label-20" id="label-20"><code>namespace[name]=(<var>uri</var>)</code></a></dt><!-- RDLabel: "namespace[name]=" -->
+<dt><a name="label-21" id="label-21"><code>set_namespace(<var>name</var>, <var>uri</var>)</code></a></dt><!-- RDLabel: "set_namespace" -->
 <dd>
 <p>Define a namespace prefix, providing the URI that it maps onto</p>
 <p>If <var>uri</var> is <var>nil</var> delete the namespace</p></dd>

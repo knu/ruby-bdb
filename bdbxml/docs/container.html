@@ -150,76 +150,85 @@ and integer value.
 mode for creation (see chmod(2))
 </dd>
 </dl></dd>
-<dt><a name="label-38" id="label-38"><code>name</code></a></dt><!-- RDLabel: "name" -->
+<dt><a name="label-38" id="label-38"><code>modify(<var>mod</var>, <var>context</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "modify" -->
+<dd>
+<p>in-place modification of all documents according to the state of the 
+<var>BDB::XML::Modify</var> object, which contains an XPath expression to 
+target document nodes, as well as specification of the modifications 
+to perform</p>
+<p><var>context</var> is an optional <var>BDB::XML::Context</var> used for the update
+operations on the container.</p>
+<p><var>flags</var> must be set to zero or <var>BDB::RMW</var> to acquire a write lock</p></dd>
+<dt><a name="label-39" id="label-39"><code>name</code></a></dt><!-- RDLabel: "name" -->
 <dd>
 return the name of the container</dd>
-<dt><a name="label-39" id="label-39"><code>name=(<var>str</var>)</code></a></dt><!-- RDLabel: "name=" -->
+<dt><a name="label-40" id="label-40"><code>name=(<var>str</var>)</code></a></dt><!-- RDLabel: "name=" -->
 <dd>
 Set the name of the container. Can be called only on a closed container
 See also <var>Container::set_name</var></dd>
-<dt><a name="label-40" id="label-40"><code>open?</code></a></dt><!-- RDLabel: "open?" -->
+<dt><a name="label-41" id="label-41"><code>open?</code></a></dt><!-- RDLabel: "open?" -->
 <dd>
 return <var>true</var> if the container is open</dd>
-<dt><a name="label-41" id="label-41"><code>parse(<var>query</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "parse" -->
+<dt><a name="label-42" id="label-42"><code>parse(<var>query</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "parse" -->
 <dd>
 Pre-parse an XPath query and return an <var>BDB::XML::XPath</var> object
 <dl>
-<dt><a name="label-42" id="label-42"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dt><a name="label-43" id="label-43"><var>query</var></a></dt><!-- RDLabel: "query" -->
 <dd>
 the XPath query to execute against the container
 </dd>
-<dt><a name="label-43" id="label-43"><var>context</var></a></dt><!-- RDLabel: "context" -->
+<dt><a name="label-44" id="label-44"><var>context</var></a></dt><!-- RDLabel: "context" -->
 <dd>
 the context within which the query will be executed
 </dd>
 </dl></dd>
-<dt><a name="label-44" id="label-44"><code>push(<var>document</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "push" -->
+<dt><a name="label-45" id="label-45"><code>push(<var>document</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "push" -->
 <dd>
 Add a document to the container and return an ID
 <dl>
-<dt><a name="label-45" id="label-45"><var>document</var></a></dt><!-- RDLabel: "document" -->
+<dt><a name="label-46" id="label-46"><var>document</var></a></dt><!-- RDLabel: "document" -->
 <dd>
 an object <var>BDB::XML::Document</var> or any object suitable for 
 <var>BDB::XML::Document::new</var>
 </dd>
-<dt><a name="label-46" id="label-46"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
+<dt><a name="label-47" id="label-47"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
 <dd>
 flags can be 0 or <var>BDB::AUTO_COMMIT</var>
 </dd>
 </dl></dd>
-<dt><a name="label-47" id="label-47"><code>&lt;&lt;(<var>document</var>)</code></a></dt><!-- RDLabel: "<<" -->
+<dt><a name="label-48" id="label-48"><code>&lt;&lt;(<var>document</var>)</code></a></dt><!-- RDLabel: "<<" -->
 <dd>
 Add a document to the container and return <var>self</var></dd>
-<dt><a name="label-48" id="label-48"><code>query(<var>xpath</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "query" -->
-<dt><a name="label-49" id="label-49"><code>query(<var>string</var>, <var>context</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "query" -->
+<dt><a name="label-49" id="label-49"><code>query(<var>xpath</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "query" -->
+<dt><a name="label-50" id="label-50"><code>query(<var>string</var>, <var>context</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "query" -->
 <dd>
 <p>Query the container with an XPath expression, which can be an object
 <var>BDB::XML::XPath</var> or a <var>String</var></p>
 <dl>
-<dt><a name="label-50" id="label-50"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
+<dt><a name="label-51" id="label-51"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
 <dd>
 flags can have the value 0 or <var>BDB::DIRTY_READ</var>, <var>BDB::RMW</var>
 </dd>
 </dl>
 <p>return a <var>BDB::XML::Results</var> object</p></dd>
-<dt><a name="label-51" id="label-51"><code>search(<var>xpath</var>, <var>returntype</var> = <var>BDB</var>::<var>XML</var>::<var>Context</var>::<var>Document</var>) {|<var>doc</var>| ... }</code></a></dt><!-- RDLabel: "search" -->
+<dt><a name="label-52" id="label-52"><code>search(<var>xpath</var>, <var>returntype</var> = <var>BDB</var>::<var>XML</var>::<var>Context</var>::<var>Document</var>) {|<var>doc</var>| ... }</code></a></dt><!-- RDLabel: "search" -->
 <dd>
 <p>Iterate over the result of a query</p>
 <p><var>returntype</var> can have the values <var>BDB::XML::Context::Document</var>
 or <var>BDB::XML::Context::Values</var></p>
 <p>the query is evaluated lazily</p></dd>
-<dt><a name="label-52" id="label-52"><code>transaction</code></a></dt><!-- RDLabel: "transaction" -->
+<dt><a name="label-53" id="label-53"><code>transaction</code></a></dt><!-- RDLabel: "transaction" -->
 <dd>
 return the transaction associated with the container, or <var>nil</var></dd>
-<dt><a name="label-53" id="label-53"><code>in_transaction?</code></a></dt><!-- RDLabel: "in_transaction?" -->
-<dt><a name="label-54" id="label-54"><code>transaction?</code></a></dt><!-- RDLabel: "transaction?" -->
+<dt><a name="label-54" id="label-54"><code>in_transaction?</code></a></dt><!-- RDLabel: "in_transaction?" -->
+<dt><a name="label-55" id="label-55"><code>transaction?</code></a></dt><!-- RDLabel: "transaction?" -->
 <dd>
 return <var>true</var> if the container is associated with a transaction</dd>
-<dt><a name="label-55" id="label-55"><code>update(<var>document</var>)</code></a></dt><!-- RDLabel: "update" -->
+<dt><a name="label-56" id="label-56"><code>update(<var>document</var>)</code></a></dt><!-- RDLabel: "update" -->
 <dd>
 Update a document within the container</dd>
-<dt><a name="label-56" id="label-56"><code>update_context {|<var>cxt</var>| ... }</code></a></dt><!-- RDLabel: "update_context" -->
-<dt><a name="label-57" id="label-57"><code>context {|<var>cxt</var>| ... }</code></a></dt><!-- RDLabel: "context" -->
+<dt><a name="label-57" id="label-57"><code>update_context {|<var>cxt</var>| ... }</code></a></dt><!-- RDLabel: "update_context" -->
+<dt><a name="label-58" id="label-58"><code>context {|<var>cxt</var>| ... }</code></a></dt><!-- RDLabel: "context" -->
 <dd>
 <p>return an <var>BDB::XML::UpdateContext</var> which can be used to perform
 <var>[]</var>, <var>[]=</var>, <var>push</var>, <var>delete</var>, <var>update</var> operation</p>

@@ -45,6 +45,10 @@ Document supports annotation attributes.
 --- initialize(content = "")
     Initialize the document with the content specified
 
+--- modify(mod)
+    Modifies the document contents based on the information contained in the
+    ((|BDB::XML::Modify|)) object
+
 --- name
     Return the name of the document
 

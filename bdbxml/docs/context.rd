@@ -60,6 +60,15 @@ that the caller may manage the variable to value bindings.
     and return type ((|BDB::XML::Context::Documents|)),
     ((|BDB::XML::Context::Values|)) or ((|BDB::XML::Context::Candidates|))
 
+--- metadata
+--- with_metadata
+    return ((|true|)) if the metadata is added to the document
+
+--- metadata=(with)
+--- with_metadata=(with)
+    The ((|with|)) parameter specifies whether or not to add the document
+    metadata prior to the query.
+
 --- returntype
     Return the return type
 

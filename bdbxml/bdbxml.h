@@ -1,7 +1,7 @@
 #include "bdb.h"
 
 #include <fstream>
-#include "DbXml.hpp"
+#include <dbxml/DbXml.hpp>
 
 using namespace DbXml;
 
@@ -18,40 +18,40 @@ using namespace DbXml;
 
 #define BDBXML_VERSION (10000*DBXML_VERSION_MAJOR+100*DBXML_VERSION_MINOR+DBXML_VERSION_PATCH)
 
-#define PROTECT2(comm, libr)				\
+#define PROTECT2(comm_, libr_)				\
   try {							\
-    comm;						\
+    comm_;						\
   }							\
   catch (XmlException &e) {				\
     VALUE xb_err = Qnil;				\
-    libr;						\
+    libr_;						\
     if ((xb_err = bdb_return_err()) != Qnil) {          \
       rb_raise(xb_eFatal, StringValuePtr(xb_err));      \
     }                                                   \
     rb_raise(xb_eFatal, e.what());			\
   }							\
   catch (std::exception &e) {				\
-    libr;						\
+    libr_;						\
     rb_raise(xb_eFatal, e.what());			\
   }							\
   catch (...) {						\
-    libr;						\
+    libr_;						\
     rb_raise(xb_eFatal, "Unknown error");		\
   }
 
-#define PROTECT(comm) PROTECT2(comm,)
+#define PROTECT(comm_) PROTECT2(comm_,)
 
-#define GetConTxn(obj, con, txn)			\
+#define GetConTxn(obj_, con_, txn_)			\
   {							\
-    Data_Get_Struct(obj, xcon, con);			\
-    if (con->closed || !con->con) {			\
+    Data_Get_Struct(obj_, xcon, con_);			\
+    if (con_->closed || !con_->con) {			\
 	rb_raise(xb_eFatal, "closed container");	\
     }							\
-    txn = 0;						\
-    if (con->txn_val) {					\
+    txn_ = 0;						\
+    if (con_->txn_val) {				\
       bdb_TXN *txnst;					\
-      Data_Get_Struct(con->txn_val, bdb_TXN, txnst);	\
-      txn = (DbTxn *)txnst->txn_cxx;			\
+      Data_Get_Struct(con_->txn_val, bdb_TXN, txnst);	\
+      txn_ = (DbTxn *)txnst->txn_cxx;			\
     }							\
   }
       

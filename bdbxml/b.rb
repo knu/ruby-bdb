@@ -2,8 +2,11 @@
 $LOAD_PATH.unshift "../src"
 require 'bdbxml'
 
+p BDB::XML::Name
+
 env = BDB::Env.new("tmp", BDB::CREATE | BDB::INIT_TRANSACTION)
 doc = env.open_xml("toto", "a")
+doc.each {|x| p x }
 index = doc.index
 index.add("http://moulon.inra.fr/", "reference", 
 	   "node-attribute-equality-string")
