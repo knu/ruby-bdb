@@ -36,7 +36,11 @@ class TestHash < RUNIT::TestCase
       assert_equal(false, $bdb.put("alpha", "gamma", BDB::NOOVERWRITE), "<nooverwrite>")
       assert_equal("alpha", $bdb["alpha"], "<must not be changed>")
       assert($bdb.both?("alpha", "alpha"), "<has both>")
+      assert_equal(["alpha", "alpha"], 
+		   $bdb.get("alpha", "alpha", BDB::GET_BOTH),
+		   "<get both>")
       assert(! $bdb.both?("alpha", "beta"), "<don't has both>")
+      assert(! $bdb.get("alpha", "beta", BDB::GET_BOTH), "<don't has both>")
       assert(! $bdb.both?("unknown", "alpha"), "<don't has both>")
       assert_equal([1, 2, 3].to_s, $bdb["array"] = [1, 2, 3], "<array>")
       assert_equal([1, 2, 3].to_s, $bdb["array"], "<retrieve array>")

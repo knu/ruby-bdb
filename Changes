@@ -39,3 +39,11 @@
 -- 0.1.4
 
 * corrected rb_iterate()
+
+-- 0.1.5
+
+* corrected (thanks Phillipe Lucas <philippe.lucas@technologies-gid.com>)
+  - db_get_both()
+  - flag --with-no-thread to compile on some "stupid" system
+
+

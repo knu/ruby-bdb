@@ -58,7 +58,7 @@ typedef struct {
 } bdb_TXN;
 
 typedef struct {
-    int options;
+    int options, no_thread;
     int flags27;
     DBTYPE type;
     VALUE env;
@@ -609,10 +609,12 @@ bdb_env_s_new(argc, argv, obj)
     if (flags & DB_USE_ENVIRON) {
 	rb_secure(1);
     }
+#ifndef BDB_NO_THREAD
     if (!dbenvst->no_thread) {
 	rb_rescue(bdb_set_func, (VALUE)dbenvst, bdb_env_each_failed, (VALUE)dbenvst);
     }
     flags |= DB_THREAD;
+#endif
 #if DB_VERSION_MAJOR < 3
     if ((ret = db_appinit(db_home, db_config, dbenvp, flags)) != 0) {
         free(dbenvp);
@@ -1006,6 +1008,13 @@ bdb_i_options(obj, dbstobj)
 	default: rb_raise(bdb_eFatal, "array base must be 0 or 1");
 	}
     }
+    else if (strcmp(options, "thread") == 0) {
+        switch (value) {
+        case Qtrue: dbst->no_thread = 0; break;
+        case Qfalse: dbst->no_thread = 1; break;
+        default: rb_raise(bdb_eFatal, "thread value must be true or false");
+        }
+    }
     return Qnil;
 }
 
@@ -1083,6 +1092,7 @@ bdb_open_common(argc, argv, obj)
 {
     bdb_DB *dbst;
     DB *dbp;
+    bdb_ENV *dbenvst;
     DB_ENV *dbenvp;
     int flags, mode, ret, nb;
     char *name, *subname;
@@ -1135,6 +1145,7 @@ bdb_open_common(argc, argv, obj)
         subname = RSTRING(b)->ptr;
     }
     dbenvp = 0;
+    dbenvst = 0;
     res = Data_Make_Struct(obj, bdb_DB, 0, bdb_free, dbst);
     if (!NIL_P(f)) {
 	VALUE v;
@@ -1143,7 +1154,6 @@ bdb_open_common(argc, argv, obj)
             rb_raise(bdb_eFatal, "options must be an hash");
 	}
 	if ((v = rb_hash_aref(f, rb_str_new2("txn"))) != RHASH(f)->ifnone) {
-	    bdb_ENV *dbenvst;
 	    bdb_TXN *txnst;
 
 	    if (!rb_obj_is_kind_of(v, bdb_cTxn)) {
@@ -1159,8 +1169,6 @@ bdb_open_common(argc, argv, obj)
 		dbst->options |= BDB_MARSHAL;
 	}
 	else if ((v = rb_hash_aref(f, rb_str_new2("env"))) != RHASH(f)->ifnone) {
-	    bdb_ENV *dbenvst;
-
 	    if (!rb_obj_is_kind_of(v, bdb_cEnv)) {
 		rb_raise(bdb_eFatal, "argument of env must be an environnement");
 	    }
@@ -1231,9 +1239,10 @@ bdb_open_common(argc, argv, obj)
     if (rb_safe_level() >= 4) {
 	flags |= DB_RDONLY;
     }
-    if (!(dbst->options & BDB_RE_SOURCE)) 
+#ifndef BDB_NO_THREAD
+    if (!(dbst->options & BDB_RE_SOURCE))
 	flags |= DB_THREAD;
-
+#endif
     if (dbst->options & BDB_NEED_CURRENT) {
 	rb_thread_local_aset(rb_thread_current(), id_current_db, res);
     }
@@ -1672,6 +1681,7 @@ bdb_assoc(dbst, recno, key, data)
 }
 
 static VALUE bdb_has_both(VALUE, VALUE, VALUE);
+static VALUE bdb_has_both_internal(VALUE, VALUE, VALUE, VALUE);
 
 static VALUE
 bdb_get_internal(argc, argv, obj, notfound)
@@ -1701,7 +1711,11 @@ bdb_get_internal(argc, argv, obj, notfound)
     case 3:
         flags = NUM2INT(c);
         if ((flags & ~DB_RMW) == DB_GET_BOTH) {
-	    return db_get_both(obj, a, b);
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+	    return bdb_has_both_internal(obj, a, b, Qtrue);
+#else
+            test_dump(dbst, data, b);
+#endif
         }
 	break;
     case 2:
@@ -1714,8 +1728,10 @@ bdb_get_internal(argc, argv, obj, notfound)
     ret = test_error(dbst->dbp->get(dbst->dbp, txnid, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return notfound;
-    if ((flags & ~DB_RMW) == DB_SET_RECNO)
-	return bdb_assoc(dbst, recno, key, data);
+    if (((flags & ~DB_RMW) == DB_GET_BOTH) ||
+	((flags & ~DB_RMW) == DB_SET_RECNO)) {
+        return bdb_assoc(dbst, recno, key, data);
+    }
     return test_load(dbst, data);
 }
 
@@ -1891,8 +1907,8 @@ bdb_has_key(obj, key)
 }
 
 static VALUE
-bdb_has_both_internal(obj, a, b)
-    VALUE obj, a, b;
+bdb_has_both_internal(obj, a, b, flag)
+    VALUE obj, a, b, flag;
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -1920,21 +1936,26 @@ bdb_has_both_internal(obj, a, b)
     ret = test_error(dbcp->c_get(dbcp, &key, &data, DB_SET));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY) {
 	dbcp->c_close(dbcp);
-        return Qfalse;
+        return (flag == Qtrue)?Qnil:Qfalse;
     }
     if (datas.size == data.size &&
 	memcmp(datas.data, data.data, data.size) == 0) {
-	free_key(dbst, key);
-	free(data.data);
 	dbcp->c_close(dbcp);
-	return Qtrue;
+	if (flag == Qtrue) {
+	    return bdb_assoc(dbst, recno, key, data);
+	}
+	else {
+	    free_key(dbst, key);
+	    free(data.data);
+	    return Qtrue;
+	}
     }
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
 #define DB_NEXT_DUP 0
     free_key(dbst, key);
     free(data.data);
     dbcp->c_close(dbcp);
-    return Qfalse;
+    return (flag == Qtrue)?Qnil:Qfalse;
 #endif
 #if DB_VERSION_MAJOR < 3 || DB_VERSION_MINOR < 1
     if (dbst->type == DB_RECNO || dbst->type == DB_QUEUE) {
@@ -1976,12 +1997,12 @@ bdb_has_both(obj, a, b)
     db_recno_t recno;
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
-    return bdb_has_both_internal(obj, a, b);
+    return bdb_has_both_internal(obj, a, b, Qfalse);
 #else
     init_txn(txnid, obj, dbst);
 #if DB_VERSION_MAJOR < 3 || DB_VERSION_MINOR < 1
     if (dbst->type == DB_RECNO || dbst->type == DB_QUEUE) {
-	return bdb_has_both_internal(obj, a, b);
+	return bdb_has_both_internal(obj, a, b, Qfalse);
     }
 #endif
     memset(&key, 0, sizeof(DBT));
@@ -2529,7 +2550,7 @@ bdb_indexes(argc, argv, obj)
 
     indexes = rb_ary_new2(argc);
     for (i = 0; i < argc; i++) {
-	RARRAY(indexes)->ptr[i] = bdb_index(obj, argv[i]);
+	RARRAY(indexes)->ptr[i] = bdb_get(1, &argv[i], obj);
     }
     RARRAY(indexes)->len = i;
     return indexes;
@@ -3979,7 +4000,9 @@ Init_bdb()
 #else
     rb_define_const(bdb_mDb, "FORCE", INT2FIX(DB_FORCE));
 #endif
-#if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+    rb_define_const(bdb_mDb, "GET_BOTH", INT2FIX(9));
+#else
     rb_define_const(bdb_mDb, "GET_BOTH", INT2FIX(DB_GET_BOTH));
 #endif
     rb_define_const(bdb_mDb, "GET_RECNO", INT2FIX(DB_GET_RECNO));
