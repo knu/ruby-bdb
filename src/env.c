@@ -78,9 +78,9 @@ bdb_env_rep_process_message(env, av, bv, ev)
     MEMZERO(&control, DBT, 1);
     MEMZERO(&rec, DBT, 1);
     control.size = RSTRING(av)->len;
-    control.data = RSTRING(av)->ptr;
+    control.data = StringValuePtr(av);
     rec.size = RSTRING(bv)->len;
-    rec.data = RSTRING(bv)->ptr;
+    rec.data = StringValuePtr(bv);
     envid = NUM2INT(ev);
     ret = envst->envp->rep_process_message(envst->envp, &control, &rec, &envid);
     if (ret == DB_RUNRECOVERY) {
@@ -105,7 +105,7 @@ bdb_env_rep_start(env, ident, flags)
 	ident = rb_str_to_str(ident);
 	MEMZERO(&cdata, DBT, 1);
 	cdata.size = RSTRING(ident)->len;
-	cdata.data = RSTRING(ident)->ptr;
+	cdata.data = StringValuePtr(ident);
     }
     bdb_test_error(envst->envp->rep_start(envst->envp, 
 					  NIL_P(ident)?NULL:&cdata,
@@ -218,7 +218,7 @@ bdb_env_i_options(obj, db_stobj)
     value = rb_ary_entry(obj, 1);
     envp = envst->envp;
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "set_cachesize") == 0) {
 	switch (TYPE(value)) {
 	case T_FIXNUM:
@@ -356,36 +356,36 @@ bdb_env_i_options(obj, db_stobj)
     else if (strcmp(options, "set_data_dir") == 0) {
 	char *tmp;
 
-	Check_SafeStr(value);
+	SafeStringValue(value);
 #if BDB_VERSION >= 30100
-	bdb_test_error(envp->set_data_dir(envp, RSTRING(value)->ptr));
+	bdb_test_error(envp->set_data_dir(envp, StringValuePtr(value)));
 #else
-	tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + strlen(RSTRING(value)->ptr) + 2);
-	sprintf(tmp, "DB_DATA_DIR %s", RSTRING(value)->ptr);
+	tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + RSTRING(value)->len + 2);
+	sprintf(tmp, "DB_DATA_DIR %s", StringValuePtr(value));
 	rb_ary_push(db_st->config, rb_str_new2(tmp));
 #endif
     }
     else if (strcmp(options, "set_lg_dir") == 0) {
 	char *tmp;
 
-	Check_SafeStr(value);
+	SafeStringValue(value);
 #if BDB_VERSION >= 30100
-	bdb_test_error(envp->set_lg_dir(envp, RSTRING(value)->ptr));
+	bdb_test_error(envp->set_lg_dir(envp, StringValuePtr(value)));
 #else
-	tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + strlen(RSTRING(value)->ptr) + 2);
-	sprintf(tmp, "DB_LOG_DIR %s", RSTRING(value)->ptr);
+	tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + RSTRING(value)->len + 2);
+	sprintf(tmp, "DB_LOG_DIR %s", StringValuePtr(value));
 	rb_ary_push(db_st->config, rb_str_new2(tmp));
 #endif
     }
     else if (strcmp(options, "set_tmp_dir") == 0) {
 	char *tmp;
 
-	Check_SafeStr(value);
+	SafeStringValue(value);
 #if BDB_VERSION >= 30100
-	bdb_test_error(envp->set_tmp_dir(envp, RSTRING(value)->ptr));
+	bdb_test_error(envp->set_tmp_dir(envp, StringValuePtr(value)));
 #else
-	tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + strlen(RSTRING(value)->ptr) + 2);
-	sprintf(tmp, "DB_TMP_DIR %s", RSTRING(value)->ptr);
+	tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + RSTRING(value)->len + 2);
+	sprintf(tmp, "DB_TMP_DIR %s", StringValuePtr(value));
 	rb_ary_push(db_st->config, rb_str_new2(tmp));
 #endif
     }
@@ -401,8 +401,8 @@ bdb_env_i_options(obj, db_stobj)
 	flags = 0;
 	switch (TYPE(value)) {
 	case T_STRING:
-	    Check_SafeStr(value);
-	    host = RSTRING(value)->ptr;
+	    SafeStringValue(value);
+	    host = StringValuePtr(value);
 	    break;
 	case T_ARRAY:
 	    switch (RARRAY(value)->len) {
@@ -412,8 +412,8 @@ bdb_env_i_options(obj, db_stobj)
 	    case 2:
 		cl_timeout = NUM2INT(RARRAY(value)->ptr[1]);
 	    case 1:
-		Check_SafeStr(RARRAY(value)->ptr[0]);
-		host = RSTRING(RARRAY(value)->ptr[0])->ptr;
+		SafeStringValue(RARRAY(value)->ptr[0]);
+		host = StringValuePtr(RARRAY(value)->ptr[0]);
 		break;
 	    case 0:
 		rb_raise(bdb_eFatal, "Empty array for \"set_server\"");
@@ -511,11 +511,11 @@ bdb_env_i_options(obj, db_stobj)
 	    if (RARRAY(value)->len != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = STR2CSTR(RARRAY(value)->ptr[0]);
+	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
 	    flags = NUM2INT(RARRAY(value)->ptr[1]);
 	}
 	else {
-	    passwd = STR2CSTR(value);
+	    passwd = StringValuePtr(value);
 	}
 	bdb_test_error(envst->envp->set_encrypt(envst->envp, passwd, flags));
 	envst->options |= BDB_ENV_ENCRYPT;
@@ -820,7 +820,7 @@ bdb_env_s_i_options(obj, flags)
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "env_flags") == 0) {
 	*flags = NUM2INT(value);
     }
@@ -934,11 +934,11 @@ bdb_env_init(argc, argv, obj)
 	    if (RARRAY(value)->len != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = STR2CSTR(RARRAY(value)->ptr[0]);
+	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
 	    flags = NUM2INT(RARRAY(value)->ptr[1]);
 	}
 	else {
-	    passwd = STR2CSTR(value);
+	    passwd = StringValuePtr(value);
 	}
 	bdb_test_error(envp->set_encrypt(envp, passwd, flags));
 	envst->options |= BDB_ENV_ENCRYPT;
@@ -957,15 +957,15 @@ bdb_env_init(argc, argv, obj)
 	if (RARRAY(st_config)->len > 0) {
 	    db_config = ALLOCA_N(char *, RARRAY(st_config)->len + 1);
 	    for (i = 0; i < RARRAY(st_config)->len; i++) {
-		db_config[i] = RSTRING(RARRAY(st_config)->ptr[i])->ptr;
+		db_config[i] = StringValuePtr(RARRAY(st_config)->ptr[i]);
 	    }
 	    db_config[RARRAY(st_config)->len] = 0;
 	}
 	argc--;
     }
     rb_scan_args(argc, argv, "12", &a, &c, &d);
-    Check_SafeStr(a);
-    db_home = RSTRING(a)->ptr;
+    SafeStringValue(a);
+    db_home = StringValuePtr(a);
     switch (argc) {
     case 3:
 	mode = NUM2INT(d);
@@ -993,7 +993,7 @@ bdb_env_init(argc, argv, obj)
 	envst->envp = NULL;
         if (bdb_errcall) {
             bdb_errcall = 0;
-            rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
+            rb_raise(bdb_eFatal, "%s -- %s", StringValuePtr(bdb_errstr), db_strerror(ret));
         }
         else
             rb_raise(bdb_eFatal, "%s", db_strerror(ret));
@@ -1032,7 +1032,7 @@ bdb_env_init(argc, argv, obj)
 	envst->envp = NULL;
         if (bdb_errcall) {
             bdb_errcall = 0;
-            rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
+            rb_raise(bdb_eFatal, "%s -- %s", StringValuePtr(bdb_errstr), db_strerror(ret));
         }
         else
             rb_raise(bdb_eFatal, "%s", db_strerror(ret));
@@ -1090,7 +1090,7 @@ bdb_env_s_remove(argc, argv, obj)
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
 	flag = NUM2INT(b);
     }
-    db_home = STR2CSTR(a);
+    db_home = StringValuePtr(a);
 #if BDB_VERSION < 30000
     envp = ALLOCA_N(DB_ENV, 1);
     MEMZERO(envp, DB_ENV, 1);

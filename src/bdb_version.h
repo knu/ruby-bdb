@@ -1,1 +1,0 @@
-#define BDB_DB_VERSION db_version_4000

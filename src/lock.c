@@ -234,9 +234,9 @@ bdb_lockid_get(argc, argv, obj)
 	    flags = NUM2UINT(c);
 	}
     }
-    Check_SafeStr(a);
+    SafeStringValue(a);
     MEMZERO(&objet, DBT, 1);
-    objet.data = RSTRING(a)->ptr;
+    objet.data = StringValuePtr(a);
     objet.size = RSTRING(a)->len;
     lock_mode = NUM2INT(b);
     GetLockid(obj, lockid, envst);
@@ -302,7 +302,7 @@ bdb_lockid_each(obj, listobj)
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "op") == 0) {
 	list->op = NUM2INT(value);
     }
@@ -310,7 +310,7 @@ bdb_lockid_each(obj, listobj)
 	Check_Type(value, T_STRING);
 	list->obj = ALLOC(DBT);
 	MEMZERO(list->obj, DBT, 1);
-	list->obj->data = RSTRING(value)->ptr;
+	list->obj->data = StringValuePtr(value);
 	list->obj->size = RSTRING(value)->len;
     }
     else if (strcmp(options, "mode") == 0) {
@@ -396,7 +396,7 @@ bdb_lockid_vec(argc, argv, obj)
 	res = (err == DB_LOCK_DEADLOCK)?bdb_eLock:bdb_eFatal;
         if (bdb_errcall) {
             bdb_errcall = 0;
-            rb_raise(res, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(err));
+            rb_raise(res, "%s -- %s", StringValuePtr(bdb_errstr), db_strerror(err));
         }
         else
             rb_raise(res, "%s", db_strerror(err));

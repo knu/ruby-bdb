@@ -51,7 +51,7 @@ that the caller may manage the variable to value bindings.
 --- namespace(name)
     Get the namespace URI that a namespace prefix maps onto
 
---- initialize(evaluation = nil, returntype = nil)
+--- initialize(, returntype = nil, evaluation = nil)
     Initialize the object with the optional evaluation type
     ((|BDB::XML::Context::Lazy|)) or ((|BDB::XML::Context::Eager|))
     and return type ((|BDB::XML::Context::Documents|)),

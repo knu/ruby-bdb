@@ -215,7 +215,7 @@ bdb_txn_i_options(obj, dbstobj)
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "flags") == 0) {
 	opt->flags = NUM2INT(value);
     }
@@ -686,12 +686,12 @@ bdb_env_dbremove(argc, argv, obj)
     flags = 0;
     rb_scan_args(argc, argv, "03", &a, &b, &c);
     if (!NIL_P(a)) {
-	Check_SafeStr(a);
-	file = RSTRING(a)->ptr;
+	SafeStringValue(a);
+	file = StringValuePtr(a);
     }
     if (!NIL_P(b)) {
-	Check_SafeStr(b);
-	database = RSTRING(b)->ptr;
+	SafeStringValue(b);
+	database = StringValuePtr(b);
     }
     if (!NIL_P(c)) {
 	flags = NUM2INT(c);
@@ -734,16 +734,16 @@ bdb_env_dbrename(argc, argv, obj)
 	b = d = Qnil;
     }
     if (!NIL_P(a)) {
-	Check_SafeStr(a);
-	file = RSTRING(a)->ptr;
+	SafeStringValue(a);
+	file = StringValuePtr(a);
     }
     if (!NIL_P(b)) {
-	Check_SafeStr(b);
-	database = RSTRING(b)->ptr;
+	SafeStringValue(b);
+	database = StringValuePtr(b);
     }
     if (!NIL_P(c)) {
-	Check_SafeStr(c);
-	newname = RSTRING(c)->ptr;
+	SafeStringValue(c);
+	newname = StringValuePtr(c);
     }
     else {
 	rb_raise(bdb_eFatal, "newname not specified");

@@ -31,31 +31,32 @@
 <dt><a name="label:7" id="label:7"><code>content=(<var>val</var>)</code></a></dt><!-- RDLabel: "content=" -->
 <dd>
 <p>Set the content of the document</p></dd>
-<dt><a name="label:8" id="label:8"><code>encoding</code></a></dt><!-- RDLabel: "encoding" -->
-<dd>
-<p>Return the encoding</p></dd>
-<dt><a name="label:9" id="label:9"><code>get(<var>uri</var> = "", <var>attr</var>)</code></a></dt><!-- RDLabel: "get" -->
+<dt><a name="label:8" id="label:8"><code>get(<var>uri</var> = "", <var>attr</var>)</code></a></dt><!-- RDLabel: "get" -->
 <dd>
 <p>Return the value of an attribute. <var>uri</var> specify the namespace
 where reside the attribute.</p></dd>
-<dt><a name="label:10" id="label:10"><code>id</code></a></dt><!-- RDLabel: "id" -->
+<dt><a name="label:9" id="label:9"><code>id</code></a></dt><!-- RDLabel: "id" -->
 <dd>
 <p>Return the ID</p></dd>
-<dt><a name="label:11" id="label:11"><code>initialize(<var>content</var> = "")</code></a></dt><!-- RDLabel: "initialize" -->
+<dt><a name="label:10" id="label:10"><code>initialize(<var>content</var> = "")</code></a></dt><!-- RDLabel: "initialize" -->
 <dd>
 <p>Initialize the document with the content specified</p></dd>
-<dt><a name="label:12" id="label:12"><code>name</code></a></dt><!-- RDLabel: "name" -->
+<dt><a name="label:11" id="label:11"><code>name</code></a></dt><!-- RDLabel: "name" -->
 <dd>
 <p>Return the name of the document</p></dd>
-<dt><a name="label:13" id="label:13"><code>name=(<var>val</var>)</code></a></dt><!-- RDLabel: "name=" -->
+<dt><a name="label:12" id="label:12"><code>name=(<var>val</var>)</code></a></dt><!-- RDLabel: "name=" -->
 <dd>
 <p>Set the name of the document</p></dd>
-<dt><a name="label:14" id="label:14"><code>prefix</code></a></dt><!-- RDLabel: "prefix" -->
+<dt><a name="label:13" id="label:13"><code>prefix</code></a></dt><!-- RDLabel: "prefix" -->
 <dd>
 <p>Return the default prefix for the namespace</p></dd>
-<dt><a name="label:15" id="label:15"><code>prefix=(<var>val</var>)</code></a></dt><!-- RDLabel: "prefix=" -->
+<dt><a name="label:14" id="label:14"><code>prefix=(<var>val</var>)</code></a></dt><!-- RDLabel: "prefix=" -->
 <dd>
 <p>Set the default prefix used by <var>set</var></p></dd>
+<dt><a name="label:15" id="label:15"><code>query(<var>xpath</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "query" -->
+<dd>
+<p>Execute the XPath expression <var>xpath</var> against the document
+Return an <var>BDB::XML::Results</var></p></dd>
 <dt><a name="label:16" id="label:16"><code>set(<var>uri</var> = "", <var>prefix</var> = "", <var>attr</var>, <var>value</var>)</code></a></dt><!-- RDLabel: "set" -->
 <dd>
 <p>Set an attribute in the namespace <var>uri</var>. <var>prefix</var> is the prefix

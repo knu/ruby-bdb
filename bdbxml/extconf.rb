@@ -71,7 +71,7 @@ begin
 rdoc: docs/doc/index.html
 
 docs/doc/index.html: $(RDOC)
-\t@-(cd docs; b.rb bdbxml; rdoc bdbxml.rb)
+\t@-(cd docs; #{CONFIG['RUBY_INSTALL_NAME']} b.rb bdbxml; rdoc bdbxml.rb)
 
 rd2: html
 
@@ -82,7 +82,7 @@ test: $(DLLIB)
    Dir.foreach('tests') do |x|
       next if /^\./ =~ x || /(_\.rb|~)$/ =~ x
       next if FileTest.directory?(x)
-      make.print "\truby tests/#{x}\n"
+      make.print "\t#{CONFIG['RUBY_INSTALL_NAME']} tests/#{x}\n"
    end
 ensure
    make.close

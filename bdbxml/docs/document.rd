@@ -33,9 +33,6 @@ Document supports annotation attributes.
 --- content=(val)
     Set the content of the document
 
---- encoding
-    Return the encoding
-
 --- get(uri = "", attr)
     Return the value of an attribute. ((|uri|)) specify the namespace
     where reside the attribute.
@@ -57,6 +54,10 @@ Document supports annotation attributes.
 
 --- prefix=(val)
     Set the default prefix used by ((|set|))
+
+--- query(xpath, context = nil)
+    Execute the XPath expression ((|xpath|)) against the document
+    Return an ((|BDB::XML::Results|))
 
 --- set(uri = "", prefix = "", attr, value)
     Set an attribute in the namespace ((|uri|)). ((|prefix|)) is the prefix

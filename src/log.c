@@ -54,7 +54,7 @@ bdb_s_log_put_internal(obj, a, flag)
     if (TYPE(a) != T_STRING) a = rb_str_to_str(a);
     ret = bdb_makelsn(obj);
     Data_Get_Struct(ret, struct dblsnst, lsnst);
-    data.data = RSTRING(a)->ptr;
+    data.data = StringValuePtr(a);
     data.size = RSTRING(a)->len;
 #if BDB_VERSION < 30000
     if (!envst->envp->lg_info) {
@@ -627,15 +627,15 @@ bdb_log_register(obj, a)
     if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_register(envst->envp->lg_info, dbst->dbp, RSTRING(a)->ptr, dbst->type, &envst->fidp));
+    bdb_test_error(log_register(envst->envp->lg_info, dbst->dbp, StringValuePtr(a), dbst->type, &envst->fidp));
 #else
 #if BDB_VERSION >= 40000
-    bdb_test_error(envst->envp->log_register(envst->envp, dbst->dbp, RSTRING(a)->ptr));
+    bdb_test_error(envst->envp->log_register(envst->envp, dbst->dbp, StringValuePtr(a)));
 #else
 #if BDB_VERSION <= 30105
-    bdb_test_error(log_register(envst->envp, dbst->dbp, RSTRING(a)->ptr, &envst->fidp));
+    bdb_test_error(log_register(envst->envp, dbst->dbp, StringValuePtr(a), &envst->fidp));
 #else
-    bdb_test_error(log_register(envst->envp, dbst->dbp, RSTRING(a)->ptr));
+    bdb_test_error(log_register(envst->envp, dbst->dbp, StringValuePtr(a)));
 #endif
 #endif
 #endif

@@ -3,13 +3,11 @@
 #include <rubysig.h>
 #include <db.h>
 #include <errno.h>
-#include "bdb_version.h"
 
-#if RUBY_VERSION_CODE >= 172
-#define ruby_xmalloc(x) malloc(x)
-#define ruby_xfree(x) free(x)
-#define ruby_xcalloc(x,y) calloc(x,y)
-#define ruby_realloc(x,y) realloc(x,y)
+#if RUBY_VERSION_CODE < 180
+#define StringValue(x,y) rb_str2cstr(x,y)
+#define StringValuePtr(x) STR2CSTR(x)
+#define SafeStringValue(x) Check_SafeStr(x)
 #endif
 
 #if defined(__cplusplus)

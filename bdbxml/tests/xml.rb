@@ -45,7 +45,7 @@ class TestXML < Inh::TestCase
    end
 
    def test_01_doc
-      $id = []
+      $id, $names = [], []
       @mask ||= "[a-z]"
       Dir["#{$base}/glossary/#{@mask}*"].each do |file|
 	 assert_kind_of(BDB::XML::Document, a = BDB::XML::Document.new)
@@ -59,6 +59,7 @@ class TestXML < Inh::TestCase
 	 assert_equal(file, a.name = file)
 	 assert_equal($time, a['time'] = $time)
 	 $id << [file, $glo.push(a)]
+	 $names << file
       end
    end
 
@@ -94,7 +95,21 @@ class TestXML < Inh::TestCase
       end
    end
 
-   def test_05_dump
+   def test_05_names
+      assert_kind_of(BDB::XML::Context,
+		     cxt = BDB::XML::Context.new(BDB::XML::Context::Values))
+      assert_kind_of(BDB::XML::Results,
+		     query = $glo.query("//*//@dbxml:name", cxt))
+      file = query.collect{|name| name}
+      names = $id.collect{|id| id[0]}
+      assert_equal(names.sort, file.sort)
+      ids = []
+      $glo.search("//*//@dbxml:id", BDB::XML::Context::Values) {|i| ids << i}
+      id = $id.collect{|id| id[1]}
+      assert_equal(ids.sort, id.sort)
+   end
+      
+   def test_06_dump
       assert_equal(nil, $glo.close)
       assert_equal(nil, $env.close)
       assert_equal(nil, BDB::XML::Container.dump("tmp/glossary", "tmp/dumpee"))
@@ -102,7 +117,7 @@ class TestXML < Inh::TestCase
       assert_equal(nil, BDB::XML::Container.remove("tmp/glossary"))
    end
 
-   def test_06_reinit
+   def test_07_reinit
       @flag = BDB::INIT_TRANSACTION
       @mask = "[a-m]"
       $reference = {"matz" => [], "object" => [], "ruby" => []}
@@ -112,7 +127,7 @@ class TestXML < Inh::TestCase
       test_04_query
    end
 
-   def test_07_transaction
+   def test_08_transaction
       old_ref = {}
       $reference.each{|k,v| old_ref[k] = v.dup}
       old_glo = $glo
@@ -133,7 +148,7 @@ class TestXML < Inh::TestCase
       test_04_query
    end
 
-   def test_08_single
+   def test_09_single
       $glo.close
       $env.close
       clean

@@ -44,7 +44,7 @@ bdb_test_dump(obj, key, a, type_kv)
         if (a == Qnil)
             is_nil = 1;
     }
-    key->data = RSTRING(tmp)->ptr;
+    key->data = StringValuePtr(tmp);
     key->flags &= ~DB_DBT_MALLOC;
     key->size = RSTRING(tmp)->len + is_nil;
     return tmp;
@@ -364,7 +364,7 @@ bdb_i_options(obj, dbstobj)
     VALUE obj, dbstobj;
 {
     VALUE key, value;
-    char *options;
+    char *options, *str;
     DB *dbp;
     bdb_DB *dbst;
 
@@ -373,7 +373,7 @@ bdb_i_options(obj, dbstobj)
     value = rb_ary_entry(obj, 1);
     dbp = dbst->dbp;
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "set_bt_minkey") == 0) {
 #if BDB_VERSION < 30000
 	dbst->dbinfo->bt_minkey = NUM2INT(value);
@@ -509,7 +509,8 @@ bdb_i_options(obj, dbstobj)
     else if (strcmp(options, "set_re_delim") == 0) {
 	int ch;
 	if (TYPE(value) == T_STRING) {
-	    ch = RSTRING(value)->ptr[0];
+	    str = StringValuePtr(value);
+	    ch = str[0];
 	}
 	else {
 	    ch = NUM2INT(value);
@@ -532,7 +533,8 @@ bdb_i_options(obj, dbstobj)
     else if (strcmp(options, "set_re_pad") == 0) {
 	int ch;
 	if (TYPE(value) == T_STRING) {
-	    ch = RSTRING(value)->ptr[0];
+	    str = StringValuePtr(value);
+	    ch = str[0];
 	}
 	else {
 	    ch = NUM2INT(value);
@@ -548,9 +550,9 @@ bdb_i_options(obj, dbstobj)
         if (TYPE(value) != T_STRING)
             rb_raise(bdb_eFatal, "re_source must be a filename");
 #if BDB_VERSION < 30000
-	dbst->dbinfo->re_source = RSTRING(value)->ptr;
+	dbst->dbinfo->re_source = StringValuePtr(value);
 #else
-        bdb_test_error(dbp->set_re_source(dbp, RSTRING(value)->ptr));
+        bdb_test_error(dbp->set_re_source(dbp, StringValuePtr(value)));
 #endif
 	dbst->options |= BDB_RE_SOURCE;
     }
@@ -628,11 +630,11 @@ bdb_i_options(obj, dbstobj)
 	    if (RARRAY(value)->len != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = STR2CSTR(RARRAY(value)->ptr[0]);
+	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
 	    flags = NUM2INT(RARRAY(value)->ptr[1]);
 	}
 	else {
-	    passwd = STR2CSTR(value);
+	    passwd = StringValuePtr(value);
 	}
 	bdb_test_error(dbp->set_encrypt(dbp, passwd, flags));
     }
@@ -1021,11 +1023,11 @@ bdb_init(argc, argv, obj)
 	    if (RARRAY(value)->len != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = STR2CSTR(RARRAY(value)->ptr[0]);
+	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
 	    flags = NUM2INT(RARRAY(value)->ptr[1]);
 	}
 	else {
-	    passwd = STR2CSTR(value);
+	    passwd = StringValuePtr(value);
 	}
 	bdb_test_error(dbp->set_encrypt(dbp, passwd, flags));
     }
@@ -1045,15 +1047,15 @@ bdb_init(argc, argv, obj)
 	mode = NUM2INT(e);
     case 3:
 	if (TYPE(d) == T_STRING) {
-	    if (strcmp(RSTRING(d)->ptr, "r") == 0)
+	    if (strcmp(StringValuePtr(d), "r") == 0)
 		flags = DB_RDONLY;
-	    else if (strcmp(RSTRING(d)->ptr, "r+") == 0)
+	    else if (strcmp(StringValuePtr(d), "r+") == 0)
 		flags = 0;
-	    else if (strcmp(RSTRING(d)->ptr, "w") == 0 ||
-		     strcmp(RSTRING(d)->ptr, "w+") == 0)
+	    else if (strcmp(StringValuePtr(d), "w") == 0 ||
+		     strcmp(StringValuePtr(d), "w+") == 0)
 		flags = DB_CREATE | DB_TRUNCATE;
-	    else if (strcmp(RSTRING(d)->ptr, "a") == 0 ||
-		     strcmp(RSTRING(d)->ptr, "a+") == 0)
+	    else if (strcmp(StringValuePtr(d), "a") == 0 ||
+		     strcmp(StringValuePtr(d), "a+") == 0)
 		flags = DB_CREATE;
 	    else {
 		rb_raise(bdb_eFatal, "flags must be r, r+, w, w+, a or a+");
@@ -1066,12 +1068,12 @@ bdb_init(argc, argv, obj)
     }
     name = subname = NULL;
     if (!NIL_P(a)) {
-	Check_SafeStr(a);
-        name = RSTRING(a)->ptr;
+	SafeStringValue(a);
+        name = StringValuePtr(a);
     }
     if (!NIL_P(b)) {
-	Check_SafeStr(b);
-        subname = RSTRING(b)->ptr;
+	SafeStringValue(b);
+        subname = StringValuePtr(b);
     }
     if (dbst->bt_compare == 0 && rb_respond_to(obj, id_bt_compare) == Qtrue) {
 	dbst->options |= BDB_BT_COMPARE;
@@ -1163,7 +1165,7 @@ bdb_init(argc, argv, obj)
 			   dbst->dbinfo, &dbp)) != 0) {
 	    if (bdb_errcall) {
 		bdb_errcall = 0;
-		rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
+		rb_raise(bdb_eFatal, "%s -- %s", StringValuePtr(bdb_errstr), db_strerror(ret));
 	    }
 	    else
 		rb_raise(bdb_eFatal, "%s", db_strerror(ret));
@@ -1198,7 +1200,7 @@ bdb_init(argc, argv, obj)
 	    dbp->close(dbp, 0);
 	    if (bdb_errcall) {
 		bdb_errcall = 0;
-		rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
+		rb_raise(bdb_eFatal, "%s -- %s", StringValuePtr(bdb_errstr), db_strerror(ret));
 	    }
 	    else {
 		rb_raise(bdb_eFatal, "%s", db_strerror(ret));
@@ -1391,19 +1393,21 @@ bdb_queue_i_search_re_len(obj, restobj)
     VALUE obj, restobj;
 {
     VALUE key, value;
+    char *str;
     struct re *rest;
 
     Data_Get_Struct(restobj, struct re, rest);
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
-    if (strcmp(RSTRING(key)->ptr, "set_re_len") == 0) {
+    if (strcmp(StringValuePtr(key), "set_re_len") == 0) {
 	rest->re_len = NUM2INT(value);
     }
-    else if (strcmp(RSTRING(key)->ptr, "set_re_pad") == 0) {
+    else if (strcmp(StringValuePtr(key), "set_re_pad") == 0) {
 	int ch;
 	if (TYPE(value) == T_STRING) {
-	    ch = RSTRING(value)->ptr[0];
+	    str = StringValuePtr(value);
+	    ch = str[0];
 	}
 	else {
 	    ch = NUM2INT(value);
@@ -3199,10 +3203,10 @@ bdb_s_upgrade(argc, argv, obj)
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
 	flags = NUM2INT(b);
     }
-    Check_SafeStr(a);
+    SafeStringValue(a);
     val = bdb_i_create(obj);
     GetDB(val, dbst);
-    bdb_test_error(dbst->dbp->upgrade(dbst->dbp, RSTRING(a)->ptr, flags));
+    bdb_test_error(dbst->dbp->upgrade(dbst->dbp, StringValuePtr(a), flags));
     return val;
 #else
     rb_raise(bdb_eFatal, "You can't upgrade a database with this version of DB");
@@ -3228,12 +3232,12 @@ bdb_s_remove(argc, argv, obj)
     a = b = Qnil;
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
         if (!NIL_P(b)) {
-	    Check_SafeStr(b);
-            subname = RSTRING(b)->ptr;
+	    SafeStringValue(b);
+            subname = StringValuePtr(b);
         }
     }
-    Check_SafeStr(a);
-    name = RSTRING(a)->ptr;
+    SafeStringValue(a);
+    name = StringValuePtr(a);
     bdb_test_error(dbst->dbp->remove(dbst->dbp, name, subname, 0));
 #else
     rb_raise(bdb_eFatal, "You can't remove a database with this version of DB");
@@ -3260,13 +3264,13 @@ bdb_s_rename(argc, argv, obj)
     a = b = c = Qnil;
     rb_scan_args(argc, argv, "30", &a, &b, &c);
     if (!NIL_P(b)) {
-	Check_SafeStr(b);
-	subname = RSTRING(b)->ptr;
+	SafeStringValue(b);
+	subname = StringValuePtr(b);
     }
-    Check_SafeStr(a);
-    Check_SafeStr(c);
-    name = RSTRING(a)->ptr;
-    newname = RSTRING(c)->ptr;
+    SafeStringValue(a);
+    SafeStringValue(c);
+    name = StringValuePtr(a);
+    newname = StringValuePtr(c);
     bdb_test_error(dbst->dbp->rename(dbst->dbp, name, subname, newname, 0));
 #else
     rb_raise(bdb_eFatal, "You can't rename a database with this version of DB");
@@ -3552,10 +3556,10 @@ bdb_verify(argc, argv, obj)
     }
     GetDB(obj, dbst);
     if (!NIL_P(dbst->filename)) {
-	file = RSTRING(dbst->filename)->ptr;
+	file = StringValuePtr(dbst->filename);
     }
     if (!NIL_P(dbst->database)) {
-	database = RSTRING(dbst->database)->ptr;
+	database = StringValuePtr(dbst->database);
     }
     bdb_test_error(dbst->dbp->verify(dbst->dbp, file, database, io, flags));
     return Qnil;

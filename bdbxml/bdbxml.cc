@@ -1,8 +1,10 @@
 #include "bdbxml.h"
 
-static VALUE xb_eFatal, xb_cTxn, xb_cEnv;
+static VALUE xb_eFatal, xb_cTxn, xb_cEnv, xb_cRes;
 static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_cPat;
-static VALUE xb_cNol, xb_cRes;
+#if defined(DBXML_DOM_XERCES2)
+static VALUE xb_cNol;
+#endif
 
 static ID id_current_env;
 
@@ -81,7 +83,7 @@ static VALUE
 xb_doc_name_set(VALUE obj, VALUE a)
 {
     xdoc *doc;
-    char *str = STR2CSTR(a);
+    char *str = StringValuePtr(a);
     Data_Get_Struct(obj, xdoc, doc);
     PROTECT(doc->doc->setName(str));
     return a;
@@ -102,15 +104,10 @@ static VALUE
 xb_doc_content_set(VALUE obj, VALUE a)
 {
     xdoc *doc;
-#if RUBY_VERSION_CODE >= 180
-    long int len = 0;
-#else
-    int len = 0;
-#endif
     char *str = NULL;
 
     Data_Get_Struct(obj, xdoc, doc);
-    str = rb_str2cstr(a, &len);
+    str = StringValuePtr(a);
     PROTECT(doc->doc->setContent(str));
     return a;
 }
@@ -130,7 +127,7 @@ xb_doc_get(int argc, VALUE *argv, VALUE obj)
 
     Data_Get_Struct(obj, xdoc, doc);
     if (TYPE(doc->uri) == T_STRING) {
-	uri = STR2CSTR(doc->uri);
+	uri = StringValuePtr(doc->uri);
     }
     switch (rb_scan_args(argc, argv, "12", &a, &b, &c)) {
     case 3:
@@ -153,11 +150,11 @@ xb_doc_get(int argc, VALUE *argv, VALUE obj)
 	// ... //
     case 2:
 	if (!NIL_P(b)) {
-	    uri = STR2CSTR(b);
+	    uri = StringValuePtr(b);
 	}
 	break;
     }
-    name = STR2CSTR(a);
+    name = StringValuePtr(a);
     PROTECT(result = doc->doc->getMetaData(uri, name, val));
     if (result) {
 	return xb_xml_val(&val, 0);
@@ -176,24 +173,24 @@ xb_doc_set(int argc, VALUE *argv, VALUE obj)
 
     Data_Get_Struct(obj, xdoc, doc);
     if (TYPE(doc->uri) == T_STRING) {
-	uri = STR2CSTR(doc->uri);
+	uri = StringValuePtr(doc->uri);
     }
     if (TYPE(doc->prefix) == T_STRING) {
-	prefix = STR2CSTR(doc->prefix);
+	prefix = StringValuePtr(doc->prefix);
     }
     switch (rb_scan_args(argc, argv, "22", &a, &b, &c, &d)) {
     case 4:
-	uri = STR2CSTR(a);
-	prefix = STR2CSTR(b);
-	name = STR2CSTR(c);
+	uri = StringValuePtr(a);
+	prefix = StringValuePtr(b);
+	name = StringValuePtr(c);
 	break;
     case 3:
-	prefix = STR2CSTR(a);
-	name = STR2CSTR(b);
+	prefix = StringValuePtr(a);
+	name = StringValuePtr(b);
 	d = c;
 	break;
     case 2:
-	name = STR2CSTR(a);
+	name = StringValuePtr(a);
 	d = b;
 	break;
     }
@@ -208,15 +205,6 @@ xb_doc_id_get(VALUE obj)
 
     Data_Get_Struct(obj, xdoc, doc);
     return INT2FIX(doc->doc->getID());
-}
-
-static VALUE
-xb_doc_encoding_get(VALUE obj)
-{
-    xdoc *doc;
-
-    Data_Get_Struct(obj, xdoc, doc);
-    return INT2FIX(doc->doc->getEncoding());
 }
 
 static VALUE
@@ -265,6 +253,7 @@ xb_doc_prefix_set(VALUE obj, VALUE a)
     return obj;
 }
 
+#if defined(DBXML_DOM_XERCES2)
 static void
 xb_nol_free(xnol *nol)
 {
@@ -287,15 +276,18 @@ xb_nol_to_str(VALUE obj)
     if (nol->cxt_val) {
 	Data_Get_Struct(nol->cxt_val, XmlQueryContext, cxt);
     }
-    return rb_tainted_str_new2(XmlValue(*nol->nol).asString(cxt).c_str());
+    return rb_tainted_str_new2(XmlValue(nol->nol).asString(cxt).c_str());
 }
+#endif
 
 static VALUE
 xb_xml_val(XmlValue *val, VALUE cxt_val)
 {
     VALUE res;
     xdoc *doc;
+#if defined(DBXML_DOM_XERCES2)
     xnol *nol;
+#endif
     XmlQueryContext *cxt = 0;
 
     if (cxt_val) {
@@ -318,13 +310,15 @@ xb_xml_val(XmlValue *val, VALUE cxt_val)
 	res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark, (RDF)xb_doc_free, doc);
 	doc->doc = new XmlDocument(val->asDocument(cxt));
 	break;
+#if defined(DBXML_DOM_XERCES2)
     case XmlValue::NODELIST:
 	res = Data_Make_Struct(xb_cNol, xnol, (RDF)xb_nol_mark, (RDF)xb_nol_free, nol);
-	nol->nol = new DOM_NodeList(val->asNodeList(cxt));
+	nol->nol = val->asNodeList(cxt);
 	nol->cxt_val = cxt_val;
 	break;
+#endif
     case XmlValue::VARIABLE:
-	rb_warn("TODO");
+	rb_raise(xb_eFatal, "a context is required");
 	break;
     default:
 	rb_raise(xb_eFatal, "Unknown type");
@@ -338,14 +332,16 @@ xb_val_xml(VALUE a)
 {
     XmlValue val;
     xdoc *doc;
+#if defined(DBXML_DOM_XERCES2)
     xnol *nol;
+#endif
 
     if (NIL_P(a)) {
 	return XmlValue();
     }
     switch (TYPE(a)) {
     case T_STRING:
-	val = XmlValue(RSTRING(a)->ptr);
+	val = XmlValue(StringValuePtr(a));
 	break;
     case T_FIXNUM:
     case T_FLOAT:
@@ -364,14 +360,16 @@ xb_val_xml(VALUE a)
 	    val = XmlValue(*(doc->doc));
 	    break;
 	}
+#if defined(DBXML_DOM_XERCES2)
 	if (RDATA(a)->dfree == (RDF)xb_nol_free) {
 	    Data_Get_Struct(a, xnol, nol);
-	    val = XmlValue(*nol->nol);
+	    val = XmlValue(nol->nol);
 	    break;
 	}
+#endif
 	/* ... */
     default:
-	val = XmlValue(STR2CSTR(a));
+	val = XmlValue(StringValuePtr(a));
 	break;
     }
     return val;
@@ -433,8 +431,8 @@ xb_cxt_name_set(VALUE obj, VALUE a, VALUE b)
     char *pre, *uri;
 
     Data_Get_Struct(obj, XmlQueryContext, cxt);
-    pre = STR2CSTR(a);
-    uri = STR2CSTR(b);
+    pre = StringValuePtr(a);
+    uri = StringValuePtr(b);
     PROTECT(cxt->setNamespace(pre, uri));
     return obj;
 }
@@ -444,7 +442,7 @@ xb_cxt_name_get(VALUE obj, VALUE a)
 {
     XmlQueryContext *cxt;
     Data_Get_Struct(obj, XmlQueryContext, cxt);
-    return rb_tainted_str_new2(cxt->getNamespace(STR2CSTR(a)).c_str());
+    return rb_tainted_str_new2(cxt->getNamespace(StringValuePtr(a)).c_str());
 }
 
 static VALUE
@@ -452,7 +450,7 @@ xb_cxt_name_del(VALUE obj, VALUE a)
 {
     XmlQueryContext *cxt;
     Data_Get_Struct(obj, XmlQueryContext, cxt);
-    cxt->removeNamespace(STR2CSTR(a));
+    cxt->removeNamespace(StringValuePtr(a));
     return a;
 }
 
@@ -471,7 +469,7 @@ xb_cxt_get(VALUE obj, VALUE a)
     XmlQueryContext *cxt;
     XmlValue val;
     Data_Get_Struct(obj, XmlQueryContext, cxt);
-    cxt->getVariableValue(STR2CSTR(a), val);
+    cxt->getVariableValue(StringValuePtr(a), val);
     if (val.isNull()) {
 	return Qnil;
     }
@@ -486,7 +484,7 @@ xb_cxt_set(VALUE obj, VALUE a, VALUE b)
     VALUE res = xb_cxt_get(obj, a);
 
     Data_Get_Struct(obj, XmlQueryContext, cxt);
-    cxt->setVariableValue(STR2CSTR(a), val);
+    cxt->setVariableValue(StringValuePtr(a), val);
     return res;
 }
 
@@ -715,9 +713,9 @@ xb_con_s_new(int argc, VALUE *argv, VALUE obj)
 	nargc--;
     }
     if (nargc) {
-	Check_SafeStr(argv[0]);
+	SafeStringValue(argv[0]);
 	con->name = rb_str_dup(argv[0]);
-	name = STR2CSTR(argv[0]);
+	name = StringValuePtr(argv[0]);
     }
     PROTECT(con->con = new XmlContainer(envcc, name, flags));
     if (pagesize) {
@@ -754,7 +752,7 @@ xb_con_i_options(VALUE obj, VALUE conobj)
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "thread") == 0) {
 	switch (value) {
 	case Qtrue: con->flag &= ~DB_THREAD; break;
@@ -791,15 +789,15 @@ xb_con_init(int argc, VALUE *argv, VALUE obj)
 	    flags = 0;
 	}
 	else if (TYPE(b) == T_STRING) {
-	    if (strcmp(RSTRING(b)->ptr, "r") == 0)
+	    if (strcmp(StringValuePtr(b), "r") == 0)
 		flags = DB_RDONLY;
-	    else if (strcmp(RSTRING(b)->ptr, "r+") == 0)
+	    else if (strcmp(StringValuePtr(b), "r+") == 0)
 		flags = 0;
-	    else if (strcmp(RSTRING(b)->ptr, "w") == 0 ||
-		     strcmp(RSTRING(b)->ptr, "w+") == 0)
+	    else if (strcmp(StringValuePtr(b), "w") == 0 ||
+		     strcmp(StringValuePtr(b), "w+") == 0)
 		flags = DB_CREATE | DB_TRUNCATE;
-	    else if (strcmp(RSTRING(b)->ptr, "a") == 0 ||
-		     strcmp(RSTRING(b)->ptr, "a+") == 0)
+	    else if (strcmp(StringValuePtr(b), "a") == 0 ||
+		     strcmp(StringValuePtr(b), "a+") == 0)
 		flags = DB_CREATE;
 	    else {
 		rb_raise(xb_eFatal, "flags must be r, r+, w, w+, a or a+");
@@ -884,9 +882,9 @@ xb_con_index(VALUE obj, VALUE a, VALUE b, VALUE c)
 {
     xcon *con;
     DbTxn *txn;
-    char *as = STR2CSTR(a);
-    char *bs = STR2CSTR(b);
-    char *cs = STR2CSTR(c);
+    char *as = StringValuePtr(a);
+    char *bs = StringValuePtr(b);
+    char *cs = StringValuePtr(c);
     GetConTxn(obj, con, txn);
     PROTECT(con->con->declareIndex(txn, as, bs, cs));
     return obj;
@@ -991,7 +989,7 @@ xb_con_parse(int argc, VALUE *argv, VALUE obj)
 	tmp = XmlQueryContext();
 	cxt = &tmp;
     }
-    str = STR2CSTR(a);
+    str = StringValuePtr(a);
     PROTECT(pat = new XPathExpression(con->con->parseXPathExpression(txn, str, cxt)));
     return Data_Wrap_Struct(xb_cPat, 0, (RDF)xb_pat_free, pat);
 }
@@ -1014,6 +1012,31 @@ xb_test_txn(VALUE env, DbTxn **txn)
 }
 
 static VALUE
+xb_doc_query(int argc, VALUE *argv, VALUE obj)
+{
+    xdoc *doc;
+    xres *xes;
+    VALUE a, b, res;
+    std::string str;
+    XmlQueryContext *cxt = 0;
+
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	if (TYPE(b) != T_DATA || RDATA(b)->dfree != (RDF)xb_cxt_free) {
+	    rb_raise(xb_eFatal, "Expected a Context object");
+	}
+	Data_Get_Struct(b, XmlQueryContext, cxt);
+    }
+    if (NIL_P(b)) {
+	b = Qfalse;
+    }
+    str = StringValuePtr(a);
+    res = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark, (RDF)xb_res_free, xes);
+    xes->cxt_val = b;
+    PROTECT(xes->res = new XmlResults(doc->doc->queryWithXPath(str, cxt)));
+    return res;
+}
+
+static VALUE
 xb_con_query(int argc, VALUE *argv, VALUE obj)
 {
     xcon *con;
@@ -1029,10 +1052,15 @@ xb_con_query(int argc, VALUE *argv, VALUE obj)
     GetConTxn(obj, con, txn);
     switch (rb_scan_args(argc, argv, "12", &a, &b, &c)) {
     case 3:
-	if (TYPE(b) != T_DATA || RDATA(b)->dfree != (RDF)xb_cxt_free) {
-	    rb_raise(xb_eFatal, "Expected a Context object");
+	if (NIL_P(b)) {
+	    b = Qfalse;
 	}
-	Data_Get_Struct(b, XmlQueryContext, cxt);
+	else {
+	    if (TYPE(b) != T_DATA || RDATA(b)->dfree != (RDF)xb_cxt_free) {
+		rb_raise(xb_eFatal, "Expected a Context object");
+	    }
+	    Data_Get_Struct(b, XmlQueryContext, cxt);
+	}
 	flags = NUM2INT(c);
 	break;
     case 2:
@@ -1062,7 +1090,7 @@ xb_con_query(int argc, VALUE *argv, VALUE obj)
 	PROTECT(xes->res = new XmlResults(con->con->queryWithXPath(txn, *pat, flags)));
     }
     else {
-	str = STR2CSTR(a);
+	str = StringValuePtr(a);
 	PROTECT(xes->res = new XmlResults(con->con->queryWithXPath(txn, str, cxt, flags)));
     }
     if (temporary) {
@@ -1165,7 +1193,7 @@ xb_con_remove(int argc, VALUE *argv, VALUE obj)
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
 	flags = NUM2INT(b);
     }
-    Check_SafeStr(a);
+    SafeStringValue(a);
     c = xb_con_i_alloc(obj, a);
     GetConTxn(c, con, txn);
     PROTECT(con->con->remove(txn, flags));
@@ -1185,10 +1213,10 @@ xb_con_rename(int argc, VALUE *argv, VALUE obj)
     if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
 	flags = NUM2INT(c);
     }
-    Check_SafeStr(a);
+    SafeStringValue(a);
     d = xb_con_i_alloc(obj, a);
-    Check_SafeStr(b);
-    str = STR2CSTR(b);
+    SafeStringValue(b);
+    str = StringValuePtr(b);
     GetConTxn(d, con, txn);
     PROTECT(con->con->rename(txn, str, flags));
     return Qnil;
@@ -1200,13 +1228,13 @@ xb_con_s_name(VALUE obj, VALUE a, VALUE b)
     VALUE c;
     xcon *con;
     DbTxn *txn;
-    char *str;
+    std::string str;
 
-    Check_SafeStr(a);
+    SafeStringValue(a);
     c = xb_con_i_alloc(obj, a);
     GetConTxn(c, con, txn);
-    str = STR2CSTR(a);
-    PROTECT(con->con->name(str));
+    str = StringValuePtr(a);
+    PROTECT(con->con->setName(str));
     return Qnil;
 }
 
@@ -1224,7 +1252,7 @@ xb_con_dump(int argc, VALUE *argv, VALUE obj)
     c = xb_con_i_alloc(obj, a);
     GetConTxn(c, con, txn);
     Check_Type(b, T_STRING);
-    char *name = STR2CSTR(b);
+    char *name = StringValuePtr(b);
     std::ofstream out(name);
     PROTECT2(con->con->dump(&out, flags), out.close());
     out.close();
@@ -1250,7 +1278,7 @@ xb_con_load(int argc, VALUE *argv, VALUE obj)
     c = xb_con_i_alloc(obj, a);
     GetConTxn(c, con, txn);
     Check_Type(b, T_STRING);
-    char *name = STR2CSTR(b);
+    char *name = StringValuePtr(b);
     std::ifstream in(name);
     PROTECT2(con->con->load(&in, &lineno, flags), in.close());
     in.close();
@@ -1285,7 +1313,7 @@ xb_con_verify_salvage(int argc, VALUE *argv, VALUE obj)
     GetConTxn(c, con, txn);
     flags |= DB_SALVAGE;
     Check_Type(b, T_STRING);
-    char *name = STR2CSTR(b);
+    char *name = StringValuePtr(b);
     std::ofstream out(name);
     PROTECT2(con->con->verify(&out, flags), out.close());
     out.close();
@@ -1301,7 +1329,7 @@ xb_i_txn(VALUE obj, int *flags)
     key = rb_ary_entry(obj, 0);
     value = rb_ary_entry(obj, 1);
     key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
+    options = StringValuePtr(key);
     if (strcmp(options, "flags") == 0) {
 	*flags = NUM2INT(value);
     }
@@ -1485,17 +1513,6 @@ extern "C" {
 	rb_define_method(xb_cCon, "search", RMF(xb_con_search), -1);
 	rb_define_method(xb_cCon, "each", RMF(xb_con_each), 0);
 	xb_cDoc = rb_define_class_under(xb_mXML, "Document", rb_cObject);
-	/*
-	  rb_define_const(xb_cDoc, "UNKNOWN", INT2FIX(XmlDocument::UNKNOWN));
-	  rb_define_const(xb_cDoc, "XML", INT2FIX(XmlDocument::XML));
-	  rb_define_const(xb_cDoc, "BYTES", INT2FIX(XmlDocument::BYTES));
-	*/
-	rb_define_const(xb_cDoc, "NONE", INT2FIX(XmlDocument::NONE));
-	rb_define_const(xb_cDoc, "UTF8", INT2FIX(XmlDocument::UTF8));
-	rb_define_const(xb_cDoc, "UTF16", INT2FIX(XmlDocument::UTF16));
-	rb_define_const(xb_cDoc, "UCS4", INT2FIX(XmlDocument::UCS4));
-	rb_define_const(xb_cDoc, "UCS4_ASCII", INT2FIX(XmlDocument::UCS4_ASCII));
-	rb_define_const(xb_cDoc, "EBCDIC", INT2FIX(XmlDocument::EBCDIC));
 #if RUBY_VERSION_CODE >= 180
 	rb_define_alloc_func(xb_cDoc, RMF(xb_doc_s_alloc));
 #else
@@ -1512,13 +1529,13 @@ extern "C" {
 	rb_define_method(xb_cDoc, "get", RMF(xb_doc_get), -1);
 	rb_define_method(xb_cDoc, "set", RMF(xb_doc_set), -1);
 	rb_define_method(xb_cDoc, "id", RMF(xb_doc_id_get), 0);
-	rb_define_method(xb_cDoc, "encoding", RMF(xb_doc_encoding_get), 0);
 	rb_define_method(xb_cDoc, "to_s", RMF(xb_doc_content_get), 0);
 	rb_define_method(xb_cDoc, "to_str", RMF(xb_doc_content_get), 0);
 	rb_define_method(xb_cDoc, "uri", RMF(xb_doc_uri_get), 0);
 	rb_define_method(xb_cDoc, "uri=", RMF(xb_doc_uri_set), 1);
 	rb_define_method(xb_cDoc, "prefix", RMF(xb_doc_prefix_get), 0);
 	rb_define_method(xb_cDoc, "prefix=", RMF(xb_doc_prefix_set), 1);
+	rb_define_method(xb_cDoc, "query", RMF(xb_doc_query), -1);
 	xb_cCxt = rb_define_class_under(xb_mXML, "Context", rb_cObject);
 	rb_define_const(xb_cCxt, "Documents", INT2FIX(XmlQueryContext::ResultDocuments));
 	rb_define_const(xb_cCxt, "Values", INT2FIX(XmlQueryContext::ResultValues));
@@ -1552,11 +1569,13 @@ extern "C" {
 	rb_undef_method(CLASS_OF(xb_cRes), "allocate");
 	rb_undef_method(CLASS_OF(xb_cRes), "new");
 	rb_define_method(xb_cRes, "each", RMF(xb_res_each), 0);
+#if defined(DBXML_DOM_XERCES2)
 	xb_cNol = rb_define_class_under(xb_mXML, "Nodes", rb_cObject);
 	rb_undef_method(CLASS_OF(xb_cNol), "allocate");
 	rb_undef_method(CLASS_OF(xb_cNol), "new");
 	rb_define_method(xb_cNol, "to_s", RMF(xb_nol_to_str), 0);
 	rb_define_method(xb_cNol, "to_str", RMF(xb_nol_to_str), 0);
+#endif
     }
 }
     

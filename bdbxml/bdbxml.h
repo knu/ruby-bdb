@@ -17,7 +17,7 @@ using namespace DbXml;
     VALUE xb_err = Qnil;				\
     libr;						\
     if ((xb_err = bdb_return_err()) != Qnil) {		\
-      rb_raise(xb_eFatal, RSTRING(xb_err)->ptr);	\
+      rb_raise(xb_eFatal, StringValuePtr(xb_err));	\
     }							\
     rb_raise(xb_eFatal, e.what());			\
   }							\
@@ -58,10 +58,12 @@ typedef struct {
   VALUE cxt_val;
 } xres;
 
+#if defined(DBXML_DOM_XERCES2)
 typedef struct {
-  DOM_NodeList *nol;
+  XERCES_CPP_NAMESPACE_QUALIFIER DOMNodeList *nol;
   VALUE cxt_val;
 } xnol;
+#endif
 
 typedef struct {
   XmlDocument *doc;

@@ -1,3 +1,10 @@
 
 * ::rename, ::remove : added flags
 * new Con::set_name, Con#index[]
+
+--- adapted for 1.0.11
+
+* removed #encoding
+* added Document#query
+* adapted for 1.8
+
