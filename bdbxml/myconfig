@@ -15,7 +15,7 @@ $include = {
 
 $library = {
    'db' => ["#{$base}/db4.1.25/lib", ["db-4.1", "db_cxx-4.1"]],
-   'dbxml' => ["#{$base}/dbxml/lib", "dbxml-1.0"],
+   'dbxml' => ["#{$base}/dbxml/lib", "dbxml-1.1"],
    'pathan' => ["#{$base}/pathan/lib", "pathan"],
    'xercesc' => ["#{$base}/xercesc/lib", "xerces-c"]
 }

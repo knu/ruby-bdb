@@ -3641,8 +3641,10 @@ bdb__txn__close(VALUE obj, VALUE commit, VALUE real)
     else {
 	if (commit) {
 	    Data_Get_Struct(obj, bdb_DB, dbst);
-	    Data_Get_Struct(dbst->orig, bdb_DB, dbst1);
-	    dbst1->len = dbst->len;
+	    if (dbst->orig) {
+		Data_Get_Struct(dbst->orig, bdb_DB, dbst1);
+		dbst1->len = dbst->len;
+	    }
 	}
 	bdb_close(0, 0, obj);
     }

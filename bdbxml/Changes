@@ -19,3 +19,10 @@
 * constant XML::Name[], XML::Namespace[]
 * XML::Container#context, XML::UpdateContext
 * XML::Container#open?
+
+--- adapted for 1.1.0
+
+* constant XML::CHKSUM_SHA1, XML::ENCRYPT for Container::new
+* corrected XML::Document#query
+* added XML::Results#to_a, #size
+* changed XML::NodeList#to_s

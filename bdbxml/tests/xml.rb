@@ -70,7 +70,7 @@ class TestXML < Inh::TestCase
 	 assert_equal(content, doc.content)
 	 assert_equal(content, doc.to_s)
 	 assert_equal($time, doc['time'])
-	 assert_equal($time, doc.get('time', nil, String))
+	 assert_equal($time, doc.get(nil, 'time', String))
       end
    end
 

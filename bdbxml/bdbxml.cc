@@ -151,12 +151,15 @@ xb_doc_get(int argc, VALUE *argv, VALUE obj)
 	}
 	// ... //
     case 2:
-	if (!NIL_P(b)) {
-	    uri = StringValuePtr(b);
+	if (!NIL_P(a)) {
+	    uri = StringValuePtr(a);
 	}
+	name = StringValuePtr(b);
+	break;
+    case 1:
+	name = StringValuePtr(a);
 	break;
     }
-    name = StringValuePtr(a);
     PROTECT(result = doc->doc->getMetaData(uri, name, val));
     if (result) {
 	return xb_xml_val(&val, 0);
@@ -491,16 +494,7 @@ xb_nol_inspect(VALUE obj)
 static VALUE
 xb_nol_to_str(VALUE obj)
 {
-    xnol *nol;
-    xcxt *cxt;
-    XmlQueryContext *qcxt = 0;
-
-    Data_Get_Struct(obj, xnol, nol);
-    if (nol->cxt_val) {
-	Data_Get_Struct(nol->cxt_val, xcxt, cxt);
-	qcxt = cxt->cxt;
-    }
-    return rb_tainted_str_new2(XmlValue(nol->nol).asString(qcxt).c_str());
+    return rb_funcall2(xb_nol_to_ary(obj), rb_intern("to_s"), 0, 0);
 }
 
 #endif
@@ -876,6 +870,18 @@ xb_res_each(VALUE obj)
     return xb_res_search(obj);
 }
 
+static VALUE
+xb_res_size(VALUE obj)
+{
+    xres *xes;
+    size_t siz;
+    VALUE res;
+
+    Data_Get_Struct(obj, xres, xes);
+    try { siz = xes->res->size(); } catch (...) { return Qnil; }
+    return INT2NUM(siz);
+}
+ 
 struct xb_eiv {
     xcon *con;
 };
@@ -996,7 +1002,6 @@ xb_con_s_new(int argc, VALUE *argv, VALUE obj)
 	    }
 	    env = v;
 	    GetEnvDBErr(env, envst, id_current_env, xb_eFatal);
-	    rb_ary_push(envst->db_ary, res);
 	}
 	if (env) {
 	    con->env_val = env;
@@ -1592,6 +1597,7 @@ xb_doc_query(int argc, VALUE *argv, VALUE obj)
     xcxt *cxt;
     XmlQueryContext *qcxt = 0;
 
+    Data_Get_Struct(obj, xdoc, doc);
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
 	if (TYPE(b) != T_DATA || RDATA(b)->dfree != (RDF)xb_cxt_free) {
 	    rb_raise(xb_eFatal, "Expected a Context object");
@@ -2172,6 +2178,12 @@ extern "C" {
 	rb_define_const(xb_mXML, "VERSION_MAJOR", INT2FIX(major));
 	rb_define_const(xb_mXML, "VERSION_MINOR", INT2FIX(minor));
 	rb_define_const(xb_mXML, "VERSION_PATCH", INT2FIX(patch));
+#ifdef DBXML_CHKSUM_SHA1
+	rb_define_const(xb_mXML, "CHKSUM_SHA1", INT2NUM(DBXML_CHKSUM_SHA1));
+#endif
+#ifdef DBXML_ENCRYPT
+	rb_define_const(xb_mXML, "ENCRYPT", INT2NUM(DBXML_ENCRYPT));
+#endif
 	{
 	    VALUE name = rb_hash_new();
 	    rb_define_const(xb_mXML, "Name", name);
@@ -2333,6 +2345,8 @@ extern "C" {
 	rb_undef_method(CLASS_OF(xb_cRes), "allocate");
 	rb_undef_method(CLASS_OF(xb_cRes), "new");
 	rb_define_method(xb_cRes, "each", RMF(xb_res_each), 0);
+	rb_define_method(xb_cRes, "size", RMF(xb_res_size), 0);
+	rb_define_method(xb_cRes, "to_a", RMF(xb_res_search), 0);
 #if defined(DBXML_DOM_XERCES2)
 	xb_mDom = rb_define_class_under(xb_mDb, "DOM", rb_cObject);
 	xb_cNod = rb_define_class_under(xb_mDom, "Node", rb_cObject);

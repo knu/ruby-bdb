@@ -33,9 +33,11 @@ Document supports annotation attributes.
 --- content=(val)
     Set the content of the document
 
---- get(uri = "", attr)
+--- get(uri = "", attr [, class])
     Return the value of an attribute. ((|uri|)) specify the namespace
     where reside the attribute.
+
+    the optional ((|class|)) argument give the type (String, Numeric, ...)
 
 --- id
     Return the ID
