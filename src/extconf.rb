@@ -9,7 +9,9 @@ if prefix = with_config("db-prefix")
    end
 end
 $CFLAGS += " -DBDB_NO_THREAD" if enable_config("thread") == false
-$CFLAGS += " -I#{incdir}" if incdir = with_config("db-include-dir")
+if incdir = with_config("db-include-dir")
+   $CFLAGS += " -I#{incdir}" 
+end
 if libdir = with_config("db-lib-dir")
    $LDFLAGS += " -I#{libdir}" 
    case Config::CONFIG["arch"]

@@ -47,8 +47,10 @@ db_strerror(int err)
         return strerror(err) ;
 
     switch (err) {
+#ifdef DB_INCOMPLETE
     case DB_INCOMPLETE:
         return ("DB_INCOMPLETE: Sync was unable to complete");
+#endif
     case DB_KEYEMPTY:
         return ("DB_KEYEMPTY: Non-existent key/data pair");
     case DB_KEYEXIST:
@@ -64,6 +66,10 @@ db_strerror(int err)
 #if DB_VERSION_MINOR >= 6
     case DB_RUNRECOVERY:
         return ("DB_RUNRECOVERY: Fatal error, run database recovery");
+#endif
+#ifdef DB_OLD_VERSION
+    case DB_OLD_VERSION:
+        return ("DB_OLD_VERSION: The database cannot be opened without being first upgraded");
 #endif
     default:
         return "Unknown Error" ;
@@ -85,7 +91,7 @@ bdb_test_error(comm)
     case DB_KEYEXIST:
 	return comm;
         break;
-#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2) || DB_VERSION_MAJOR >= 4
+#ifdef DB_INCOMPLETE
     case DB_INCOMPLETE:
 	comm = 0;
 	return comm;
@@ -191,7 +197,9 @@ Init_bdb()
 #ifdef DB_CDB_ALLDB
     rb_define_const(bdb_mDb, "CDB_ALLDB", INT2FIX(DB_CDB_ALLDB));
 #endif
+#ifdef DB_CHECKPOINT
     rb_define_const(bdb_mDb, "CHECKPOINT", INT2FIX(DB_CHECKPOINT));
+#endif
 #ifdef DB_CLIENT
     rb_define_const(bdb_mDb, "CLIENT", INT2FIX(DB_CLIENT));
 #endif
@@ -300,8 +308,22 @@ Init_bdb()
     rb_define_const(bdb_mDb, "LOCK_IWRITE", INT2FIX(DB_LOCK_IWRITE));
     rb_define_const(bdb_mDb, "LOCK_IREAD", INT2FIX(DB_LOCK_IREAD));
     rb_define_const(bdb_mDb, "LOCK_IWR", INT2FIX(DB_LOCK_IWR));
-#ifdef DB_LSN
-    rb_define_const(bdb_mDb, "LSN", INT2FIX(DB_LSN));
+#ifdef DB_LOCKDOWN
+    rb_define_const(bdb_mDb, "LOCKDOWN", INT2FIX(DB_LOCKDOWN));
+#else
+    rb_define_const(bdb_mDb, "LOCKDOWN", INT2FIX(0));
+#endif
+#ifdef DB_LOCK_EXPIRE
+    rb_define_const(bdb_mDb, "LOCK_EXPIRE", INT2FIX(DB_LOCK_EXPIRE));
+#endif
+#ifdef DB_LOCK_MAXLOCKS
+    rb_define_const(bdb_mDb, "LOCK_MAXLOCKS", INT2FIX(DB_LOCK_MAXLOCKS));
+#endif
+#ifdef DB_LOCK_MINLOCKS
+    rb_define_const(bdb_mDb, "LOCK_MINLOCKS", INT2FIX(DB_LOCK_MINLOCKS));
+#endif
+#ifdef DB_LOCK_MINWRITE
+    rb_define_const(bdb_mDb, "LOCK_MINWRITE", INT2FIX(DB_LOCK_MINWRITE));
 #endif
     rb_define_const(bdb_mDb, "MPOOL_CLEAN", INT2FIX(DB_MPOOL_CLEAN));
     rb_define_const(bdb_mDb, "MPOOL_CREATE", INT2FIX(DB_MPOOL_CREATE));
@@ -311,6 +333,12 @@ Init_bdb()
     rb_define_const(bdb_mDb, "MPOOL_NEW", INT2FIX(DB_MPOOL_NEW));
 #ifdef DB_MPOOL_PRIVATE
     rb_define_const(bdb_mDb, "MPOOL_PRIVATE", INT2FIX(DB_MPOOL_PRIVATE));
+#endif
+#ifdef DB_OVERWRITE
+    rb_define_const(bdb_mDb, "OVERWRITE", INT2FIX(DB_OVERWRITE));
+#endif
+#ifdef DB_PRINTABLE
+    rb_define_const(bdb_mDb, "PRINTABLE", INT2FIX(DB_PRINTABLE));
 #endif
     rb_define_const(bdb_mDb, "NEXT", INT2FIX(DB_NEXT));
 #if DB_NEXT_DUP
@@ -389,16 +417,19 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "THREAD", INT2FIX(DB_THREAD));
     rb_define_const(bdb_mDb, "TRUNCATE", INT2FIX(DB_TRUNCATE));
-#ifdef DB_TXN_ABORT
+#if DB_VERSION_MAJOR > 3 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
     rb_define_const(bdb_mDb, "TXN_ABORT", INT2FIX(DB_TXN_ABORT));
 #endif
-#ifdef DB_TXN_BACKWARD_ROLL
     rb_define_const(bdb_mDb, "TXN_BACKWARD_ROLL", INT2FIX(DB_TXN_BACKWARD_ROLL));
-#endif
-#ifdef DB_TXN_FORWARD_ROLL
     rb_define_const(bdb_mDb, "TXN_FORWARD_ROLL", INT2FIX(DB_TXN_FORWARD_ROLL));
-#endif
     rb_define_const(bdb_mDb, "TXN_NOSYNC", INT2FIX(DB_TXN_NOSYNC));
+#if DB_VERSION_MAJOR >= 4
+    rb_define_const(bdb_mDb, "TXN_APPLY", INT2FIX(DB_TXN_APPLY));
+#if DB_VERSION_MINOR >= 1
+    rb_define_const(bdb_mDb, "TXN_PRINT", INT2FIX(DB_TXN_PRINT));
+    rb_define_const(bdb_mDb, "TXN_WRITE_NOSYNC", INT2FIX(DB_TXN_WRITE_NOSYNC));
+#endif
+#endif
 #ifdef DB_UPGRADE
     rb_define_const(bdb_mDb, "UPGRADE", INT2FIX(DB_UPGRADE));
 #endif
@@ -420,6 +451,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(DB_VERB_RECOVERY));
     rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(DB_VERB_WAITSFOR));
     rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(DB_WRITECURSOR));
+#if DB_VERSION_MAJOR >= 4
+    rb_define_const(bdb_mDb, "VERB_REPLICATION", INT2FIX(DB_VERB_REPLICATION));
+#endif
 #endif
 #ifdef DB_VERIFY
     rb_define_const(bdb_mDb, "VERIFY", INT2FIX(DB_VERIFY));
@@ -433,6 +467,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "TXN_COMMIT", INT2FIX(BDB_TXN_COMMIT));
 #ifdef DB_REGION_INIT
     rb_define_const(bdb_mDb, "REGION_INIT", INT2FIX(DB_REGION_INIT));
+#endif
+#ifdef DB_AUTO_COMMIT
+    rb_define_const(bdb_mDb, "AUTO_COMMIT", INT2FIX(DB_AUTO_COMMIT));
 #endif
 #if DB_VERSION_MAJOR >= 4
     rb_define_const(bdb_mDb, "REP_CLIENT", INT2FIX(DB_REP_CLIENT));
@@ -451,6 +488,31 @@ Init_bdb()
     rb_define_const(bdb_mDb, "SET_TXN_TIMEOUT", INT2FIX(DB_SET_TXN_TIMEOUT));
     rb_define_const(bdb_mDb, "LOCK_GET_TIMEOUT", INT2FIX(DB_LOCK_GET_TIMEOUT));
     rb_define_const(bdb_mDb, "LOCK_TIMEOUT", INT2FIX(DB_LOCK_TIMEOUT));
+#endif
+#ifdef DB_ENCRYPT_AES
+    rb_define_const(bdb_mDb, "ENCRYPT_AES", INT2FIX(DB_ENCRYPT_AES));
+#endif
+#ifdef DB_ENCRYPT
+    rb_define_const(bdb_mDb, "ENCRYPT", INT2FIX(DB_ENCRYPT));
+#endif
+#ifdef DB_CHKSUM_SHA1
+    rb_define_const(bdb_mDb, "CHKSUM_SHA1", INT2FIX(DB_CHKSUM_SHA1));
+#endif
+#ifdef DB_DIRECT_DB
+    rb_define_const(bdb_mDb, "DIRECT_DB", INT2FIX(DB_DIRECT_DB));
+#endif
+#ifdef DB_DIRECT_LOG
+    rb_define_const(bdb_mDb, "DIRECT_LOG", INT2FIX(DB_DIRECT_LOG));
+#endif
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    rb_define_const(bdb_mDb, "PRIORITY_VERY_LOW", INT2FIX(DB_PRIORITY_VERY_LOW));
+    rb_define_const(bdb_mDb, "PRIORITY_LOW", INT2FIX(DB_PRIORITY_LOW));
+    rb_define_const(bdb_mDb, "PRIORITY_DEFAULT", INT2FIX(DB_PRIORITY_DEFAULT));
+    rb_define_const(bdb_mDb, "PRIORITY_HIGH", INT2FIX(DB_PRIORITY_HIGH));
+    rb_define_const(bdb_mDb, "PRIORITY_VERY_HIGH", INT2FIX(DB_PRIORITY_VERY_HIGH));
+#endif
+#ifdef DB_GET_BOTH_RANGE
+    rb_define_const(bdb_mDb, "GET_BOTH_RANGE", INT2FIX(DB_GET_BOTH_RANGE));
 #endif
     bdb_init_env();
     bdb_init_common();

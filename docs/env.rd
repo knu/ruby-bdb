@@ -123,6 +123,29 @@ environment can then be identified by the name of that directory.
 --- close()
     close the environnement
 
+--- dbremove(file, database = nil, flags = 0)
+    only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+
+    remove the database specified by ((|file|)) and ((|database|)). If no
+    ((|database|)) is ((|nil|)), the underlying file represented by 
+    ((|file|)) is removed, incidentally removing all databases
+    that it contained. 
+
+    The ((|flags|)) value must be set to 0 or ((|BDB::AUTO_COMMIT|))
+
+--- dbrename(file, database, newname, flags = 0)
+    only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+
+    rename the database specified by ((|file|)) and ((|database|)) to
+    ((|newname|)). If ((|database|)) is ((|nil|)), the underlying file
+    represented by ((|file|)) is renamed, incidentally renaming all databases
+    that it contained. 
+
+    The ((|flags|)) value must be set to 0 or ((|BDB::AUTO_COMMIT|))
+
+--- feedback=(proc)
+    monitor the progress of some operations
+
 --- home()
     return the name of the directory
 
@@ -203,7 +226,6 @@ environment can then be identified by the name of that directory.
     the constant ((|BDB::BTREE|)), ((|BDB::HASH|)), ((|BDB::RECNO|)), 
     ((|BDB::QUEUE|)). See ((<open|URL:access.html#open>)) for other
     arguments
-
 
 --- recover { |txn, id| ... }
     only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 3

@@ -59,11 +59,16 @@ end
 # purposes other than logging file modifications based on a set of open
 # file descriptors will almost certainly need to make source code
 # modifications to the Berkeley DB code base.
+ #
+ # BDB::Env defines the following methods
+ #
+ # log_archive, log_checkpoint, log_curlsn, log_each, log_put, log_get,
+ # log_flush, log_reverse_each, log_stat
 class Log
 end
 end
 module BDB
-# Don't mix these methods with methods of ((|BDB::Cursor|))
+# Don't mix these methods with methods of <em>BDB::Cursor</em>
  #
  # All instance methods has the same syntax than the methods of Array
 class Recnum < Common
@@ -82,8 +87,12 @@ class << self
 #
 def  open(name = nil, subname = nil, flags = 0, mode = 0, options = {})
 end
-alias  create  open
-alias  new  open
+#same than <em> open</em>
+def  create(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+end
+#same than <em> open</em>
+def  new(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+end
 
 #Removes the database (or subdatabase) represented by the
 #name and subname combination.
@@ -93,14 +102,20 @@ alias  new  open
 #
 def  remove(name, subname = nil) 
 end
-alias  db_remove  remove
-alias  unlink  remove
+#same than <em> remove</em>
+def  db_remove(name, subname = nil) 
+end
+#same than <em> remove</em>
+def  unlink(name, subname = nil) 
+end
 
 #Upgrade the database
 #
 def  upgrade(name)
 end
-alias  db_upgrade  upgrade
+#same than <em> upgrade</em>
+def  db_upgrade(name)
+end
 end
 
 #
@@ -298,26 +313,36 @@ class Cursor
 #
 def  close()
 end
-alias  c_close  close
+#same than <em> close</em>
+def  c_close()
+end
 
 #Return the count of duplicate
 #
 def  count()
 end
-alias  c_count  count
+#same than <em> count</em>
+def  c_count()
+end
 
-#Same than <tt>get(BDB::CURRENT)</tt>
+#Same than (({get(BDB::CURRENT)}))
 #
 def  current()
 end
-alias  c_current  current
+#same than <em> current</em>
+def  c_current()
+end
 
 #Deletes the key/data pair currently referenced by the cursor.
 #
 def  del()
 end
-alias  delete  del
-alias  c_del  del
+#same than <em> del</em>
+def  delete()
+end
+#same than <em> del</em>
+def  c_del()
+end
 
 #Creates new cursor that uses the same transaction and locker ID as
 #the original cursor. This is useful when an application is using
@@ -330,19 +355,27 @@ alias  c_del  del
 #
 def  dup(flags = 0)
 end
-alias  clone  dup
-alias  c_dup  dup
-alias  c_clone  dup
+#same than <em> dup</em>
+def  clone(flags = 0)
+end
+#same than <em> dup</em>
+def  c_dup(flags = 0)
+end
+#same than <em> dup</em>
+def  c_clone(flags = 0)
+end
 
-#Same than <tt>get(BDB::FIRST)</tt>
+#Same than (({get(BDB::FIRST)}))
 #
 def  first()
 end
-alias  c_first  first
+#same than <em> first</em>
+def  c_first()
+end
 
 #Retrieve key/data pair from the database
 #
-#See the description of <tt>c_get</tt> in the Berkeley distribution
+#See the description of (({c_get})) in the Berkeley distribution
 #for the different values of the <em>flags</em> parameter.
 #
 #<em>key</em> must be given if the <em>flags</em> parameter is 
@@ -352,40 +385,52 @@ alias  c_first  first
 #
 def  get(flags, key = nil, value = nil)
 end
-alias  c_get  get
+#same than <em> get</em>
+def  c_get(flags, key = nil, value = nil)
+end
 
-#Same than <tt>get(BDB::LAST)</tt>
+#Same than (({get(BDB::LAST)}))
 #
 def  last()
 end
-alias  c_last  last
+#same than <em> last</em>
+def  c_last()
+end
 
-#Same than <tt>get(BDB::NEXT)</tt>
+#Same than (({get(BDB::NEXT)}))
 #
 def  next()
 end
-alias  c_next  next
+#same than <em> next</em>
+def  c_next()
+end
 
 #Retrieve key/primary key/data pair from the database
 #
 def  pget(flags, key = nil, value = nil)
 end
-alias  c_pget  pget
+#same than <em> pget</em>
+def  c_pget(flags, key = nil, value = nil)
+end
 
-#Same than <tt>get(BDB::PREV)</tt>
+#Same than (({get(BDB::PREV)}))
 #
 def  prev()
 end
-alias  c_prev  prev
+#same than <em> prev</em>
+def  c_prev()
+end
 
 #Stores data value into the database.
 #
-#See the description of <tt>c_put</tt> in the Berkeley distribution
+#See the description of (({c_put})) in the Berkeley distribution
 #for the different values of the <em>flags</em> parameter.
 #
 def  put(flags, value)
 end
-alias  c_put  put
+#same than <em> put</em>
+def  c_put(flags, value)
+end
 
 #Stores key/data pairs into the database (only for Btree and Hash
 #access methods)
@@ -395,18 +440,30 @@ alias  c_put  put
 #
 def  put(flags, key, value)
 end
-alias  c_put  put
+#same than <em> put</em>
+def  c_put(flags, key, value)
+end
 
-#Same than <tt>get</tt> with the flags <em>BDB::SET</em> or <em>BDB::SET_RANGE</em>
+#Same than (({get})) with the flags <em>BDB::SET</em> or <em>BDB::SET_RANGE</em>
 #or <em>BDB::SET_RECNO</em>
 #
 def  set(key)
 end
-alias  c_set  set
-alias  set_range  set
-alias  c_set_range  set
-alias  set_recno  set
-alias  c_set_recno  set
+#same than <em> set</em>
+def  c_set(key)
+end
+#same than <em> set</em>
+def  set_range(key)
+end
+#same than <em> set</em>
+def  c_set_range(key)
+end
+#same than <em> set</em>
+def  set_recno(key)
+end
+#same than <em> set</em>
+def  c_set_recno(key)
+end
 end
 end
 module BDB
@@ -502,19 +559,54 @@ class << self
 #
 def  open(home, flags = 0, mode = 0, options = {})
 end
-alias  create  open
-alias  new  open
+#same than <em> open</em>
+def  create(home, flags = 0, mode = 0, options = {})
+end
+#same than <em> open</em>
+def  new(home, flags = 0, mode = 0, options = {})
+end
 
 #remove the environnement
 #
 def  remove()
 end
-alias  unlink  remove
+#same than <em> remove</em>
+def  unlink()
+end
 end
 
 #close the environnement
 #
 def  close()
+end
+
+#only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+#
+#remove the database specified by <em>file</em> and <em>database</em>. If no
+#<em>database</em> is <em>nil</em>, the underlying file represented by 
+#<em>file</em> is removed, incidentally removing all databases
+#that it contained. 
+#
+#The <em>flags</em> value must be set to 0 or <em>BDB::AUTO_COMMIT</em>
+#
+def  dbremove(file, database = nil, flags = 0)
+end
+
+#only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+#
+#rename the database specified by <em>file</em> and <em>database</em> to
+#<em>newname</em>. If <em>database</em> is <em>nil</em>, the underlying file
+#represented by <em>file</em> is renamed, incidentally renaming all databases
+#that it contained. 
+#
+#The <em>flags</em> value must be set to 0 or <em>BDB::AUTO_COMMIT</em>
+#
+def  dbrename(file, database, newname, flags = 0)
+end
+
+#monitor the progress of some operations
+#
+def  feedback=(proc)
 end
 
 #return the name of the directory
@@ -526,7 +618,9 @@ end
 #
 def  lock()
 end
-alias  lock_id  lock
+#same than <em> lock</em>
+def  lock_id()
+end
 
 #The lock_detect function runs one iteration of the deadlock
 #detector. The deadlock detector traverses the lock table, and for each
@@ -622,9 +716,8 @@ end
 
 #open the database in the current environment. type must be one of
 #the constant <em>BDB::BTREE</em>, <em>BDB::HASH</em>, <em>BDB::RECNO</em>, 
-#<em>BDB::QUEUE</em>. See <<???open|URL:access.html#open???>> for other
+#<em>BDB::QUEUE</em>. See <em>open</em> for other
 #arguments
-#
 #
 def  open_db(type, name = nil, subname = nil, flags = 0, mode = 0)
 end
@@ -657,8 +750,9 @@ end
 #
 def  begin(flags = 0)
 end
-alias  txn_begin  begin
-alias  begin  begin
+#same than <em> begin</em>
+def  txn_begin(flags = 0)
+end
 
 #The txn_checkpoint function flushes the underlying memory pool,
 #writes a checkpoint record to the log and then flushes the log.
@@ -670,14 +764,18 @@ alias  begin  begin
 #
 def  checkpoint(kbyte, min = 0)
 end
-alias  txn_checkpoint  checkpoint
+#same than <em> checkpoint</em>
+def  txn_checkpoint(kbyte, min = 0)
+end
 
 #Return transaction subsystem statistics
 #
 #
 def  stat()
 end
-alias  txn_stat  stat
+#same than <em> stat</em>
+def  txn_stat()
+end
 
 #Only for DB >= 4
 #
@@ -688,7 +786,9 @@ alias  txn_stat  stat
 #
 def  elect(sites, priority, timeout)
 end
-alias  rep_elect  elect
+#same than <em> elect</em>
+def  rep_elect(sites, priority, timeout)
+end
 
 #Only for DB >= 4
 #
@@ -697,7 +797,9 @@ alias  rep_elect  elect
 #
 def  process_message(control, rec, envid)
 end
-alias  rep_process_message  process_message
+#same than <em> process_message</em>
+def  rep_process_message(control, rec, envid)
+end
 
 #Only for DB >= 4
 #
@@ -707,7 +809,9 @@ alias  rep_process_message  process_message
 #
 def  start(cdata, flags)
 end
-alias  rep_start  start
+#same than <em> start</em>
+def  rep_start(cdata, flags)
+end
 end
 end
  # Berkeley DB is an embedded database system that supports keyed access
@@ -887,12 +991,22 @@ class << self
 #  * <em>set_re_len</em> :   set the fixed-length record length
 #  * <em>set_re_pad</em> :   set the fixed-length record pad byte
 #  * <em>set_re_source</em> :  set the backing Recno text file
+#  * <em>set_append_recno</em> : modify the stored data for <em>BDB::APPEND</em>
+#  * <em>set_encrypt</em> : set the password used
+#  * <em>set_feedback</em> : set the function to monitor some operations
 #  * <em>env</em> :  open the database in the environnement given as the value
 #  * <em>txn</em> :  open the database in the transaction given as the value
 #
+#  <em>set_append_recno</em> will be called with (key, value) and
+#  it must return <em>nil</em> or the modified value
+#
+#  <em>set_encrypt</em> take an Array as arguments with the values
+#  [password, flags], where flags can be 0 or <em>BDB::ENCRYPT_AES</em>
+#
 #  Proc given to <em>set_bt_compare</em>, <em>set_bt_prefix</em>, 
 #  <em>set_dup_compare</em>, <em>set_h_hash</em>, <em>set_store_key</em>
-#  <em>set_fetch_key</em>, <em>set_store_value</em> and <em>set_fetch_value</em>
+#  <em>set_fetch_key</em>, <em>set_store_value</em>, <em>set_fetch_value</em>
+#  <em>set_feedback</em> and <em>set_append_recno</em>
 #  can be also specified as a method (replace the prefix <em>set_</em> 
 #  with <em>bdb_</em>)
 #
@@ -908,8 +1022,12 @@ class << self
 #
 def  open(name = nil, subname = nil, flags = 0, mode = 0, options = {})
 end
-alias  create  open
-alias  new  open
+#same than <em> open</em>
+def  create(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+end
+#same than <em> open</em>
+def  new(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+end
 
 #Removes the database (or subdatabase) represented by the
 #name and subname combination.
@@ -919,14 +1037,20 @@ alias  new  open
 #
 def  remove(name, subname = nil) 
 end
-alias  db_remove  remove
-alias  unlink  remove
+#same than <em> remove</em>
+def  db_remove(name, subname = nil) 
+end
+#same than <em> remove</em>
+def  unlink(name, subname = nil) 
+end
 
 #Upgrade the database
 #
 def  upgrade(name)
 end
-alias  db_upgrade  upgrade
+#same than <em> upgrade</em>
+def  db_upgrade(name)
+end
 end
 
 #Returns the value corresponding the <em>key</em>
@@ -945,6 +1069,23 @@ def  associate(db, flag = 0)
 yield db, key, value
 end
 
+#return the current priority value
+#
+def  cache_priority
+end
+
+#set the priority value : can be <em>BDB::PRIORITY_VERY_LOW</em>,
+#<em>BDB::PRIORITY_LOW</em>,  <em>BDB::PRIORITY_DEFAULT</em>,
+#<em>BDB::PRIORITY_HIGH</em> or <em>BDB::PRIORITY_VERY_HIGH</em>
+#
+def  cache_priority=value
+end
+
+#monitor the progress of some operations
+#
+def  feedback=(proc)
+end
+
 #Returns the value correspondind the <em>key</em>
 #
 #<em>flags</em> can have the values <em>BDB::GET_BOTH</em>, 
@@ -955,8 +1096,12 @@ end
 #
 def  get(key, flags = 0)
 end
-alias  db_get  get
-alias  fetch  get
+#same than <em> get</em>
+def  db_get(key, flags = 0)
+end
+#same than <em> get</em>
+def  fetch(key, flags = 0)
+end
 
 #Returns the primary key and the value corresponding to <em>key</em>
 #in the secondary index
@@ -985,50 +1130,68 @@ end
 #
 def  put(key, value, flags = 0)
 end
-alias  db_put  put
-alias  store  put
+#same than <em> put</em>
+def  db_put(key, value, flags = 0)
+end
+#same than <em> put</em>
+def  store(key, value, flags = 0)
+end
 
 #Append the <em>value</em> associating with <em>key</em>
 #
 def  append(key, value)
 end
-alias  db_append  append
+#same than <em> append</em>
+def  db_append(key, value)
+end
 
 #Return if the underlying database is in host order
 #
 def  byteswapped?
 end
-alias  get_byteswapped  byteswapped?
+#same than <em> byteswapped?</em>
+def  get_byteswapped
+end
 
 #Clear partial set.
 #
 def  clear_partial
 end
-alias  partial_clear  clear_partial
+#same than <em> clear_partial</em>
+def  partial_clear
+end
 
 #Closes the file.
 #
 def  close(flags = 0)
 end
-alias  db_close  close
+#same than <em> close</em>
+def  db_close(flags = 0)
+end
 
 #Return the count of duplicate for <em>key</em>
 #
 def  count(key)
 end
-alias  dup_count  count
+#same than <em> count</em>
+def  dup_count(key)
+end
 
 #Open a new cursor.
 #
 def  cursor()
 end
-alias  db_cursor  cursor
+#same than <em> cursor</em>
+def  db_cursor()
+end
 
 #Return the subname
 # 
 def  database()
 end
-alias  subname  database
+#same than <em> database</em>
+def  subname()
+end
 
 #Removes the association from the key. 
 #
@@ -1037,16 +1200,21 @@ alias  subname  database
 #
 def  delete(key)
 end
-alias  db_del  delete
+#same than <em> delete</em>
+def  db_del(key)
+end
 
 #Deletes associations if the evaluation of the block returns true. 
 #
-#<<???set???>>
+#<em>set</em>
 #
 def  delete_if(set = nil) 
 yield key, value
 end
-alias  reject!  delete_if
+#same than <em> delete_if</em>
+def  reject!(set = nil) 
+yield key, value
+end
 
 #Return an array of all duplicate associations for <em>key</em>
 #
@@ -1057,16 +1225,19 @@ end
 
 #Iterates over associations.
 #
-#<<???set???>> <<???bulk???>>
+#<em>set</em> <em>bulk</em>
 #
 def  each(set = nil, bulk = 0]) 
 yield key, value
 end
-alias  each_pair  each
+#same than <em> each</em>
+def  each_pair(set = nil, bulk = 0) 
+yield key, value
+end
 
 #Iterates over each duplicate associations for <em>key</em>
 #
-#<<???bulk???>>
+#<em>bulk</em>
 #
 def  each_dup(key, bulk = 0) 
 yield key, value
@@ -1074,7 +1245,7 @@ end
 
 #Iterates over each duplicate values for <em>key</em>
 #
-#<<???bulk???>>
+#<em>bulk</em>
 #
 def  each_dup_value(key, bulk = 0) 
 yield value
@@ -1082,7 +1253,7 @@ end
 
 #Iterates over keys. 
 #
-#<<???set???>> <<???bulk???>>
+#<em>set</em> <em>bulk</em>
 #
 def  each_key(set = nil, bulk = 0) 
 yield key
@@ -1097,7 +1268,7 @@ end
 
 #Iterates over values. 
 #
-#<<???set???>> <<???bulk???>>
+#<em>set</em> <em>bulk</em>
 #
 def  each_value(set = nil, bulk = 0) 
 yield value
@@ -1117,21 +1288,31 @@ end
 #
 def  has_key?(key) 
 end
-alias  key?  has_key?
-alias  include?  has_key?
-alias  member?  has_key?
+#same than <em> has_key?</em>
+def  key?(key) 
+end
+#same than <em> has_key?</em>
+def  include?(key) 
+end
+#same than <em> has_key?</em>
+def  member?(key) 
+end
 
 #Returns true if the association from <em>key</em> is <em>value</em> 
 #
 def  has_both?(key, value)
 end
-alias  both?  has_both?
+#same than <em> has_both?</em>
+def  both?(key, value)
+end
 
 #Returns true if the association to the <em>value</em> exists. 
 #
 def  has_value?(value) 
 end
-alias  value?  has_value?
+#same than <em> has_value?</em>
+def  value?(value) 
+end
 
 #Returns the first <em>key</em> associated with <em>value</em>
 #
@@ -1158,7 +1339,9 @@ end
 #
 def  length 
 end
-alias  size   length 
+#same than <em> length </em>
+def  size 
+end
 
 #  
 #The <em>log_register</em> function registers a file <em>name</em>.
@@ -1181,16 +1364,19 @@ end
 
 #Iterates over associations in reverse order 
 #
-#<<???set???>>
+#<em>set</em>
 #
 def  reverse_each(set = nil) 
 yield key, value
 end
-alias  reverse_each_pair  reverse_each
+#same than <em> reverse_each</em>
+def  reverse_each_pair(set = nil) 
+yield key, value
+end
 
 #Iterates over keys in reverse order 
 #
-#<<???set???>>
+#<em>set</em>
 #
 def  reverse_each_key(set = nil) 
 yield key
@@ -1205,7 +1391,7 @@ end
 
 #Iterates over values in reverse order.
 #
-#<<???set???>>
+#<em>set</em>
 #
 def  reverse_each_value(set = nil) 
 yield value
@@ -1235,7 +1421,9 @@ end
 #       
 def  truncate
 end
-alias  clear  truncate
+#same than <em> truncate</em>
+def  clear
+end
 
 #Returns the array of the values in the database.
 #
@@ -1286,15 +1474,8 @@ end
 end
 end
 module BDB
-# 
-# The lock subsystem provides interprocess and intraprocess concurrency
-# control mechanisms. While the locking system is used extensively by
-# the Berkeley DB access methods and transaction system, it may also be
-# used as a stand-alone subsystem to provide concurrency control to any
-# set of designated resources.
 class Lockid
 end
-# Exception generated by lock call
 class LockError < Exception
 end
 # Lock not held by locker
@@ -1306,6 +1487,7 @@ end
 # Locker killed to resolve a deadlock
 class LockDead < LockError
 end
+ # a BDB::Lockid object is created by the method lock, lock_id
 class Lockid
 
 #The lock_get function acquires a lock from the lock table, it return
@@ -1321,7 +1503,9 @@ class Lockid
 #
 def  get(string, mode , flags = 0)
 end
-alias  lock_get  get
+#same than <em> get</em>
+def  lock_get(string, mode [, flags])
+end
 
 #The <em>lock_vec</em> function atomically obtains and releases one or more
 #locks from the lock table. The <em>lock_vec</em> function is intended to
@@ -1354,7 +1538,9 @@ alias  lock_get  get
 #
 def  vec(array , flags = 0) 
 end
-alias  lock_vec  vec
+#same than <em> vec</em>
+def  lock_vec(array [, flags]) 
+end
 end
 class Lock
 
@@ -1362,37 +1548,18 @@ class Lock
 #
 def  put()
 end
-alias  lock_put  put
-alias  release  put
-alias  delete  put
+#same than <em> put</em>
+def  lock_put()
+end
+#same than <em> put</em>
+def  release()
+end
+#same than <em> put</em>
+def  delete()
+end
 end
 end
 module BDB
-# This subsystem is used when recovery from application or system
-# failure is necessary.
-# 
-# The log is stored in one or more files in the environment
-# directory. Each file is named using the format log.NNNNNNNNNN, where
-# NNNNNNNNNN is the sequence number of the file within the log.
-# 
-# If the log region is being created and log files are already present,
-# the log files are reviewed and subsequent log writes are appended to
-# the end of the log, rather than overwriting current log entries.
-# 
-# 
-# The lock subsystem is created, initialized, and opened by calls to
-# (({BDB::Env#open})) with the ((|BDB::INIT_LOG|)) flag specified. 
-# 
-# The following options can be given when the environnement is created
-# 
-#   : ((|"set_lg_bsize"|))
-#     Set log buffer size
-# 
-#   : ((|"set_lg_dir"|))
-#     Set the environment logging directory
-# 
-#   : ((|"set_lg_max"|))
-#     Set log file size
 class Env
 
 #The log_archive function return an array of log or database file names.
@@ -1400,7 +1567,7 @@ class Env
 #<em>flags</em> value must be set to 0 or the value <em>BDB::ARCH_DATA</em>
 #<em>BDB::ARCH_DATA</em>, <em>BDB::ARCH_LOG</em>
 #
-def  lock_archive(flags = 0)
+def  log_archive(flags = 0)
 end
 
 #
@@ -1477,6 +1644,8 @@ end
 def  log_unregister()
 end
 end
+ # a BDB::Lsn object is created by the method log_checkpoint, log_curlsn,
+ # log_flush, log_put
 class Lsn
 include Comparable
 
@@ -1492,7 +1661,9 @@ end
 #
 def  log_file(name)
 end
-alias  file  log_file
+#same than <em> log_file</em>
+def  file(name)
+end
 
 #
 #The <em>log_flush</em> function guarantees that all log records whose
@@ -1501,14 +1672,18 @@ alias  file  log_file
 #
 def  log_flush
 end
-alias  flush  log_flush
+#same than <em> log_flush</em>
+def  flush
+end
 
 #
 #return the <em>String</em> associated with this <em>BDB::Lsn</em>
 #
 def  log_get
 end
-alias  get  log_get
+#same than <em> log_get</em>
+def  get
+end
 end
 end
 module BDB
@@ -1521,41 +1696,37 @@ module BDB
 # methods and other forms of data may be protected if they are logged
 # and locked appropriately.
 # 
+# 
 # The transaction subsystem is created, initialized, and opened by calls
-# to ((<BDB::Env#open|URL:env.html#open>)) with the ((|BDB::INIT_TXN|))
-# flag (or ((|BDB::INIT_TRANSACTION|))) specified.
+# to <em>BDB::Env#open</em> with the <em>BDB::INIT_TXN</em>
+# flag (or <em>BDB::INIT_TRANSACTION</em>) specified.
 # Note that enabling transactions automatically enables
 # logging, but does not enable locking, as a single thread of control
 # that needed atomicity and recoverability would not require it.
 # 
-# The following option can be given when the environnement is created
-# 
-#  : ((|"set_tx_max"|))
-#    Set maximum number of transactions
-# 
-# and with DB >= 4.0
-# 
-#  : ((|"set_timeout"|))
-#  : ((|"set_txn_timeout"|))
-#  : ((|"set_lock_timeout"|))
-# 
-# The transaction is created with ((<BDB::Env#begin|URL:env.html#begin>))
-# or with ((<begin>)) 
+# The transaction is created with <em>BDB::Env#begin</em>
+# or with <em>begin</em> 
 class Txn
 
 #Abort the transaction. This is will terminate the transaction.
 #
 def  abort()
 end
-alias  txn_abort  abort
+#same than <em> abort</em>
+def  txn_abort()
+end
 
 #Associate a database with the transaction, return a new database
 #handle which is transaction protected.
 #
 def  assoc(db, ...)
 end
-alias  associate  assoc
-alias  txn_assoc  assoc
+#same than <em> assoc</em>
+def  associate(db, ...)
+end
+#same than <em> assoc</em>
+def  txn_assoc(db, ...)
+end
 
 #begin a transaction (the transaction manager must be enabled). flags
 #can have the value <em>DBD::TXN_COMMIT</em>, in this case the transaction
@@ -1585,8 +1756,9 @@ alias  txn_assoc  assoc
 def  begin(flags = 0, db, ...) 
 yield txn, db, ...
 end
-alias  begin  begin
-alias  txn_begin  begin
+#same than <em> begin</em>
+def  txn_begin(flags = 0, db, ...)
+end
 
 #Commit the transaction. This will finish the transaction.
 #The <em>flags</em> can have the value 
@@ -1606,9 +1778,15 @@ alias  txn_begin  begin
 #
 def  commit(flags = 0)
 end
-alias  close  commit
-alias  txn_commit  commit
-alias  txn_close  commit
+#same than <em> commit</em>
+def  close(flags = 0)
+end
+#same than <em> commit</em>
+def  txn_commit(flags = 0)
+end
+#same than <em> commit</em>
+def  txn_close(flags = 0)
+end
 
 #only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 3
 #
@@ -1617,7 +1795,33 @@ alias  txn_close  commit
 #
 def  discard
 end
-alias  txn_discard  discard
+#same than <em> discard</em>
+def  txn_discard
+end
+
+#only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+#
+#remove the database specified by <em>file</em> and <em>database</em>. If no
+#<em>database</em> is <em>nil</em>, the underlying file represented by 
+#<em>file</em> is removed, incidentally removing all databases
+#that it contained. 
+#
+#The <em>flags</em> value must be set to 0 or <em>BDB::AUTO_COMMIT</em>
+#
+def  dbremove(file, database = nil, flags = 0)
+end
+
+#only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+#
+#rename the database specified by <em>file</em> and <em>database</em> to
+#<em>newname</em>. If <em>database</em> is <em>nil</em>, the underlying file
+#represented by <em>file</em> is renamed, incidentally renaming all databases
+#that it contained. 
+#
+#The <em>flags</em> value must be set to 0 or <em>BDB::AUTO_COMMIT</em>
+#
+def  dbrename(file, database, newname, flags = 0)
+end
 
 #The txn_id function returns the unique transaction id associated
 #with the specified transaction. Locking calls made on behalf of
@@ -1626,7 +1830,19 @@ alias  txn_discard  discard
 #
 def  id()
 end
-alias  txn_id  id
+#same than <em> id</em>
+def  txn_id()
+end
+
+#Only with DB >= 4.1
+#
+#open the database in the current transaction. type must be one of
+#the constant <em>BDB::BTREE</em>, <em>BDB::HASH</em>, <em>BDB::RECNO</em>, 
+#<em>BDB::QUEUE</em>. See <em>open</em> for other
+#arguments
+#
+def  open_db(type, name = nil, subname = nil, flags = 0, mode = 0)
+end
 
 #The txn_prepare function initiates the beginning of a two-phase commit.
 #
@@ -1641,8 +1857,11 @@ alias  txn_id  id
 #
 def  prepare()
 end
-alias  txn_prepare  prepare
-alias  prepare  prepare
-alias  txn_prepare  prepare
+#same than <em> prepare</em>
+def  txn_prepare()
+end
+#same than <em> prepare</em>
+def  txn_prepare(id)    # version 3.3.11
+end
 end
 end

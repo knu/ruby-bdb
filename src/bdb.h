@@ -8,14 +8,17 @@
 extern "C" {
 #endif
 
-#define BDB_MARSHAL 1
-#define BDB_TXN 2
-#define BDB_RE_SOURCE 4
-#define BDB_BT_COMPARE 8
-#define BDB_BT_PREFIX  16
-#define BDB_DUP_COMPARE 32
-#define BDB_H_HASH 64
-#define BDB_FUNCTION (BDB_BT_COMPARE|BDB_BT_PREFIX|BDB_DUP_COMPARE|BDB_H_HASH)
+#define BDB_MARSHAL        1
+#define BDB_TXN            2
+#define BDB_RE_SOURCE      4
+#define BDB_BT_COMPARE     8
+#define BDB_BT_PREFIX     16
+#define BDB_DUP_COMPARE   32
+#define BDB_H_HASH        64
+#define BDB_APPEND_RECNO 128
+#define BDB_FEEDBACK     256
+
+#define BDB_FUNCTION (BDB_BT_COMPARE|BDB_BT_PREFIX|BDB_DUP_COMPARE|BDB_H_HASH|BDB_APPEND_RECNO|BDB_FEEDBACK)
 
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
 #define BDB_ERROR_PRIVATE 44444
@@ -23,7 +26,7 @@ extern "C" {
 
 #define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
 #define BDB_INIT_LOMP (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_LOG)
-#define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH)
+#define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH | BDB_APPEND_RECNO | BDB_FEEDBACK)
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
 #define DB_RMW 0
@@ -78,6 +81,10 @@ typedef struct  {
 #if DB_VERSION_MAJOR >= 4
     VALUE rep_transport;
 #endif
+#if DB_VERSION_MAJOR >= 3
+    int options;
+    VALUE feedback;
+#endif
 } bdb_ENV;
 
 #if DB_VERSION_MAJOR >= 4
@@ -127,6 +134,14 @@ typedef struct {
 #else
     int re_len;
     char re_pad;
+    VALUE feedback;
+#endif
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    VALUE arguments;
+    VALUE append_recno;
+#endif
+#ifdef DB_PRIORITY_DEFAULT
+    int priority;
 #endif
 } bdb_DB;
 
@@ -264,11 +279,11 @@ struct dblsnst {
     (data).dlen = db->dlen;			\
     (data).doff = db->doff;
 
-#define GetTxnDB(obj, txnst)				\
-{							\
-    Data_Get_Struct(obj, bdb_TXN, txnst);		\
-    if (txnst->txnid == 0)				\
-        rb_raise(bdb_eFatal, "closed transaction");	\
+#define GetTxnDB(obj, txnst, error)		\
+{						\
+    Data_Get_Struct(obj, bdb_TXN, txnst);	\
+    if (txnst->txnid == 0)			\
+        rb_raise(error, "closed transaction");	\
 }
 
 #if DB_VERSION_MAJOR < 3
@@ -309,7 +324,6 @@ extern VALUE bdb_assoc _((VALUE, DBT, DBT));
 extern VALUE bdb_assoc3 _((VALUE, DBT, DBT, DBT));
 extern VALUE bdb_assoc_dyna _((VALUE, DBT, DBT));
 extern VALUE bdb_clear _((VALUE));
-extern VALUE bdb_close _((int, VALUE *, VALUE));
 extern VALUE bdb_del _((VALUE, VALUE));
 extern void bdb_deleg_mark _((struct deleg_class *));
 extern void bdb_deleg_free _((struct deleg_class *));
@@ -342,6 +356,7 @@ extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
 extern VALUE MakeLsn _((VALUE));
 extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
+extern VALUE bdb_return_err _((void));
 
 #if defined(__cplusplus)
 }

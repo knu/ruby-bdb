@@ -190,12 +190,22 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
       : ((|set_re_len|)) :   set the fixed-length record length
       : ((|set_re_pad|)) :   set the fixed-length record pad byte
       : ((|set_re_source|)) :  set the backing Recno text file
+      : ((|set_append_recno|)) : modify the stored data for ((|BDB::APPEND|))
+      : ((|set_encrypt|)) : set the password used
+      : ((|set_feedback|)) : set the function to monitor some operations
       : ((|env|)) :  open the database in the environnement given as the value
       : ((|txn|)) :  open the database in the transaction given as the value
 
+      ((|set_append_recno|)) will be called with (key, value) and
+      it must return ((|nil|)) or the modified value
+
+      ((|set_encrypt|)) take an Array as arguments with the values
+      [password, flags], where flags can be 0 or ((|BDB::ENCRYPT_AES|))
+
       Proc given to ((|set_bt_compare|)), ((|set_bt_prefix|)), 
       ((|set_dup_compare|)), ((|set_h_hash|)), ((|set_store_key|))
-      ((|set_fetch_key|)), ((|set_store_value|)) and ((|set_fetch_value|))
+      ((|set_fetch_key|)), ((|set_store_value|)), ((|set_fetch_value|))
+      ((|set_feedback|)) and ((|set_append_recno|))
       can be also specified as a method (replace the prefix ((|set_|)) 
       with ((|bdb_|)))
 
@@ -235,6 +245,17 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
     The block must return the new key, or ((|Qfalse|)) in this case the
     secondary index will not contain any reference to key/value
+
+--- cache_priority
+    return the current priority value
+
+--- cache_priority=value
+    set the priority value : can be ((|BDB::PRIORITY_VERY_LOW|)),
+    ((|BDB::PRIORITY_LOW|)),  ((|BDB::PRIORITY_DEFAULT|)),
+    ((|BDB::PRIORITY_HIGH|)) or ((|BDB::PRIORITY_VERY_HIGH|))
+
+--- feedback=(proc)
+    monitor the progress of some operations
 
 --- get(key, flags = 0)
 --- db_get(key, flags = 0)

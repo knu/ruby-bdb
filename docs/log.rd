@@ -3,7 +3,7 @@
 == Logging subsystem
 
 # module BDB
-#^
+#
 This subsystem is used when recovery from application or system
 failure is necessary.
 
@@ -29,7 +29,7 @@ The following options can be given when the environnement is created
 
   : ((|"set_lg_max"|))
     Set log file size
-#^
+#
 
 # class Env
 
@@ -37,7 +37,7 @@ The following options can be given when the environnement is created
 
 ==== Methods
 
---- lock_archive(flags = 0)
+--- log_archive(flags = 0)
     The log_archive function return an array of log or database file names.
 
     ((|flags|)) value must be set to 0 or the value ((|BDB::ARCH_DATA|))
@@ -102,6 +102,8 @@ The following options can be given when the environnement is created
   
     The ((|log_unregister|)) function unregisters a file name.
 # end
+## a BDB::Lsn object is created by the method log_checkpoint, log_curlsn,
+## log_flush, log_put
 # class Lsn
 # include Comparable
 

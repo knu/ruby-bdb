@@ -387,6 +387,7 @@ class TestBtree < Inh::TestCase
    def test_23_sh
       val = 'a' .. 'zz'
       assert_equal(nil, $bdb.close, "<close>")
+      File::unlink('tmp/aa') if FileTest.file?('tmp/aa')
       assert_kind_of(BDB::Btree, $bdb = BDB::AZ.open("tmp/aa", nil, "w"), "<sh>")
       val.each do |l|
 	 assert_equal(l, $bdb[l] = l, "<store>")

@@ -206,8 +206,8 @@ class TestBtree < Inh::TestCase
       assert_equal(3, db.size, "<size in txn>")
       assert(txn.commit, "<commit>")
       assert_equal(3, $bdb.size, "<size after commit>")
-      assert_equal(["e", "f"], db["aa"].to_orig, "<change array>");
-      assert_equal({"bb" => "dd", "cc" => "ee"}, db["bb"].to_orig, "<change hash>");
+      assert_equal(["e", "f"], $bdb["aa"].to_orig, "<change array>");
+      assert_equal({"bb" => "dd", "cc" => "ee"}, $bdb["bb"].to_orig, "<change hash>");
    end
    def test_14_txn_abort
       assert_kind_of(BDB::Txn, txn = $env.begin, "<transaction>")
@@ -221,8 +221,8 @@ class TestBtree < Inh::TestCase
       assert_equal({"bb" => "dd", "cc" => "ee", "dd" => [3, 4]}, db["bb"].to_orig, "<change hash>");
       assert_equal(6, db.size, "<size in txn>")
       assert(txn.abort, "<abort>")
-      assert_equal(["e", "f"], db["aa"].to_orig, "<change array>");
-      assert_equal({"bb" => "dd", "cc" => "ee"}, db["bb"].to_orig, "<change hash>");
+      assert_equal(["e", "f"], $bdb["aa"].to_orig, "<change array>");
+      assert_equal({"bb" => "dd", "cc" => "ee"}, $bdb["bb"].to_orig, "<change hash>");
       assert_equal(3, $bdb.size, "<size after abort>")
    end
    def test_15_txn_abort2

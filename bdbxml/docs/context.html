@@ -1,0 +1,67 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/context.rd</title>
+</head>
+<body>
+<h2><a name="label:0" id="label:0">BDB::XML::Context</a></h2><!-- RDLabel: "BDB::XML::Context" -->
+<p>The context within which a query is performed against a Container. </p>
+<p>The context within which a query is performed against a Container
+is complex enough to warrent an encapsulating class. This context
+includes a namespace mapping, variable bindings, and flags that 
+determine how the query result set should be determined and returned
+to the caller.</p>
+<p>The XPath syntax permits expressions to refer to namespace prefixes, but
+not to define them. The Context class provides a number of namespace 
+management methods so that the caller may manage the namespace prefix
+to URI mapping.</p>
+<p>The XPath syntax also permits expressions to refer to variables, but not
+to define them. The Context class provides a number of methods so
+that the caller may manage the variable to value bindings.</p>
+<h3><a name="label:1" id="label:1">Class Methods</a></h3><!-- RDLabel: "Class Methods" -->
+<dl>
+<dt><a name="label:2" id="label:2"><code>allocate</code></a></dt><!-- RDLabel: "allocate" -->
+<dd>
+<p>Allocate a new Context object</p></dd>
+</dl>
+<h3><a name="label:3" id="label:3">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label:4" id="label:4"><code>self[variable]</code></a></dt><!-- RDLabel: "self[variable]" -->
+<dd>
+<p>Get the value bound to a variable</p></dd>
+<dt><a name="label:5" id="label:5"><code>self[variable] = <var>value</var></code></a></dt><!-- RDLabel: "self[variable] = value" -->
+<dd>
+<p>Bind a value to a variable</p></dd>
+<dt><a name="label:6" id="label:6"><code>clear_namespaces</code></a><!-- RDLabel: "clear_namespaces" -->
+<dt><a name="label:7" id="label:7"><code>clear</code></a></dt><!-- RDLabel: "clear" -->
+<dd>
+<p>Delete all the namespace prefix mappings</p></dd>
+<dt><a name="label:8" id="label:8"><code>del_namespace(<var>name</var>)</code></a></dt><!-- RDLabel: "del_namespace" -->
+<dd>
+<p>Delete the namespace URI for a particular prefix</p></dd>
+<dt><a name="label:9" id="label:9"><code>evaltype=(<var>type</var>)</code></a></dt><!-- RDLabel: "evaltype=" -->
+<dd>
+<p>Set the evaluation type</p></dd>
+<dt><a name="label:10" id="label:10"><code>get_namespace(<var>name</var>)</code></a><!-- RDLabel: "get_namespace" -->
+<dt><a name="label:11" id="label:11"><code>namespace(<var>name</var>)</code></a></dt><!-- RDLabel: "namespace" -->
+<dd>
+<p>Get the namespace URI that a namespace prefix maps onto</p></dd>
+<dt><a name="label:12" id="label:12"><code>initialize(<var>evaluation</var> = <var>nil</var>, <var>returntype</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "initialize" -->
+<dd>
+<p>Initialize the object with the optional evaluation type
+<var>BDB::XML::Context::Lazy</var> or <var>BDB::XML::Context::Eager</var>
+and return type <var>BDB::XML::Context::Documents</var>,
+<var>BDB::XML::Context::Values</var> or <var>BDB::XML::Context::Candidates</var></p></dd>
+<dt><a name="label:13" id="label:13"><code>returntype=(<var>type</var>)</code></a></dt><!-- RDLabel: "returntype=" -->
+<dd>
+<p>Set the return type</p></dd>
+<dt><a name="label:14" id="label:14"><code>set_namespace(<var>name</var>, <var>uri</var>)</code></a></dt><!-- RDLabel: "set_namespace" -->
+<dd>
+<p>Define a namespace prefix, providing the URI that it maps onto</p></dd>
+</dl>
+
+</body>
+</html>

@@ -1,0 +1,56 @@
+
+ This is an interface to Berkeley DB XML, distributed by Sleepycat
+ (http://www.sleepycat.com/xml/index.html)
+
+
+* Installation
+
+.... IMPORTANT : on linux xerces *must* be compiled without thread
+
+     modify src/xercesc/Makefile.incl
+
+     runConfigure -plinux -cgcc -xg++ -minmem -nsocket -tnative -rnone
+
+
+pigeon% diff -u Makefile.incl~ Makefile.incl
+--- Makefile.incl~      Sat Jul 27 17:41:11 2002
++++ Makefile.incl       Sat Jul 27 17:41:26 2002
+@@ -269,8 +269,8 @@
+ 
+ #=============== LINUX SPECIFIC OPTIONS =========================
+ ifeq (${PLATFORM}, LINUX)
+-PLATFORM_COMPILE_OPTIONS = -fPIC -D${PLATFORM} -D_REENTRANT
+-# PLATFORM_COMPILE_OPTIONS = -fPIC -D${PLATFORM} -DAPP_NO_THREADS
++# PLATFORM_COMPILE_OPTIONS = -fPIC -D${PLATFORM} -D_REENTRANT
++PLATFORM_COMPILE_OPTIONS = -fPIC -D${PLATFORM} -DAPP_NO_THREADS
+ MAKE_SHARED = ${CXX} -D${PLATFORM} -shared -fPIC ${LDFLAGS}
+ MAKE_SHARED_C = ${CC} -D${PLATFORM} -shared -fPIC ${LDFLAGS}
+ ifeq (${TRANSCODER}, ICU)
+pigeon% 
+
+   or read the instructions in the xerces documentation
+
+.... first build bdb which is in 'bdb-0.3.3/src', and use this version of 
+     bdb for use with bdbxml
+
+
+.... modify 'bdb-0.3.3/bdbxml/myconfig' to adapt it to your configuration
+
+.... This version must be used with [db-4.1.16, DbXml 0.4.0]
+
+.... ruby extconf.rb
+     make
+     make install
+
+
+* Documentation : see bdbxml.rd and bdbxml.html
+
+* Copying
+ 
+ This extension module is copyrighted free software by Guy Decoux
+ 
+ You can redistribute it and/or modify it under the same term as
+ Ruby.
+ 
+ 
+Guy Decoux <ts@moulon.inra.fr>

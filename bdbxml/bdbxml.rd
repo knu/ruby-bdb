@@ -1,0 +1,78 @@
+=begin
+= BDB::XML
+
+# module BDB
+#^
+
+Berkeley DB XML is an embedded native XML datastore that provides for
+the efficient storage and retrieval of XML encoded information.
+
+Retrieval is supported by an XPath query engine that derives its efficiency
+from indices generated from the stored XML data.
+#^
+# module XML
+#
+((<BDB::XML::Container|URL:docs/container.html>))
+
+#^
+The container name provides the base for the filenames of the database
+files used to store the container content. The directory within which
+the files are opened is taken from the environment passed through the
+Container constructor.  If no environment was provided, then the
+directory used will be the current working directory.
+#^
+# class Container
+# end
+
+((<BDB::XML::Document|URL:docs/document.html>))
+#^
+A Document is the unit of storage within a Container. 
+
+A Document contains a stream of bytes that may be of type XML
+or BYTES. The Container only indexes the content of Documents
+that contain XML. The BYTES type is supported to allow the storage
+of arbitrary content along with XML content.
+
+Document supports annotation attributes.
+
+#^
+# class Document
+# end
+
+((<BDB::XML::Context|URL:docs/context.html>))
+#^
+The context within which a query is performed against a Container. 
+
+The context within which a query is performed against a Container
+is complex enough to warrent an encapsulating class. This context
+includes a namespace mapping, variable bindings, and flags that 
+determine how the query result set should be determined and returned
+to the caller.
+
+The XPath syntax permits expressions to refer to namespace prefixes, but
+not to define them. The Context class provides a number of namespace 
+management methods so that the caller may manage the namespace prefix
+to URI mapping.
+
+The XPath syntax also permits expressions to refer to variables, but not
+to define them. The Context class provides a number of methods so
+that the caller may manage the variable to value bindings.
+#^
+# class Context
+# end
+((<BDB::XML::Results|URL:docs/results.html>))
+#^
+
+The results of a query are a collection of values. The values could
+be either String, Float, true, false, BDB::XML::Documents or BDB::XML::Nodes
+
+#^
+
+Implement only the method ((|each|))
+#
+# class Results
+# end
+# end
+# end
+
+=end

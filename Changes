@@ -176,3 +176,17 @@
 * first modifications for xdb
 * patch for tests (Thanks "WATANABE Hirofumi" <eban@os.rim.or.jp>)
 * flatten! ===> txn.begin(a, b, c) {|t, a1, b1, c1| }
+
+-- 0.3.3
+
+* typo in bdb_select (Thanks "Fritz Heinrichmeyer "
+                             <fritz.heinrichmeyer@fernuni-hagen.de>)
+* support for db-4.1.16
+   - set_append_recno
+   - cache_priority, cache_priority=
+   - set_encrypt
+   - dbremove, dbrename
+   - BDB::Txn::open_db
+* BDB::ENV, BDB::Common : "set_feedback", feedback= for db >= 3.
+* documentation : make rd2; make rdoc
+* experimental bdbxml for DbXml (not yet released)

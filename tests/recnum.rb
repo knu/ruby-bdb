@@ -206,7 +206,7 @@ class TestRecnum < Inh::TestCase
       100.times do
 	 aa = []
 	 rand(12).times do 
-	    aa.push rand $bdb.size
+	    aa.push rand($bdb.size)
 	 end
 	 assert_equal($array.indices(*aa), $bdb.indices(*aa), "<indices>")
       end

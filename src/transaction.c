@@ -1,5 +1,7 @@
 #include "bdb.h"
 
+static ID id_txn_close;
+
 static void 
 bdb_txn_free(txnst)
     bdb_TXN *txnst;
@@ -34,7 +36,7 @@ bdb_txn_assoc(argc, argv, obj)
     bdb_TXN *txnst;
 
     ary = rb_ary_new();
-    GetTxnDB(obj, txnst);
+    GetTxnDB(obj, txnst, bdb_eFatal);
     for (i = 0; i < argc; i++) {
 	a = rb_funcall(argv[i], rb_intern("__txn_dup__"), 1, obj);
         rb_ary_push(ary, a);
@@ -61,7 +63,7 @@ bdb_txn_commit(argc, argv, obj)
     if (rb_scan_args(argc, argv, "01", &a) == 1) {
         flags = NUM2INT(a);
     }
-    GetTxnDB(obj, txnst);
+    GetTxnDB(obj, txnst, bdb_eFatal);
 #if DB_VERSION_MAJOR < 3
     bdb_test_error(txn_commit(txnst->txnid));
 #else
@@ -72,8 +74,8 @@ bdb_txn_commit(argc, argv, obj)
 #endif
 #endif
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	if (rb_respond_to(obj, rb_intern("__txn_close__"))) {
-	    rb_funcall(obj, rb_intern("__txn_close__"), 1, Qtrue);
+	if (rb_respond_to(db, id_txn_close)) {
+	    rb_funcall(db, id_txn_close, 1, Qtrue);
 	}
     }
     txnst->txnid = NULL;
@@ -91,15 +93,15 @@ bdb_txn_abort(obj)
     bdb_TXN *txnst;
     VALUE db;
 
-    GetTxnDB(obj, txnst);
+    GetTxnDB(obj, txnst, bdb_eFatal);
 #if DB_VERSION_MAJOR >= 4
     bdb_test_error(txnst->txnid->abort(txnst->txnid));
 #else
     bdb_test_error(txn_abort(txnst->txnid));
 #endif
     while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	if (rb_respond_to(obj, rb_intern("__txn_close__"))) {
-	    rb_funcall2(obj, rb_intern("__txn_close__"), 1, Qfalse);
+	if (rb_respond_to(db, id_txn_close)) {
+	    rb_funcall(db, id_txn_close, 1, Qfalse);
 	}
     }
     txnst->txnid = NULL;
@@ -155,8 +157,15 @@ bdb_txn_lock(obj)
 	Data_Get_Struct(result, bdb_TXN, txn1);
 	if (txn1 == txnst)
 	    return Qnil;
-	else
+	else {
+	    VALUE db;
+	    while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
+		if (rb_respond_to(db, id_txn_close)) {
+		    rb_funcall(db, id_txn_close, 1, Qfalse);
+		}
+	    }
 	    rb_throw("__bdb__begin", result);
+	}
     }
     txnst->status = 0;
     if (txnst->txnid) {
@@ -265,7 +274,7 @@ bdb_env_rslbl_begin(origin, argc, argv, obj)
         argc--; argv++;
     }
     if (rb_obj_is_kind_of(obj, bdb_cTxn)) {
-        GetTxnDB(obj, txnstpar);
+        GetTxnDB(obj, txnstpar, bdb_eFatal);
         txnpar = txnstpar->txnid;
 	env = txnstpar->env;
 	GetEnvDB(env, dbenvst);
@@ -352,7 +361,7 @@ bdb_txn_id(obj)
     bdb_TXN *txnst;
     int res;
 
-    GetTxnDB(obj, txnst);
+    GetTxnDB(obj, txnst, bdb_eFatal);
 #if DB_VERSION_MAJOR >= 4
     res = txnst->txnid->id(txnst->txnid);
 #else
@@ -373,7 +382,7 @@ bdb_txn_prepare(obj)
     bdb_TXN *txnst;
     unsigned char id;
 
-    GetTxnDB(obj, txnst);
+    GetTxnDB(obj, txnst, bdb_eFatal);
 #if DB_VERSION_MAJOR >= 4
     id = (unsigned char)NUM2INT(txnid);
     bdb_test_error(txnst->txnid->prepare(txnst->txnid, &id));
@@ -484,7 +493,7 @@ bdb_txn_discard(obj)
 
     rb_secure(4);
     flags = 0;
-    GetTxnDB(obj, txnst);
+    GetTxnDB(obj, txnst, bdb_eFatal);
 #if DB_VERSION_MAJOR >=4
     bdb_test_error(txnst->txnid->discard(txnst->txnid, flags));
 #else
@@ -558,10 +567,12 @@ bdb_env_stat(argc, argv, obj)
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	MEMCPY(lsnst->lsn, &bdb_stat->st_last_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_last_ckp"), lsn);
+#if DB_VERSION_MINOR < 1
 	lsn = MakeLsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	MEMCPY(lsnst->lsn, &bdb_stat->st_pending_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_pending_ckp"), lsn);
+#endif
 	ary = rb_ary_new2(bdb_stat->st_nactive);
 	for (i = 0; i < bdb_stat->st_nactive; i++) {
 	    hash = rb_hash_new();
@@ -589,7 +600,7 @@ bdb_txn_set_txn_timeout(obj, a)
     bdb_ENV dbenvst;
 
     if (!NIL_P(a)) {
-	GetTxnDB(obj, txnst);
+	GetTxnDB(obj, txnst, bdb_eFatal);
 	bdb_test_error(txnst->txnid->set_timeout(txnst->txnid, NUM2UINT(a), DB_SET_TXN_TIMEOUT));
     }
     return obj;
@@ -603,7 +614,7 @@ bdb_txn_set_lock_timeout(obj, a)
     bdb_ENV dbenvst;
 
     if (!NIL_P(a)) {
-	GetTxnDB(obj, txnst);
+	GetTxnDB(obj, txnst, bdb_eFatal);
 	bdb_test_error(txnst->txnid->set_timeout(txnst->txnid, NUM2UINT(a), DB_SET_LOCK_TIMEOUT));
     }
     return obj;
@@ -629,11 +640,110 @@ bdb_txn_set_timeout(obj, a)
     return obj;
 } 
 
+#if DB_VERSION_MINOR >= 1
+
+static VALUE
+bdb_env_dbremove(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    VALUE a, b, c;
+    char *file, *database;
+    int flags;
+    bdb_ENV *dbenvst;
+    bdb_TXN *txnst;
+    DB_TXN *txnid;
+
+    rb_secure(2);
+    a = b = c = Qnil;
+    file = database = NULL;
+    flags = 0;
+    rb_scan_args(argc, argv, "03", &a, &b, &c);
+    if (!NIL_P(a)) {
+	Check_SafeStr(a);
+	file = RSTRING(a)->ptr;
+    }
+    if (!NIL_P(b)) {
+	Check_SafeStr(b);
+	database = RSTRING(b)->ptr;
+    }
+    if (!NIL_P(c)) {
+	flags = NUM2INT(c);
+    }
+    txnid = NULL;
+    if (rb_obj_is_kind_of(obj, bdb_cTxn)) {
+        GetTxnDB(obj, txnst, bdb_eFatal);
+	txnid = txnst->txnid;
+	GetEnvDB(txnst->env, dbenvst);
+    }
+    else {
+	GetEnvDB(obj, dbenvst);
+    }
+    bdb_test_error(dbenvst->dbenvp->dbremove(dbenvst->dbenvp, txnid,
+					     file, database, flags));
+    return Qnil;
+}
+
+static VALUE
+bdb_env_dbrename(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    VALUE a, b, c, d;
+    char *file, *database, *newname;
+    int flags;
+    bdb_ENV *dbenvst;
+    bdb_TXN *txnst;
+    DB_TXN *txnid;
+
+    rb_secure(2);
+    a = b = c = Qnil;
+    file = database = newname = NULL;
+    flags = 0;
+    if (rb_scan_args(argc, argv, "22", &a, &b, &c, &d) == 2) {
+	c = b;
+	b = d = Qnil;
+    }
+    if (!NIL_P(a)) {
+	Check_SafeStr(a);
+	file = RSTRING(a)->ptr;
+    }
+    if (!NIL_P(b)) {
+	Check_SafeStr(b);
+	database = RSTRING(b)->ptr;
+    }
+    if (!NIL_P(c)) {
+	Check_SafeStr(c);
+	newname = RSTRING(c)->ptr;
+    }
+    else {
+	rb_raise(bdb_eFatal, "newname not specified");
+    }
+    if (!NIL_P(d)) {
+	flags = NUM2INT(d);
+    }
+    txnid = NULL;
+    if (rb_obj_is_kind_of(obj, bdb_cTxn)) {
+        GetTxnDB(obj, txnst, bdb_eFatal);
+	txnid = txnst->txnid;
+	GetEnvDB(txnst->env, dbenvst);
+    }
+    else {
+	GetEnvDB(obj, dbenvst);
+    }
+    bdb_test_error(dbenvst->dbenvp->dbrename(dbenvst->dbenvp, txnid,
+					     file, database, newname, flags));
+    return Qnil;
+}
+
+#endif
+
 #endif
 
 
 void bdb_init_transaction()
 {
+    id_txn_close = rb_intern("__txn_close__");
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);
     bdb_cTxnCatch = rb_define_class_under(bdb_mDb, "DBTxnCatch", bdb_cTxn);
     rb_undef_method(CLASS_OF(bdb_cTxn), "allocate");
@@ -677,5 +787,11 @@ void bdb_init_transaction()
     rb_define_method(bdb_cTxn, "set_timeout", bdb_txn_set_timeout, 1);
     rb_define_method(bdb_cTxn, "set_txn_timeout", bdb_txn_set_txn_timeout, 1);
     rb_define_method(bdb_cTxn, "set_lock_timeout", bdb_txn_set_lock_timeout, 1);
+#if DB_VERSION_MINOR >= 1
+    rb_define_method(bdb_cEnv, "dbremove", bdb_env_dbremove, -1);
+    rb_define_method(bdb_cTxn, "dbremove", bdb_env_dbremove, -1);
+    rb_define_method(bdb_cEnv, "dbrename", bdb_env_dbrename, -1);
+    rb_define_method(bdb_cTxn, "dbrename", bdb_env_dbrename, -1);
+#endif
 #endif    
 }

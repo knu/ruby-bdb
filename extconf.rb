@@ -15,7 +15,7 @@ def rule(target, clean = nil)
 end
 
 subdirs = Dir["*"].select do |subdir|
-   File.file?(subdir + "/extconf.rb")
+   subdir != "bdbxml" && File.file?(subdir + "/extconf.rb")
 end
 
 begin
@@ -42,8 +42,12 @@ SUBDIRS = #{subdirs.join(' ')}
    make.puts
    make.print <<-EOF
 
+rdoc: docs/doc/index.html
+
 docs/doc/index.html: $(RDOC)
-\t@-(cd docs; b.rb; rdoc bdb.rb)
+\t@-(cd docs; b.rb bdb; rdoc bdb.rb)
+
+rd2: html
 
 html: $(HTML)
 

@@ -106,6 +106,11 @@ purposes other than logging file modifications based on a set of open
 file descriptors will almost certainly need to make source code
 modifications to the Berkeley DB code base.
 #^
+##
+## BDB::Env defines the following methods
+##
+## log_archive, log_checkpoint, log_curlsn, log_each, log_put, log_get,
+## log_flush, log_reverse_each, log_stat
 # class Log
 # end
 # end

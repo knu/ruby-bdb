@@ -12,8 +12,8 @@
 <var>BDB::Recno</var> and <var>BDB::Queue</var></p>
 <ul>
 <li><a href="#label:1">Class Methods</a></li>
-<li><a href="#label:41">Methods</a></li>
-<li><a href="#label:110">Methods specific to BDB::Recno and BDB::Queue</a></li>
+<li><a href="#label:44">Methods</a></li>
+<li><a href="#label:116">Methods specific to BDB::Recno and BDB::Queue</a></li>
 </ul>
 <h3><a name="label:1" id="label:1">Class Methods</a></h3><!-- RDLabel: "Class Methods" -->
 <dl>
@@ -166,16 +166,30 @@ for more informations) </p>
 <dt><a name="label:33" id="label:33"><var>set_re_source</var> :  set the backing Recno text file
 </a></dt><!-- RDLabel: "set_re_source :  set the backing Recno text file
 " -->
-<dt><a name="label:34" id="label:34"><var>env</var> :  open the database in the environnement given as the value
+<dt><a name="label:34" id="label:34"><var>set_append_recno</var> : modify the stored data for <var>BDB::APPEND</var>
+</a></dt><!-- RDLabel: "set_append_recno : modify the stored data for BDB::APPEND
+" -->
+<dt><a name="label:35" id="label:35"><var>set_encrypt</var> : set the password used
+</a></dt><!-- RDLabel: "set_encrypt : set the password used
+" -->
+<dt><a name="label:36" id="label:36"><var>set_feedback</var> : set the function to monitor some operations
+</a></dt><!-- RDLabel: "set_feedback : set the function to monitor some operations
+" -->
+<dt><a name="label:37" id="label:37"><var>env</var> :  open the database in the environnement given as the value
 </a></dt><!-- RDLabel: "env :  open the database in the environnement given as the value
 " -->
-<dt><a name="label:35" id="label:35"><var>txn</var> :  open the database in the transaction given as the value
+<dt><a name="label:38" id="label:38"><var>txn</var> :  open the database in the transaction given as the value
 </a></dt><!-- RDLabel: "txn :  open the database in the transaction given as the value
 " -->
 </dl>
+<p><var>set_append_recno</var> will be called with (key, value) and
+it must return <var>nil</var> or the modified value</p>
+<p><var>set_encrypt</var> take an Array as arguments with the values
+[password, flags], where flags can be 0 or <var>BDB::ENCRYPT_AES</var></p>
 <p>Proc given to <var>set_bt_compare</var>, <var>set_bt_prefix</var>, 
 <var>set_dup_compare</var>, <var>set_h_hash</var>, <var>set_store_key</var>
-<var>set_fetch_key</var>, <var>set_store_value</var> and <var>set_fetch_value</var>
+<var>set_fetch_key</var>, <var>set_store_value</var>, <var>set_fetch_value</var>
+<var>set_feedback</var> and <var>set_append_recno</var>
 can be also specified as a method (replace the prefix <var>set_</var> 
 with <var>bdb_</var>)</p>
 <pre>For example 
@@ -189,52 +203,63 @@ with <var>bdb_</var>)</p>
   end</pre>
 </dd>
 </dl></dd>
-<dt><a name="label:36" id="label:36"><code>remove(<var>name</var>, <var>subname</var> = <var>nil</var>)</code></a><!-- RDLabel: "remove" -->
-<dt><a name="label:37" id="label:37"><code>db_remove(<var>name</var>, <var>subname</var> = <var>nil</var>)</code></a><!-- RDLabel: "db_remove" -->
-<dt><a name="label:38" id="label:38"><code>unlink(<var>name</var>, <var>subname</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "unlink" -->
+<dt><a name="label:39" id="label:39"><code>remove(<var>name</var>, <var>subname</var> = <var>nil</var>)</code></a><!-- RDLabel: "remove" -->
+<dt><a name="label:40" id="label:40"><code>db_remove(<var>name</var>, <var>subname</var> = <var>nil</var>)</code></a><!-- RDLabel: "db_remove" -->
+<dt><a name="label:41" id="label:41"><code>unlink(<var>name</var>, <var>subname</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "unlink" -->
 <dd>
 <p>Removes the database (or subdatabase) represented by the
 name and subname combination.</p>
 <p>If no subdatabase is specified, the physical file represented by name
 is removed, incidentally removing all subdatabases that it contained.</p></dd>
-<dt><a name="label:39" id="label:39"><code>upgrade(<var>name</var>)</code></a><!-- RDLabel: "upgrade" -->
-<dt><a name="label:40" id="label:40"><code>db_upgrade(<var>name</var>)</code></a></dt><!-- RDLabel: "db_upgrade" -->
+<dt><a name="label:42" id="label:42"><code>upgrade(<var>name</var>)</code></a><!-- RDLabel: "upgrade" -->
+<dt><a name="label:43" id="label:43"><code>db_upgrade(<var>name</var>)</code></a></dt><!-- RDLabel: "db_upgrade" -->
 <dd>
 <p>Upgrade the database</p></dd>
 </dl>
-<h3><a name="label:41" id="label:41">Methods</a></h3><!-- RDLabel: "Methods" -->
+<h3><a name="label:44" id="label:44">Methods</a></h3><!-- RDLabel: "Methods" -->
 <dl>
-<dt><a name="label:42" id="label:42"><code>self[key]</code></a></dt><!-- RDLabel: "self[key]" -->
+<dt><a name="label:45" id="label:45"><code>self[key]</code></a></dt><!-- RDLabel: "self[key]" -->
 <dd>
 <p>Returns the value corresponding the <var>key</var></p></dd>
-<dt><a name="label:43" id="label:43"><code>associate(<var>db</var>, <var>flag</var> = <var>0</var>) { |<var>db</var>, <var>key</var>, <var>value</var>| }</code></a></dt><!-- RDLabel: "associate" -->
+<dt><a name="label:46" id="label:46"><code>associate(<var>db</var>, <var>flag</var> = <var>0</var>) { |<var>db</var>, <var>key</var>, <var>value</var>| }</code></a></dt><!-- RDLabel: "associate" -->
 <dd>
 <p>associate a secondary index db</p>
 <p><var>flag</var> can have the value <var>BDB::RDONLY</var></p>
 <p>The block must return the new key, or <var>Qfalse</var> in this case the
 secondary index will not contain any reference to key/value</p></dd>
-<dt><a name="label:44" id="label:44"><code>get(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "get" -->
-<dt><a name="label:45" id="label:45"><code>db_get(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "db_get" -->
-<dt><a name="label:46" id="label:46"><code>fetch(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "fetch" -->
+<dt><a name="label:47" id="label:47"><code>cache_priority</code></a></dt><!-- RDLabel: "cache_priority" -->
+<dd>
+<p>return the current priority value</p></dd>
+<dt><a name="label:48" id="label:48"><code>cache_priority=value</code></a></dt><!-- RDLabel: "cache_priority=value" -->
+<dd>
+<p>set the priority value : can be <var>BDB::PRIORITY_VERY_LOW</var>,
+<var>BDB::PRIORITY_LOW</var>,  <var>BDB::PRIORITY_DEFAULT</var>,
+<var>BDB::PRIORITY_HIGH</var> or <var>BDB::PRIORITY_VERY_HIGH</var></p></dd>
+<dt><a name="label:49" id="label:49"><code>feedback=(<var>proc</var>)</code></a></dt><!-- RDLabel: "feedback=" -->
+<dd>
+<p>monitor the progress of some operations</p></dd>
+<dt><a name="label:50" id="label:50"><code>get(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "get" -->
+<dt><a name="label:51" id="label:51"><code>db_get(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "db_get" -->
+<dt><a name="label:52" id="label:52"><code>fetch(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "fetch" -->
 <dd>
 <p>Returns the value correspondind the <var>key</var></p>
 <p><var>flags</var> can have the values <var>BDB::GET_BOTH</var>, 
 <var>BDB::SET_RECNO</var> or <var>BDB::RMW</var></p>
 <p>In presence of duplicates it will return the first data item, use
 #duplicates if you want all duplicates (see also #each_dup)</p></dd>
-<dt><a name="label:47" id="label:47"><code>pget(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "pget" -->
+<dt><a name="label:53" id="label:53"><code>pget(<var>key</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "pget" -->
 <dd>
 <p>Returns the primary key and the value corresponding to <var>key</var>
 in the secondary index</p>
 <p>only with &gt;= 3.3.11</p></dd>
-<dt><a name="label:48" id="label:48"><code>self[key] = <var>value</var></code></a></dt><!-- RDLabel: "self[key] = value" -->
+<dt><a name="label:54" id="label:54"><code>self[key] = <var>value</var></code></a></dt><!-- RDLabel: "self[key] = value" -->
 <dd>
 <p>Stores the <var>value</var> associating with <var>key</var></p>
 <p>If <var>nil</var> is given as the value, the association from the key will be
 removed. </p></dd>
-<dt><a name="label:49" id="label:49"><code>put(<var>key</var>, <var>value</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "put" -->
-<dt><a name="label:50" id="label:50"><code>db_put(<var>key</var>, <var>value</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "db_put" -->
-<dt><a name="label:51" id="label:51"><code>store(<var>key</var>, <var>value</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "store" -->
+<dt><a name="label:55" id="label:55"><code>put(<var>key</var>, <var>value</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "put" -->
+<dt><a name="label:56" id="label:56"><code>db_put(<var>key</var>, <var>value</var>, <var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "db_put" -->
+<dt><a name="label:57" id="label:57"><code>store(<var>key</var>, <var>value</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "store" -->
 <dd>
 <p>Stores the <var>value</var> associating with <var>key</var></p>
 <p>If <var>nil</var> is given as the value, the association from the <var>key</var>
@@ -242,179 +267,179 @@ will be removed. It return the object deleted or <var>nil</var> if the
 specified key don't exist.</p>
 <p><var>flags</var> can have the value <var>DBD::NOOVERWRITE</var>, in this case
 it will return <var>nil</var> if the specified key exist, otherwise <var>true</var></p></dd>
-<dt><a name="label:52" id="label:52"><code>append(<var>key</var>, <var>value</var>)</code></a><!-- RDLabel: "append" -->
-<dt><a name="label:53" id="label:53"><code>db_append(<var>key</var>, <var>value</var>)</code></a></dt><!-- RDLabel: "db_append" -->
+<dt><a name="label:58" id="label:58"><code>append(<var>key</var>, <var>value</var>)</code></a><!-- RDLabel: "append" -->
+<dt><a name="label:59" id="label:59"><code>db_append(<var>key</var>, <var>value</var>)</code></a></dt><!-- RDLabel: "db_append" -->
 <dd>
 <p>Append the <var>value</var> associating with <var>key</var></p></dd>
-<dt><a name="label:54" id="label:54"><code>byteswapped?</code></a><!-- RDLabel: "byteswapped?" -->
-<dt><a name="label:55" id="label:55"><code>get_byteswapped</code></a></dt><!-- RDLabel: "get_byteswapped" -->
+<dt><a name="label:60" id="label:60"><code>byteswapped?</code></a><!-- RDLabel: "byteswapped?" -->
+<dt><a name="label:61" id="label:61"><code>get_byteswapped</code></a></dt><!-- RDLabel: "get_byteswapped" -->
 <dd>
 <p>Return if the underlying database is in host order</p></dd>
-<dt><a name="label:56" id="label:56"><code>clear_partial</code></a><!-- RDLabel: "clear_partial" -->
-<dt><a name="label:57" id="label:57"><code>partial_clear</code></a></dt><!-- RDLabel: "partial_clear" -->
+<dt><a name="label:62" id="label:62"><code>clear_partial</code></a><!-- RDLabel: "clear_partial" -->
+<dt><a name="label:63" id="label:63"><code>partial_clear</code></a></dt><!-- RDLabel: "partial_clear" -->
 <dd>
 <p>Clear partial set.</p></dd>
-<dt><a name="label:58" id="label:58"><code>close(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "close" -->
-<dt><a name="label:59" id="label:59"><code>db_close(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "db_close" -->
+<dt><a name="label:64" id="label:64"><code>close(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "close" -->
+<dt><a name="label:65" id="label:65"><code>db_close(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "db_close" -->
 <dd>
 <p>Closes the file.</p></dd>
-<dt><a name="label:60" id="label:60"><code>count(<var>key</var>)</code></a><!-- RDLabel: "count" -->
-<dt><a name="label:61" id="label:61"><code>dup_count(<var>key</var>)</code></a></dt><!-- RDLabel: "dup_count" -->
+<dt><a name="label:66" id="label:66"><code>count(<var>key</var>)</code></a><!-- RDLabel: "count" -->
+<dt><a name="label:67" id="label:67"><code>dup_count(<var>key</var>)</code></a></dt><!-- RDLabel: "dup_count" -->
 <dd>
 <p>Return the count of duplicate for <var>key</var></p></dd>
-<dt><a name="label:62" id="label:62"><code>cursor()</code></a><!-- RDLabel: "cursor" -->
-<dt><a name="label:63" id="label:63"><code>db_cursor()</code></a></dt><!-- RDLabel: "db_cursor" -->
+<dt><a name="label:68" id="label:68"><code>cursor()</code></a><!-- RDLabel: "cursor" -->
+<dt><a name="label:69" id="label:69"><code>db_cursor()</code></a></dt><!-- RDLabel: "db_cursor" -->
 <dd>
 <p>Open a new cursor.</p></dd>
-<dt><a name="label:64" id="label:64"><code>database()</code></a><!-- RDLabel: "database" -->
-<dt><a name="label:65" id="label:65"><code>subname()</code></a></dt><!-- RDLabel: "subname" -->
+<dt><a name="label:70" id="label:70"><code>database()</code></a><!-- RDLabel: "database" -->
+<dt><a name="label:71" id="label:71"><code>subname()</code></a></dt><!-- RDLabel: "subname" -->
 <dd>
 <p>Return the subname</p></dd>
-<dt><a name="label:66" id="label:66"><code>delete(<var>key</var>)</code></a><!-- RDLabel: "delete" -->
-<dt><a name="label:67" id="label:67"><code>db_del(<var>key</var>)</code></a></dt><!-- RDLabel: "db_del" -->
+<dt><a name="label:72" id="label:72"><code>delete(<var>key</var>)</code></a><!-- RDLabel: "delete" -->
+<dt><a name="label:73" id="label:73"><code>db_del(<var>key</var>)</code></a></dt><!-- RDLabel: "db_del" -->
 <dd>
 <p>Removes the association from the key. </p>
 <p>It return the object deleted or <var>nil</var> if the specified
 key don't exist.</p></dd>
-<dt><a name="label:68" id="label:68"><code>delete_if(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "delete_if" -->
-<dt><a name="label:69" id="label:69"><code>reject!(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject!" -->
+<dt><a name="label:74" id="label:74"><code>delete_if(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "delete_if" -->
+<dt><a name="label:75" id="label:75"><code>reject!(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject!" -->
 <dd>
 <p>Deletes associations if the evaluation of the block returns true. </p>
-<p><a href="#label:115">set</a></p></dd>
-<dt><a name="label:70" id="label:70"><code>duplicates(<var>key</var> , <var>assoc</var> = <var>true</var>)</code></a></dt><!-- RDLabel: "duplicates" -->
+<p><a href="#label:121">set</a></p></dd>
+<dt><a name="label:76" id="label:76"><code>duplicates(<var>key</var> , <var>assoc</var> = <var>true</var>)</code></a></dt><!-- RDLabel: "duplicates" -->
 <dd>
 <p>Return an array of all duplicate associations for <var>key</var></p>
 <p>if <var>assoc</var> is <var>false</var> return only the values.</p></dd>
-<dt><a name="label:71" id="label:71"><code>each(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "each" -->
-<dt><a name="label:72" id="label:72"><code>each_pair(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_pair" -->
+<dt><a name="label:77" id="label:77"><code>each(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "each" -->
+<dt><a name="label:78" id="label:78"><code>each_pair(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_pair" -->
 <dd>
 <p>Iterates over associations.</p>
-<p><a href="#label:115">set</a> <a href="#label:116">bulk</a></p></dd>
-<dt><a name="label:73" id="label:73"><code>each_dup(<var>key</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup" -->
+<p><a href="#label:121">set</a> <a href="#label:122">bulk</a></p></dd>
+<dt><a name="label:79" id="label:79"><code>each_dup(<var>key</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup" -->
 <dd>
 <p>Iterates over each duplicate associations for <var>key</var></p>
-<p><a href="#label:116">bulk</a></p></dd>
-<dt><a name="label:74" id="label:74"><code>each_dup_value(<var>key</var>, <var>bulk</var> = <var>0</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup_value" -->
+<p><a href="#label:122">bulk</a></p></dd>
+<dt><a name="label:80" id="label:80"><code>each_dup_value(<var>key</var>, <var>bulk</var> = <var>0</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup_value" -->
 <dd>
 <p>Iterates over each duplicate values for <var>key</var></p>
-<p><a href="#label:116">bulk</a></p></dd>
-<dt><a name="label:75" id="label:75"><code>each_key(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "each_key" -->
+<p><a href="#label:122">bulk</a></p></dd>
+<dt><a name="label:81" id="label:81"><code>each_key(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "each_key" -->
 <dd>
 <p>Iterates over keys. </p>
-<p><a href="#label:115">set</a> <a href="#label:116">bulk</a></p></dd>
-<dt><a name="label:76" id="label:76"><code>each_primary(<var>set</var> = <var>nil</var>) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "each_primary" -->
+<p><a href="#label:121">set</a> <a href="#label:122">bulk</a></p></dd>
+<dt><a name="label:82" id="label:82"><code>each_primary(<var>set</var> = <var>nil</var>) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "each_primary" -->
 <dd>
 <p>Iterates over secondary indexes and give secondary key, primary key
 and value</p></dd>
-<dt><a name="label:77" id="label:77"><code>each_value(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_value" -->
+<dt><a name="label:83" id="label:83"><code>each_value(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_value" -->
 <dd>
 <p>Iterates over values. </p>
-<p><a href="#label:115">set</a> <a href="#label:116">bulk</a></p></dd>
-<dt><a name="label:78" id="label:78"><code>empty?()</code></a></dt><!-- RDLabel: "empty?" -->
+<p><a href="#label:121">set</a> <a href="#label:122">bulk</a></p></dd>
+<dt><a name="label:84" id="label:84"><code>empty?()</code></a></dt><!-- RDLabel: "empty?" -->
 <dd>
 <p>Returns true if the database is empty. </p></dd>
-<dt><a name="label:79" id="label:79"><code>filename()</code></a></dt><!-- RDLabel: "filename" -->
+<dt><a name="label:85" id="label:85"><code>filename()</code></a></dt><!-- RDLabel: "filename" -->
 <dd>
 <p>Return the name of the file</p></dd>
-<dt><a name="label:80" id="label:80"><code>has_key?(<var>key</var>)</code></a><!-- RDLabel: "has_key?" -->
-<dt><a name="label:81" id="label:81"><code>key?(<var>key</var>)</code></a><!-- RDLabel: "key?" -->
-<dt><a name="label:82" id="label:82"><code>include?(<var>key</var>)</code></a><!-- RDLabel: "include?" -->
-<dt><a name="label:83" id="label:83"><code>member?(<var>key</var>)</code></a></dt><!-- RDLabel: "member?" -->
+<dt><a name="label:86" id="label:86"><code>has_key?(<var>key</var>)</code></a><!-- RDLabel: "has_key?" -->
+<dt><a name="label:87" id="label:87"><code>key?(<var>key</var>)</code></a><!-- RDLabel: "key?" -->
+<dt><a name="label:88" id="label:88"><code>include?(<var>key</var>)</code></a><!-- RDLabel: "include?" -->
+<dt><a name="label:89" id="label:89"><code>member?(<var>key</var>)</code></a></dt><!-- RDLabel: "member?" -->
 <dd>
 <p>Returns true if the association from the <var>key</var> exists.</p></dd>
-<dt><a name="label:84" id="label:84"><code>has_both?(<var>key</var>, <var>value</var>)</code></a><!-- RDLabel: "has_both?" -->
-<dt><a name="label:85" id="label:85"><code>both?(<var>key</var>, <var>value</var>)</code></a></dt><!-- RDLabel: "both?" -->
+<dt><a name="label:90" id="label:90"><code>has_both?(<var>key</var>, <var>value</var>)</code></a><!-- RDLabel: "has_both?" -->
+<dt><a name="label:91" id="label:91"><code>both?(<var>key</var>, <var>value</var>)</code></a></dt><!-- RDLabel: "both?" -->
 <dd>
 <p>Returns true if the association from <var>key</var> is <var>value</var> </p></dd>
-<dt><a name="label:86" id="label:86"><code>has_value?(<var>value</var>)</code></a><!-- RDLabel: "has_value?" -->
-<dt><a name="label:87" id="label:87"><code>value?(<var>value</var>)</code></a></dt><!-- RDLabel: "value?" -->
+<dt><a name="label:92" id="label:92"><code>has_value?(<var>value</var>)</code></a><!-- RDLabel: "has_value?" -->
+<dt><a name="label:93" id="label:93"><code>value?(<var>value</var>)</code></a></dt><!-- RDLabel: "value?" -->
 <dd>
 <p>Returns true if the association to the <var>value</var> exists. </p></dd>
-<dt><a name="label:88" id="label:88"><code>index(<var>value</var>)</code></a></dt><!-- RDLabel: "index" -->
+<dt><a name="label:94" id="label:94"><code>index(<var>value</var>)</code></a></dt><!-- RDLabel: "index" -->
 <dd>
 <p>Returns the first <var>key</var> associated with <var>value</var></p></dd>
-<dt><a name="label:89" id="label:89"><code>indexes(<var>value1</var>, <var>value2</var>, )</code></a></dt><!-- RDLabel: "indexes" -->
+<dt><a name="label:95" id="label:95"><code>indexes(<var>value1</var>, <var>value2</var>, )</code></a></dt><!-- RDLabel: "indexes" -->
 <dd>
 <p>Returns the <var>keys</var> associated with <var>value1, value2, ...</var></p></dd>
-<dt><a name="label:90" id="label:90"><code>join(<var>cursor</var> , <var>flag</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "join" -->
+<dt><a name="label:96" id="label:96"><code>join(<var>cursor</var> , <var>flag</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "join" -->
 <dd>
 <p>Perform a join. <var>cursor</var> is an array of <var>BDB::Cursor</var></p></dd>
-<dt><a name="label:91" id="label:91"><code>keys</code></a></dt><!-- RDLabel: "keys" -->
+<dt><a name="label:97" id="label:97"><code>keys</code></a></dt><!-- RDLabel: "keys" -->
 <dd>
 <p>Returns the array of the keys in the database</p></dd>
-<dt><a name="label:92" id="label:92"><code>length</code></a><!-- RDLabel: "length" -->
-<dt><a name="label:93" id="label:93"><code>size</code></a></dt><!-- RDLabel: "size" -->
+<dt><a name="label:98" id="label:98"><code>length</code></a><!-- RDLabel: "length" -->
+<dt><a name="label:99" id="label:99"><code>size</code></a></dt><!-- RDLabel: "size" -->
 <dd>
 <p>Returns the number of association in the database.</p></dd>
-<dt><a name="label:94" id="label:94"><code>log_register(<var>name</var>)</code></a></dt><!-- RDLabel: "log_register" -->
+<dt><a name="label:100" id="label:100"><code>log_register(<var>name</var>)</code></a></dt><!-- RDLabel: "log_register" -->
 <dd>
 <p>The <var>log_register</var> function registers a file <var>name</var>.</p></dd>
-<dt><a name="label:95" id="label:95"><code>log_unregister()</code></a></dt><!-- RDLabel: "log_unregister" -->
+<dt><a name="label:101" id="label:101"><code>log_unregister()</code></a></dt><!-- RDLabel: "log_unregister" -->
 <dd>
 <p>The <var>log_unregister</var> function unregisters a file name.</p></dd>
-<dt><a name="label:96" id="label:96"><code>reject { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject" -->
+<dt><a name="label:102" id="label:102"><code>reject { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject" -->
 <dd>
 <p>Create an hash without the associations if the evaluation of the
 block returns true. </p></dd>
-<dt><a name="label:97" id="label:97"><code>reverse_each(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "reverse_each" -->
-<dt><a name="label:98" id="label:98"><code>reverse_each_pair(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_pair" -->
+<dt><a name="label:103" id="label:103"><code>reverse_each(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "reverse_each" -->
+<dt><a name="label:104" id="label:104"><code>reverse_each_pair(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_pair" -->
 <dd>
 <p>Iterates over associations in reverse order </p>
-<p><a href="#label:115">set</a></p></dd>
-<dt><a name="label:99" id="label:99"><code>reverse_each_key(<var>set</var> = <var>nil</var>) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_key" -->
+<p><a href="#label:121">set</a></p></dd>
+<dt><a name="label:105" id="label:105"><code>reverse_each_key(<var>set</var> = <var>nil</var>) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_key" -->
 <dd>
 <p>Iterates over keys in reverse order </p>
-<p><a href="#label:115">set</a></p></dd>
-<dt><a name="label:100" id="label:100"><code>reverse_each_primary(<var>set</var> = <var>nil</var>) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_primary" -->
+<p><a href="#label:121">set</a></p></dd>
+<dt><a name="label:106" id="label:106"><code>reverse_each_primary(<var>set</var> = <var>nil</var>) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_primary" -->
 <dd>
 <p>Iterates over secondary indexes in reverse order and give secondary
 key, primary key and value</p></dd>
-<dt><a name="label:101" id="label:101"><code>reverse_each_value(<var>set</var> = <var>nil</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_value" -->
+<dt><a name="label:107" id="label:107"><code>reverse_each_value(<var>set</var> = <var>nil</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_value" -->
 <dd>
 <p>Iterates over values in reverse order.</p>
-<p><a href="#label:115">set</a></p></dd>
-<dt><a name="label:102" id="label:102"><code>set_partial(<var>len</var>, <var>offset</var>)</code></a></dt><!-- RDLabel: "set_partial" -->
+<p><a href="#label:121">set</a></p></dd>
+<dt><a name="label:108" id="label:108"><code>set_partial(<var>len</var>, <var>offset</var>)</code></a></dt><!-- RDLabel: "set_partial" -->
 <dd>
 <p>Set the partial value <var>len</var> and <var>offset</var></p></dd>
-<dt><a name="label:103" id="label:103"><code>stat</code></a></dt><!-- RDLabel: "stat" -->
+<dt><a name="label:109" id="label:109"><code>stat</code></a></dt><!-- RDLabel: "stat" -->
 <dd>
 <p>Return database statistics.</p></dd>
-<dt><a name="label:104" id="label:104"><code>to_a</code></a></dt><!-- RDLabel: "to_a" -->
+<dt><a name="label:110" id="label:110"><code>to_a</code></a></dt><!-- RDLabel: "to_a" -->
 <dd>
 <p>Return an array of all associations [key, value]</p></dd>
-<dt><a name="label:105" id="label:105"><code>to_hash</code></a></dt><!-- RDLabel: "to_hash" -->
+<dt><a name="label:111" id="label:111"><code>to_hash</code></a></dt><!-- RDLabel: "to_hash" -->
 <dd>
 <p>Return an hash of all associations {key =&gt; value}</p></dd>
-<dt><a name="label:106" id="label:106"><code>truncate</code></a><!-- RDLabel: "truncate" -->
-<dt><a name="label:107" id="label:107"><code>clear</code></a></dt><!-- RDLabel: "clear" -->
+<dt><a name="label:112" id="label:112"><code>truncate</code></a><!-- RDLabel: "truncate" -->
+<dt><a name="label:113" id="label:113"><code>clear</code></a></dt><!-- RDLabel: "clear" -->
 <dd>
 <p>Empty a database</p></dd>
-<dt><a name="label:108" id="label:108"><code>values</code></a></dt><!-- RDLabel: "values" -->
+<dt><a name="label:114" id="label:114"><code>values</code></a></dt><!-- RDLabel: "values" -->
 <dd>
 <p>Returns the array of the values in the database.</p></dd>
-<dt><a name="label:109" id="label:109"><code>verify(<var>file</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "verify" -->
+<dt><a name="label:115" id="label:115"><code>verify(<var>file</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "verify" -->
 <dd>
 <p>Verify the integrity of the DB file, and optionnally output the
 key/data to <var>file</var> (file must respond to #to_io)</p></dd>
 </dl>
-<h3><a name="label:110" id="label:110">Methods specific to BDB::Recno and BDB::Queue</a></h3><!-- RDLabel: "Methods specific to BDB::Recno and BDB::Queue" -->
+<h3><a name="label:116" id="label:116">Methods specific to BDB::Recno and BDB::Queue</a></h3><!-- RDLabel: "Methods specific to BDB::Recno and BDB::Queue" -->
 <dl>
-<dt><a name="label:111" id="label:111"><code>pop</code></a></dt><!-- RDLabel: "pop" -->
+<dt><a name="label:117" id="label:117"><code>pop</code></a></dt><!-- RDLabel: "pop" -->
 <dd>
 <p>Returns the last couple [key, val] (only for BDB::Recno)</p></dd>
-<dt><a name="label:112" id="label:112"><code>push <var>values</var></code></a></dt><!-- RDLabel: "push values" -->
+<dt><a name="label:118" id="label:118"><code>push <var>values</var></code></a></dt><!-- RDLabel: "push values" -->
 <dd>
 <p>Push the values</p></dd>
-<dt><a name="label:113" id="label:113"><code>shift</code></a></dt><!-- RDLabel: "shift" -->
+<dt><a name="label:119" id="label:119"><code>shift</code></a></dt><!-- RDLabel: "shift" -->
 <dd>
 <p>Removes and returns an association from the database.</p></dd>
 </dl>
-<h3><a name="label:114" id="label:114">Remark</a></h3><!-- RDLabel: "Remark" -->
-<h4><a name="label:115" id="label:115">set</a></h4><!-- RDLabel: "set" -->
+<h3><a name="label:120" id="label:120">Remark</a></h3><!-- RDLabel: "Remark" -->
+<h4><a name="label:121" id="label:121">set</a></h4><!-- RDLabel: "set" -->
 <p>If the parameter <var>set</var> is given, an initial call will be made
 with the option <var>BDB::SET_RANGE</var> to move the cursor to the specified
 key before iterating.</p>
-<h4><a name="label:116" id="label:116">bulk</a></h4><!-- RDLabel: "bulk" -->
+<h4><a name="label:122" id="label:122">bulk</a></h4><!-- RDLabel: "bulk" -->
 <p>Only with &gt;= 3.3.11 : if the parameter <var>bulk</var> is given, 
 an application buffer of size <var>bulk * 1024</var> will be used 
 (see "Retrieving records in bulk" in the documentation of BerkeleyDB)</p>

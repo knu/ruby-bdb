@@ -20,7 +20,6 @@ module BDB
       end
 
       def initialize(*args)
-	 super
 	 @sites, @priority, @timeout = *args[-1]["specific"]
          @mach = {}
       end

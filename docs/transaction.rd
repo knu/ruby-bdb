@@ -12,6 +12,7 @@ the components necessary to transaction-protect the Berkeley DB access
 methods and other forms of data may be protected if they are logged
 and locked appropriately.
 
+
 The transaction subsystem is created, initialized, and opened by calls
 to ((<BDB::Env#open|URL:env.html#open>)) with the ((|BDB::INIT_TXN|))
 flag (or ((|BDB::INIT_TRANSACTION|))) specified.
@@ -19,6 +20,7 @@ Note that enabling transactions automatically enables
 logging, but does not enable locking, as a single thread of control
 that needed atomicity and recoverability would not require it.
 
+#^
 The following option can be given when the environnement is created
 
  : ((|"set_tx_max"|))
@@ -30,6 +32,7 @@ and with DB >= 4.0
  : ((|"set_txn_timeout"|))
  : ((|"set_lock_timeout"|))
 
+#^
 The transaction is created with ((<BDB::Env#begin|URL:env.html#begin>))
 or with ((<begin>)) 
 #^
@@ -105,12 +108,40 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
      Discard a prepared but not resolved transaction handle, must be called
      only within BDB::Env#recover
 
+--- dbremove(file, database = nil, flags = 0)
+    only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+
+    remove the database specified by ((|file|)) and ((|database|)). If no
+    ((|database|)) is ((|nil|)), the underlying file represented by 
+    ((|file|)) is removed, incidentally removing all databases
+    that it contained. 
+
+    The ((|flags|)) value must be set to 0 or ((|BDB::AUTO_COMMIT|))
+
+--- dbrename(file, database, newname, flags = 0)
+    only with BDB::VERSION_MAJOR == 4 && BDB::VERSION_MINOR >= 1
+
+    rename the database specified by ((|file|)) and ((|database|)) to
+    ((|newname|)). If ((|database|)) is ((|nil|)), the underlying file
+    represented by ((|file|)) is renamed, incidentally renaming all databases
+    that it contained. 
+
+    The ((|flags|)) value must be set to 0 or ((|BDB::AUTO_COMMIT|))
+
 --- id()
 --- txn_id()
      The txn_id function returns the unique transaction id associated
      with the specified transaction. Locking calls made on behalf of
      this transaction should use the value returned from txn_id as the
      locker parameter to the lock_get or lock_vec calls.
+
+--- open_db(type, name = nil, subname = nil, flags = 0, mode = 0)
+    Only with DB >= 4.1
+
+    open the database in the current transaction. type must be one of
+    the constant ((|BDB::BTREE|)), ((|BDB::HASH|)), ((|BDB::RECNO|)), 
+    ((|BDB::QUEUE|)). See ((<open|URL:access.html#open>)) for other
+    arguments
 
 --- prepare()
 --- txn_prepare()

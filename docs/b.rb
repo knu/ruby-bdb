@@ -1,21 +1,33 @@
 #!/usr/bin/ruby
 
-def intern_def(text, names, fout)
-   tt = text.join('#').gsub(/\(\(\|([^|]+)\|\)\)/, '<em>\\1</em>')
-   tt = tt.gsub(/\(\(\{/, '<tt>').gsub(/\}\)\)/, '</tt>')
-   tt.gsub!(/\(\(<([^>]+)>\)\)/, '<<???\\1???>>')
-   fout.puts "##{tt}" 
-   n = names[0]
-   if n.sub!(/\{\s*\|([^|]+)\|[^}]*\}/, '')
-      fout.puts "def #{n}yield #$1\nend"
+def yield_or_not(primary)
+   text = primary.sub(/\{\s*\|([^|]+)\|[^}]*\}/, '')
+   if text != primary
+      "def #{text}yield #$1\nend"
    else
-      fout.puts "def #{n}end"
+      "def #{text}end"
    end
+end
+
+def normalize(text)
+   norm = text.gsub(/\(\(\|([^|]+)\|\)\)/, '<em>\\1</em>')
+   norm.gsub(/\(\(\{/, '<tt>').gsub!(/\}\)\)/, '</tt>')
+   norm.gsub!(/\(\(<([^|>]+)[^>]*>\)\)/, '<em>\\1</em>')
+   norm.gsub!(/^\s*:\s/, ' * ')
+   norm
+end
+
+def intern_def(text, names, fout)
+   fout.puts "##{normalize(text.join('#'))}" 
+   fout.puts yield_or_not(names[0])
    if names.size > 1
       n = names[0].chomp.sub(/\(.*/, '')
       names[1 .. -1].each do |na|
-	 na = na.chomp.sub(/\(.*/, '')
-	 fout.puts "alias #{na} #{n}"
+	 nd = na.chomp.sub(/\(.*/, '')
+	 if nd != n
+	    fout.puts "#same than <em>#{n}</em>"
+	    fout.puts yield_or_not(na)
+	 end
       end
    end
 end
@@ -40,7 +52,7 @@ def loop_file(file, fout)
 	 next
       end
       if comment
-	 fout.puts "# #{line}"
+	 fout.puts "# #{normalize(line)}"
 	 next
       end
       case line
@@ -88,8 +100,8 @@ def loop_file(file, fout)
    end
 end
 
-File.open("bdb.rb", "w") do |fout|
-   loop_file('../bdb.rd', fout)
+File.open("#{ARGV[0]}.rb", "w") do |fout|
+   loop_file("../#{ARGV[0]}.rd", fout)
    Dir['*.rd'].each do |file|
       loop_file(file, fout)
    end

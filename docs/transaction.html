@@ -104,17 +104,40 @@ part of the open interface.</p></dd>
 <p>only with BDB::VERSION_MAJOR == 3 &amp;&amp; BDB::VERSION_MINOR &gt;= 3</p>
 <p>Discard a prepared but not resolved transaction handle, must be called
 only within BDB::Env#recover</p></dd>
-<dt><a name="label:20" id="label:20"><code>id()</code></a><!-- RDLabel: "id" -->
-<dt><a name="label:21" id="label:21"><code>txn_id()</code></a></dt><!-- RDLabel: "txn_id" -->
+<dt><a name="label:20" id="label:20"><code>dbremove(<var>file</var>, <var>database</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "dbremove" -->
+<dd>
+<p>only with BDB::VERSION_MAJOR == 4 &amp;&amp; BDB::VERSION_MINOR &gt;= 1</p>
+<p>remove the database specified by <var>file</var> and <var>database</var>. If no
+<var>database</var> is <var>nil</var>, the underlying file represented by 
+<var>file</var> is removed, incidentally removing all databases
+that it contained. </p>
+<p>The <var>flags</var> value must be set to 0 or <var>BDB::AUTO_COMMIT</var></p></dd>
+<dt><a name="label:21" id="label:21"><code>dbrename(<var>file</var>, <var>database</var>, <var>newname</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "dbrename" -->
+<dd>
+<p>only with BDB::VERSION_MAJOR == 4 &amp;&amp; BDB::VERSION_MINOR &gt;= 1</p>
+<p>rename the database specified by <var>file</var> and <var>database</var> to
+<var>newname</var>. If <var>database</var> is <var>nil</var>, the underlying file
+represented by <var>file</var> is renamed, incidentally renaming all databases
+that it contained. </p>
+<p>The <var>flags</var> value must be set to 0 or <var>BDB::AUTO_COMMIT</var></p></dd>
+<dt><a name="label:22" id="label:22"><code>id()</code></a><!-- RDLabel: "id" -->
+<dt><a name="label:23" id="label:23"><code>txn_id()</code></a></dt><!-- RDLabel: "txn_id" -->
 <dd>
 <p>The txn_id function returns the unique transaction id associated
 with the specified transaction. Locking calls made on behalf of
 this transaction should use the value returned from txn_id as the
 locker parameter to the lock_get or lock_vec calls.</p></dd>
-<dt><a name="label:22" id="label:22"><code>prepare()</code></a><!-- RDLabel: "prepare" -->
-<dt><a name="label:23" id="label:23"><code>txn_prepare()</code></a><!-- RDLabel: "txn_prepare" -->
-<dt><a name="label:24" id="label:24"><code>prepare(<var>id</var>)        # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a><!-- RDLabel: "prepare" -->
-<dt><a name="label:25" id="label:25"><code>txn_prepare(<var>id</var>)    # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a></dt><!-- RDLabel: "txn_prepare" -->
+<dt><a name="label:24" id="label:24"><code>open_db(<var>type</var>, <var>name</var> = <var>nil</var>, <var>subname</var> = <var>nil</var>, <var>flags</var> = <var>0</var>, <var>mode</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "open_db" -->
+<dd>
+<p>Only with DB &gt;= 4.1</p>
+<p>open the database in the current transaction. type must be one of
+the constant <var>BDB::BTREE</var>, <var>BDB::HASH</var>, <var>BDB::RECNO</var>, 
+<var>BDB::QUEUE</var>. See <a href="access.html#open">open</a> for other
+arguments</p></dd>
+<dt><a name="label:25" id="label:25"><code>prepare()</code></a><!-- RDLabel: "prepare" -->
+<dt><a name="label:26" id="label:26"><code>txn_prepare()</code></a><!-- RDLabel: "txn_prepare" -->
+<dt><a name="label:27" id="label:27"><code>prepare(<var>id</var>)        # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a><!-- RDLabel: "prepare" -->
+<dt><a name="label:28" id="label:28"><code>txn_prepare(<var>id</var>)    # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a></dt><!-- RDLabel: "txn_prepare" -->
 <dd>
 <p>The txn_prepare function initiates the beginning of a two-phase commit.</p>
 <p>In a distributed transaction environment, Berkeley DB can be used

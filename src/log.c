@@ -78,12 +78,14 @@ bdb_s_log_put(argc, argv, obj)
     VALUE obj;
 {
     VALUE a, b;
-    int flag;
+    int flag = 0;
     
     if (argc == 0 || argc > 2) {
 	rb_raise(bdb_eFatal, "Invalid number of arguments");
     }
+#ifdef DB_CHECKPOINT
     flag = DB_CHECKPOINT;
+#endif
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
 	flag = NUM2INT(b);
     }
@@ -94,7 +96,12 @@ static VALUE
 bdb_s_log_checkpoint(obj, a)
     VALUE obj, a;
 {
+#ifdef DB_CHECKPOINT
     return bdb_s_log_put_internal(obj, a, DB_CHECKPOINT);
+#else
+    rb_warning("BDB::CHECKPOINT is obsolete");
+    return bdb_s_log_put_internal(obj, a, 0);
+#endif
 }
 
 static VALUE
@@ -183,7 +190,12 @@ bdb_env_log_stat(argc, argv, obj)
 #else
     rb_hash_aset(res, rb_tainted_str_new2("st_lg_bsize"), INT2NUM(bdb_stat->st_lg_bsize));
 #endif
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    rb_hash_aset(res, rb_tainted_str_new2("st_lg_size"), INT2NUM(bdb_stat->st_lg_size));
+    rb_hash_aset(res, rb_tainted_str_new2("st_lg_max"), INT2NUM(bdb_stat->st_lg_size));
+#else
     rb_hash_aset(res, rb_tainted_str_new2("st_lg_max"), INT2NUM(bdb_stat->st_lg_max));
+#endif
     rb_hash_aset(res, rb_tainted_str_new2("st_w_mbytes"), INT2NUM(bdb_stat->st_w_mbytes));
     rb_hash_aset(res, rb_tainted_str_new2("st_w_bytes"), INT2NUM(bdb_stat->st_w_bytes));
     rb_hash_aset(res, rb_tainted_str_new2("st_wc_mbytes"), INT2NUM(bdb_stat->st_wc_mbytes));
@@ -200,7 +212,9 @@ bdb_env_log_stat(argc, argv, obj)
 #if DB_VERSION_MAJOR >= 4
     rb_hash_aset(res, rb_tainted_str_new2("st_disk_file"), INT2NUM(bdb_stat->st_disk_file));
     rb_hash_aset(res, rb_tainted_str_new2("st_disk_offset"), INT2NUM(bdb_stat->st_disk_offset));
+#if DB_VERSION_MINOR < 1
     rb_hash_aset(res, rb_tainted_str_new2("st_flushcommit"), INT2NUM(bdb_stat->st_flushcommit));
+#endif
     rb_hash_aset(res, rb_tainted_str_new2("st_maxcommitperflush"), INT2NUM(bdb_stat->st_maxcommitperflush));
     rb_hash_aset(res, rb_tainted_str_new2("st_mincommitperflush"), INT2NUM(bdb_stat->st_mincommitperflush));
 #endif
@@ -579,6 +593,10 @@ static VALUE
 bdb_log_register(obj, a)
     VALUE obj, a;
 {
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    rb_warn("log_register is obsolete");
+    return Qnil;
+#else
     bdb_DB *dbst;
     bdb_ENV *dbenvst;
 
@@ -607,12 +625,17 @@ bdb_log_register(obj, a)
 #endif
 #endif
     return obj;
+#endif
 }
 
 static VALUE
 bdb_log_unregister(obj)
     VALUE obj;
 {
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    rb_warn("log_unregister is obsolete");
+    return Qnil;
+#else
     bdb_DB *dbst;
     bdb_ENV *dbenvst;
 
@@ -638,6 +661,7 @@ bdb_log_unregister(obj)
 #endif
 #endif
     return obj;
+#endif
 }
 
 void bdb_init_log()

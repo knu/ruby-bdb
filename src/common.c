@@ -2,6 +2,14 @@
 #include <rubyio.h>
 
 static ID id_bt_compare, id_bt_prefix, id_dup_compare, id_h_hash;
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+static ID id_append_recno;
+#endif
+
+#if DB_VERSION_MAJOR >= 3
+static ID id_feedback;
+#endif
+
 ID bdb_id_call;
 
 VALUE
@@ -300,6 +308,58 @@ bdb_h_hash(bytes, length)
     return NUM2UINT(res);
 }
 
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+
+static int
+bdb_append_recno(DB *dbp, DBT *data, db_recno_t recno)
+{
+    VALUE res, obj, av, rec;
+    bdb_DB *dbst;
+
+    if ((obj = rb_thread_local_aref(rb_thread_current(), id_current_db)) == Qnil) {
+	rb_raise(bdb_eFatal, "BUG : current_db not set");
+    }
+    Data_Get_Struct(obj, bdb_DB, dbst);
+    data->flags = 0;
+    av = bdb_test_load(obj, *data, FILTER_VALUE);
+    rec = INT2NUM(recno - dbst->array_base);
+    if (dbst->append_recno == 0)
+	res = rb_funcall(obj, id_append_recno, 2, rec, av);
+    else
+	res = rb_funcall(dbst->append_recno, bdb_id_call, 2, rec, av);
+    if (!NIL_P(res)) {
+	bdb_test_dump(obj, data, res, FILTER_VALUE);
+    }
+    return 0;
+}
+
+#endif
+
+#if DB_VERSION_MAJOR >= 3
+
+static void
+bdb_feedback(DB *dbp, int opcode, int pct)
+{
+    VALUE obj;
+    bdb_DB *dbst;
+
+    if ((obj = rb_thread_local_aref(rb_thread_current(), id_current_db)) == Qnil) {
+	rb_raise(bdb_eFatal, "BUG : current_db not set");
+    }
+    Data_Get_Struct(obj, bdb_DB, dbst);
+    if (NIL_P(dbst->feedback)) {
+	return;
+    }
+    if (dbst->feedback == 0) {
+	rb_funcall(obj, id_feedback, 2, INT2NUM(opcode), INT2NUM(pct));
+    }
+    else {
+	rb_funcall(dbst->feedback, bdb_id_call, 2, INT2NUM(opcode), INT2NUM(pct));
+    }
+}
+
+#endif
+
 static VALUE
 bdb_i_options(obj, dbstobj)
     VALUE obj, dbstobj;
@@ -323,8 +383,9 @@ bdb_i_options(obj, dbstobj)
 #endif
     }
     else if (strcmp(options, "set_bt_compare") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->options |= BDB_BT_COMPARE;
 	dbst->bt_compare = value;
 #if DB_VERSION_MAJOR < 3
@@ -334,8 +395,9 @@ bdb_i_options(obj, dbstobj)
 #endif
     }
     else if (strcmp(options, "set_bt_prefix") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->options |= BDB_BT_PREFIX;
 	dbst->bt_prefix = value;
 #if DB_VERSION_MAJOR < 3
@@ -346,8 +408,9 @@ bdb_i_options(obj, dbstobj)
     }
     else if (strcmp(options, "set_dup_compare") == 0) {
 #ifdef DB_DUPSORT
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->options |= BDB_DUP_COMPARE;
 	dbst->dup_compare = value;
 #if DB_VERSION_MAJOR < 3
@@ -360,8 +423,9 @@ bdb_i_options(obj, dbstobj)
 #endif
     }
     else if (strcmp(options, "set_h_hash") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->options |= BDB_H_HASH;
 	dbst->h_hash = value;
 #if DB_VERSION_MAJOR < 3
@@ -370,6 +434,16 @@ bdb_i_options(obj, dbstobj)
 	bdb_test_error(dbp->set_h_hash(dbp, bdb_h_hash));
 #endif
     }
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    else if (strcmp(options, "set_append_recno") == 0) {
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
+	dbst->options |= BDB_APPEND_RECNO;
+	dbst->append_recno = value;
+	bdb_test_error(dbp->set_append_recno(dbp, bdb_append_recno));
+    }
+#endif
     else if (strcmp(options, "set_cachesize") == 0) {
         Check_Type(value, T_ARRAY);
         if (RARRAY(value)->len < 3)
@@ -509,25 +583,56 @@ bdb_i_options(obj, dbstobj)
         }
     }
     else if (strcmp(options, "set_store_key") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->filter[FILTER_KEY] = value;
     }
     else if (strcmp(options, "set_fetch_key") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->filter[2 + FILTER_KEY] = value;
     }
     else if (strcmp(options, "set_store_value") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->filter[FILTER_VALUE] = value;
     }
     else if (strcmp(options, "set_fetch_value") == 0) {
-	if (!rb_obj_is_kind_of(value, rb_cProc)) 
-	    rb_raise(bdb_eFatal, "expected a Proc object");
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
 	dbst->filter[2 + FILTER_KEY] = value;
     }
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    else if (strcmp(options, "set_encrypt") == 0) {
+	char *passwd;
+	int flags = 0;
+	if (TYPE(value) == T_ARRAY) {
+	    if (RARRAY(value)->len != 2) {
+		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
+	    }
+	    passwd = STR2CSTR(RARRAY(value)->ptr[0]);
+	    flags = NUM2INT(RARRAY(value)->ptr[1]);
+	}
+	else {
+	    passwd = STR2CSTR(value);
+	}
+	bdb_test_error(dbp->set_encrypt(dbp, passwd, flags));
+    }
+#endif
+#if DB_VERSION_MAJOR >= 3
+    else if (strcmp(options, "set_feedback") == 0) {
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
+	dbst->options |= BDB_FEEDBACK;
+	dbst->feedback = value;
+	dbp->set_feedback(dbp, bdb_feedback);
+    }
+#endif
     return Qnil;
 }
 
@@ -560,6 +665,13 @@ bdb_mark(dbst)
     if (dbst->h_hash) rb_gc_mark(dbst->h_hash);
     if (dbst->filename) rb_gc_mark(dbst->filename);
     if (dbst->database) rb_gc_mark(dbst->database);
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    if (dbst->arguments) rb_gc_mark(dbst->arguments);
+    if (dbst->append_recno) rb_gc_mark(dbst->append_recno);
+#endif
+#if DB_VERSION_MAJOR >= 3
+    if (dbst->feedback) rb_gc_mark(dbst->feedback);
+#endif
 }
 
 static VALUE
@@ -582,7 +694,7 @@ bdb_has_env(obj)
     return (dbst->env == 0)?Qfalse:Qtrue;
 }
 
-VALUE
+static VALUE
 bdb_close(argc, argv, obj)
     int argc;
     VALUE *argv;
@@ -710,6 +822,7 @@ bdb_init(argc, argv, obj)
     char *name, *subname;
     VALUE a, b, d, e;
     int flags27;
+    VALUE hash_arg = Qnil;
 #if DB_VERSION_MAJOR < 3
     DB_INFO dbinfo;
 
@@ -721,6 +834,7 @@ bdb_init(argc, argv, obj)
     dbst->dbinfo = &dbinfo;
 #endif
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
+	hash_arg = argv[argc - 1];
 	rb_iterate(rb_each, argv[argc - 1], bdb_i_options, obj);
         argc--;
     }
@@ -793,6 +907,18 @@ bdb_init(argc, argv, obj)
 	bdb_test_error(dbp->set_h_hash(dbp, bdb_h_hash));
 #endif
     }
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    if (dbst->append_recno == 0 && rb_respond_to(obj, id_append_recno) == Qtrue) {
+	dbst->options |= BDB_APPEND_RECNO;
+	bdb_test_error(dbp->set_append_recno(dbp, bdb_append_recno));
+    }
+#endif
+#if DB_VERSION_MAJOR >= 3
+    if (dbst->feedback == 0 && rb_respond_to(obj, id_feedback) == Qtrue) {
+	dbp->set_feedback(dbp, bdb_feedback);
+	dbst->options |= BDB_FEEDBACK;
+    }
+#endif
     if (flags & DB_TRUNCATE) {
 	rb_secure(2);
     }
@@ -841,14 +967,25 @@ bdb_init(argc, argv, obj)
 	dbst->dbp = dbp;
     }
 #else
-    if ((ret = dbp->open(dbp, name, subname, dbst->type, flags, mode)) != 0) {
-        dbp->close(dbp, 0);
-        if (bdb_errcall) {
-            bdb_errcall = 0;
-            rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
-        }
-        else
-            rb_raise(bdb_eFatal, "%s", db_strerror(ret));
+    {
+	DB_TXN *txnid = NULL;
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+	if (dbst->txn) {
+	    txnid = dbst->txn->txnid;
+	}
+	ret = dbp->open(dbp, txnid, name, subname, dbst->type, flags, mode);
+#else
+	ret = dbp->open(dbp, name, subname, dbst->type, flags, mode);
+#endif
+	if (ret != 0) {
+	    dbp->close(dbp, 0);
+	    if (bdb_errcall) {
+		bdb_errcall = 0;
+		rb_raise(bdb_eFatal, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(ret));
+	    }
+	    else
+		rb_raise(bdb_eFatal, "%s", db_strerror(ret));
+	}
     }
 #endif
     dbst->flags27 = 0;
@@ -930,6 +1067,34 @@ bdb_init(argc, argv, obj)
 	    }
 	}
     }
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    if (dbst->env) {
+	bdb_ENV *dbenvst;
+
+	GetEnvDB(dbst->env, dbenvst);
+	if (dbenvst->flags27 & DB_INIT_TXN) {
+	    dbst->arguments = rb_ary_new();
+	    if (name) {
+		rb_ary_push(dbst->arguments, rb_str_new2(name));
+	    }
+	    else {
+		rb_ary_push(dbst->arguments, Qnil);
+	    }
+	    if (subname) {
+		rb_ary_push(dbst->arguments, rb_str_new2(subname));
+	    }
+	    else {
+		rb_ary_push(dbst->arguments, Qnil);
+	    }
+	    rb_ary_push(dbst->arguments, INT2FIX(flags & ~DB_CREATE));
+	    rb_ary_push(dbst->arguments, INT2FIX(mode));
+	    if (hash_arg != Qnil) {
+		rb_ary_push(dbst->arguments,
+			    rb_funcall2(hash_arg, rb_intern("dup"), 0, 0));
+	    }
+	}
+    }
+#endif
     return obj;
 }
 
@@ -992,7 +1157,9 @@ bdb_s_alloc(argc, argv, obj)
 	    dbst->txn = txnst;
 	    dbst->env = txnst->env;
 	    Data_Get_Struct(txnst->env, bdb_ENV, dbenvst);
-	    rb_ary_push(dbenvst->db_ary, res);
+	    /* #ts:
+	       rb_ary_push(dbenvst->db_ary, res);
+	    */
 	    dbenvp = dbenvst->dbenvp;
 	    dbst->no_thread = dbenvst->no_thread;
 	    dbst->marshal = txnst->marshal;
@@ -2507,7 +2674,7 @@ static VALUE
 bdb_select(argc, argv, obj)
     int argc;
     VALUE *argv;
-    VALUE ary;
+    VALUE obj;
 {
     VALUE result = rb_ary_new();
     bdb_DB *dbst;
@@ -2521,7 +2688,7 @@ bdb_select(argc, argv, obj)
     }
     else {
 	for (i = 0; i < argc; i++) {
-	    rb_ary_push(result, bdb_sary_entry(ary, argv[i]));
+	    rb_ary_push(result, bdb_get(1, &argv[i], obj));
 	}
     }
     return result;
@@ -2584,7 +2751,9 @@ bdb_hash_stat(argc, argv, obj)
 #else
     rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(bdb_stat->hash_nrecs));
 #endif
+#if !(DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1)
     rb_hash_aset(hash, rb_tainted_str_new2("hash_nelem"), INT2NUM(bdb_stat->hash_nelem));
+#endif
     rb_hash_aset(hash, rb_tainted_str_new2("hash_ffactor"), INT2NUM(bdb_stat->hash_ffactor));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_buckets"), INT2NUM(bdb_stat->hash_buckets));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_free"), INT2NUM(bdb_stat->hash_free));
@@ -3089,8 +3258,19 @@ bdb_associate(argc, argv, obj)
 	rb_raise(bdb_eFatal, "associate with a primary index");
     }
     GetDB(obj, dbst);
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    {
+	DB_TXN *txnid = NULL;
+	if (dbst->txn) {
+	    txnid = dbst->txn->txnid;
+	}
+	bdb_test_error(dbst->dbp->associate(dbst->dbp, txnid, secondst->dbp, 
+					    bdb_call_secondary, flags));
+    }
+#else
     bdb_test_error(dbst->dbp->associate(dbst->dbp, secondst->dbp, 
 					bdb_call_secondary, flags));
+#endif
     dbst->options |= BDB_NEED_CURRENT;
     if (!dbst->secondary) {
 	dbst->secondary = rb_ary_new();
@@ -3164,18 +3344,42 @@ bdb_verify(argc, argv, obj)
 static VALUE
 bdb__txn__dup(VALUE obj, VALUE a)
 {
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    VALUE res;
+    int i, argc;
+    VALUE *argv;
+    bdb_DB *dbp;
+    bdb_TXN *txnst;
+
+    GetDB(obj, dbp);
+    GetTxnDB(a, txnst, bdb_eFatal);
+    if (!dbp->arguments) {
+	rb_raise(bdb_eFatal, "unexpected BDB handle for a transaction");
+    }
+    argc = RARRAY(dbp->arguments)->len + 1;
+    argv = ALLOCA_N(VALUE, argc);
+    argv[0] = INT2FIX(dbp->type);
+    for (i = 1; i < argc; i++) {
+	argv[i] = RARRAY(dbp->arguments)->ptr[i - 1];
+    }
+    res = rb_funcall2(a, rb_intern("open_db"), argc, argv);
+    GetDB(res, dbp);
+    dbp->orig = obj;
+    return res;
+#else
     bdb_DB *dbp, *dbh;
     bdb_TXN *txnst;
     VALUE res;
  
     GetDB(obj, dbp);
-    GetTxnDB(a, txnst);
+    GetTxnDB(a, txnst, bdb_eFatal);
     res = Data_Make_Struct(CLASS_OF(obj), bdb_DB, bdb_mark, free, dbh);
     MEMCPY(dbh, dbp, bdb_DB, 1);
     dbh->txn = txnst;
     dbh->orig = obj;
     dbh->flags27 = txnst->flags27;
     return res;
+#endif
 }
 
 static VALUE
@@ -3192,13 +3396,68 @@ bdb__txn__close(VALUE obj, VALUE commit)
     return Qnil;
 }
 
+#ifdef DB_PRIORITY_DEFAULT
+
+static VALUE
+bdb_cache_priority_set(VALUE obj, VALUE a)
+{
+    int priority;
+    bdb_DB *dbst;
+    GetDB(obj, dbst);
+    priority = dbst->priority;
+    bdb_test_error(dbst->dbp->set_cache_priority(dbst->dbp, NUM2INT(a)));
+    dbst->priority = NUM2INT(a);
+    return INT2FIX(priority);
+}
+
+static VALUE
+bdb_cache_priority_get(VALUE obj)
+{
+    bdb_DB *dbst;
+    GetDB(obj, dbst);
+    return INT2FIX(dbst->priority);
+}
+#endif
+
+#if DB_VERSION_MAJOR >= 3
+
+static VALUE
+bdb_feedback_set(VALUE obj, VALUE a)
+{
+    bdb_DB *dbst;
+
+    GetDB(obj, dbst);
+    if (NIL_P(a)) {
+	dbst->feedback = a;
+    }
+    else {
+	if (!rb_respond_to(a, rb_intern("call"))) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
+	dbst->feedback = a;
+	if (!(dbst->options & BDB_FEEDBACK)) {
+	    dbst->options |= BDB_FEEDBACK;
+	    rb_thread_local_aset(rb_thread_current(), id_current_db, obj); 
+	}
+    }
+    return a;
+}
+
+#endif
+
 void bdb_init_common()
 {
     id_bt_compare = rb_intern("bdb_bt_compare");
     id_bt_prefix = rb_intern("bdb_bt_prefix");
     id_dup_compare = rb_intern("bdb_dup_compare");
     id_h_hash = rb_intern("bdb_h_hash");
+#if DB_VERSION_MAJOR >= 4 && DB_VERSION_MINOR >= 1
+    id_append_recno = rb_intern("bdb_append_recno");
+#endif
     bdb_id_call = rb_intern("call");
+#if DB_VERSION_MAJOR >= 3
+    id_feedback = rb_intern("bdb_feedback");
+#endif
     bdb_cCommon = rb_define_class_under(bdb_mDb, "Common", rb_cObject);
     rb_define_private_method(bdb_cCommon, "initialize", bdb_init, -1);
     rb_include_module(bdb_cCommon, rb_mEnumerable);
@@ -3303,6 +3562,13 @@ void bdb_init_common()
 #endif
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
     rb_define_method(bdb_cCommon, "associate", bdb_associate, -1);
+#endif
+#ifdef DB_PRIORITY_DEFAULT
+    rb_define_method(bdb_cCommon, "cache_priority=", bdb_cache_priority_set, 1);
+    rb_define_method(bdb_cCommon, "cache_priority", bdb_cache_priority_get, 0);
+#endif
+#if DB_VERSION_MAJOR >= 3
+    rb_define_method(bdb_cCommon, "feedback=", bdb_feedback_set, 1);
 #endif
     bdb_cBtree = rb_define_class_under(bdb_mDb, "Btree", bdb_cCommon);
     rb_define_method(bdb_cBtree, "stat", bdb_tree_stat, -1);

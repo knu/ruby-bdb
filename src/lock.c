@@ -117,7 +117,11 @@ bdb_env_lockstat(argc, argv, obj)
     }
     bdb_test_error(dbenvst->dbenvp->lock_stat(dbenvst->dbenvp, &statp, flags));
     a = rb_hash_new();
+#if DB_VERSION_MINOR >= 1
+    rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_id));
+#else
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
+#endif
     rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
     rb_hash_aset(a, rb_tainted_str_new2("st_maxlocks"), INT2NUM(statp->st_maxlocks));
     rb_hash_aset(a, rb_tainted_str_new2("st_maxlockers"), INT2NUM(statp->st_maxlockers));
@@ -147,7 +151,6 @@ bdb_env_lockstat(argc, argv, obj)
 #else
     bdb_test_error(lock_stat(dbenvst->dbenvp, &statp));
 #endif
-#endif
     a = rb_hash_new();
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
     rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
@@ -160,6 +163,7 @@ bdb_env_lockstat(argc, argv, obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
+#endif
 #endif
     free(statp);
     return a;
