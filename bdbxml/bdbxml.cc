@@ -4,6 +4,8 @@ static VALUE xb_eFatal, xb_cTxn, xb_cEnv;
 static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_cPat;
 static VALUE xb_cNol, xb_cRes;
 
+static ID id_current_env;
+
 static VALUE
 xb_s_new(int argc, VALUE *argv, VALUE obj)
 {
@@ -434,8 +436,8 @@ xb_res_each(VALUE obj)
   Data_Get_Struct(obj, xres, xes);
   if (xes->txn_val) {
     bdb_TXN *txnst;
-    Data_Get_Struct(xes->txn_val, bdb_TXN, txnst);
-    txn = (DbTxn *)txnst->txn_cxx;
+    GetTxnDBErr(xes->txn_val, txnst, xb_eFatal);
+    txn = static_cast<DbTxn *>(txnst->txn_cxx);
   }
   PROTECT(xes->res->reset());
   for (xes->res->next(txn, val); !val.isNull(); 
@@ -451,7 +453,6 @@ xb_con_mark(xcon *con)
   if (con->env_val) rb_gc_mark(con->env_val);
   if (con->txn_val) rb_gc_mark(con->txn_val);
   if (con->ori_val) rb_gc_mark(con->ori_val);
-  if (con->arguments) rb_gc_mark(con->arguments);
 }
 
 static void
@@ -481,6 +482,9 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
   VALUE res;
 
   res = Data_Make_Struct(obj, xcon, (RDF)xb_con_mark, (RDF)xb_con_free, con);
+#ifndef BDB_NO_THREAD
+  con->flag |= DB_THREAD;
+#endif
   if (argc && TYPE(argv[argc - 1]) == T_HASH) {
     VALUE env = Qfalse;
     VALUE v, f = argv[argc - 1];
@@ -491,7 +495,7 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
       if (!rb_obj_is_kind_of(v, xb_cTxn)) {
 	rb_raise(xb_eFatal, "argument of txn must be a transaction");
       }
-      Data_Get_Struct(v, bdb_TXN, txnst);
+      GetTxnDBErr(v, txnst, xb_eFatal);
       rb_ary_push(txnst->db_ary, res);
       env = txnst->env;
       con->txn_val = v;
@@ -501,13 +505,16 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
 	rb_raise(xb_eFatal, "argument of env must be an environnement");
       }
       env = v;
-      Data_Get_Struct(env, bdb_ENV, dbenvst);
+      GetEnvDBErr(env, dbenvst, id_current_env, xb_eFatal);
       rb_ary_push(dbenvst->db_ary, res);
     }
     if (env) {
       con->env_val = env;
-      Data_Get_Struct(env, bdb_ENV, dbenvst);
-      envcc = (DbEnv *)dbenvst->dbenvp->app_private;
+      GetEnvDBErr(env, dbenvst, id_current_env, xb_eFatal);
+      if (dbenvst->options & BDB_NO_THREAD) {
+	con->flag &= ~DB_THREAD;
+      }
+      envcc = static_cast<DbEnv *>(dbenvst->dbenvp->app_private);
     }
     if ((v = rb_hash_aref(f, rb_str_new2("flags"))) != RHASH(f)->ifnone) {
       flags = NUM2INT(v);
@@ -525,6 +532,28 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
     PROTECT(con->con->setPageSize(pagesize));
   }
   return res;
+}
+
+static VALUE
+xb_con_i_options(VALUE obj, VALUE conobj)
+{
+  VALUE key, value;
+  char *options;
+  xcon *con;
+
+  Data_Get_Struct(conobj, xcon, con);
+  key = rb_ary_entry(obj, 0);
+  value = rb_ary_entry(obj, 1);
+  key = rb_obj_as_string(key);
+  options = RSTRING(key)->ptr;
+  if (strcmp(options, "thread") == 0) {
+    switch (value) {
+    case Qtrue: con->flag &= ~DB_THREAD; break;
+    case Qfalse: con->flag |= DB_THREAD; break;
+    default: rb_raise(xb_eFatal, "thread value must be true or false");
+    }
+  }
+  return Qnil;
 }
 
 static VALUE
@@ -580,21 +609,18 @@ xb_con_init(int argc, VALUE *argv, VALUE obj)
   if (rb_safe_level() >= 4) {
     flags |= DB_RDONLY;
   }
-  PROTECT2(con->con->open(txn, flags, mode), con->closed = Qnil);
-  if (con->env_val) {
+  if (!txn && con->env_val) {
     bdb_ENV *dbenvst = NULL;
-    Data_Get_Struct(con->env_val, bdb_ENV, dbenvst);
+    GetEnvDBErr(con->env_val, dbenvst, id_current_env, xb_eFatal);
     if (dbenvst->flags27 & DB_INIT_TXN) {
-      con->arguments = rb_ary_new();
-      rb_ary_push(con->arguments, a);
-      rb_ary_push(con->arguments, INT2FIX(flags));
-      rb_ary_push(con->arguments, INT2FIX(mode));
-      if (!NIL_P(hash_arg)) {
-	rb_ary_push(con->arguments, 
-		    rb_funcall2(hash_arg, rb_intern("dup"), 0, 0));
-      }
+      flags |= DB_AUTO_COMMIT;
+      con->flag |= BDB_AUTOCOMMIT;
     }
   }
+  if (con->flag & DB_THREAD) {
+    flags |= DB_THREAD;
+  }
+  PROTECT2(con->con->open(txn, flags, mode), con->closed = Qnil);
   return obj;
 }
 
@@ -679,15 +705,27 @@ xb_con_get(int argc, VALUE *argv, VALUE obj)
   return Data_Wrap_Struct(xb_cDoc,  0, (RDF)xb_doc_free, doc);
 }
 
+static void
+xb_test_txn(VALUE env, DbTxn **txn)
+{
+  bdb_ENV *dbenvst;
+  DbEnv *envcc;
+
+  GetEnvDBErr(env, dbenvst, id_current_env, xb_eFatal);
+  envcc = static_cast<DbEnv *>(dbenvst->dbenvp->app_private);
+  PROTECT(envcc->txn_begin(0, txn, 0));
+}
+
 static VALUE
 xb_con_push(int argc, VALUE *argv, VALUE obj)
 {
   xcon *con;
-  DbTxn *txn;
+  DbTxn *txn = NULL;
   XmlDocument *doc;
   XmlDocument::ID id;
   VALUE a, b;
   int flags = 0;
+  bool temporary = false;
 
   rb_secure(4);
   GetConTxn(obj, con, txn);
@@ -698,7 +736,14 @@ xb_con_push(int argc, VALUE *argv, VALUE obj)
     a = xb_s_new(1, &a, xb_cDoc);
   }
   Data_Get_Struct(a, XmlDocument, doc);
+  if (txn == NULL && (con->flag & BDB_AUTOCOMMIT)) {
+    xb_test_txn(con->env_val, &txn);
+    temporary = true;
+  }
   PROTECT(id = con->con->putDocument(txn, *doc, flags));
+  if (temporary) {
+    PROTECT(txn->commit(0));
+  }
   return INT2FIX(id);
 }
 
@@ -814,15 +859,20 @@ static VALUE
 xb_con_delete(int argc, VALUE *argv, VALUE obj)
 {
   xcon *con;
-  DbTxn *txn;
+  DbTxn *txn = NULL;
   XmlDocument *doc;
   VALUE a, b;
   int flags = 0;
+  bool temporary = false;
 
   rb_secure(4);
   GetConTxn(obj, con, txn);
   if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
     flags = NUM2INT(b);
+  }
+  if (txn == NULL && (con->flag & BDB_AUTOCOMMIT)) {
+    xb_test_txn(con->env_val, &txn);
+    temporary = true;
   }
   if (TYPE(a) == T_DATA && RDATA(a)->dfree == (RDF)xb_doc_free) {
     Data_Get_Struct(a, XmlDocument, doc);
@@ -831,6 +881,9 @@ xb_con_delete(int argc, VALUE *argv, VALUE obj)
   else {
     XmlDocument::ID id = NUM2INT(a);
     PROTECT(con->con->deleteDocument(txn, id, flags));
+  }
+  if (temporary) {
+    PROTECT(txn->commit(0));
   }
   return obj;
 }
@@ -883,7 +936,7 @@ xb_env_s_alloc(int argc, VALUE *argv, VALUE obj)
 {
   DbEnv *env = new DbEnv(0);
   DB_ENV *envd = env->get_DB_ENV();
-  envd->app_private = (void *)env;
+  envd->app_private = static_cast<void *>(env);
   return bdb_env_s_rslbl(argc, argv, obj, envd);
 }
 
@@ -909,23 +962,17 @@ xb_env_begin(int argc, VALUE *argv, VALUE obj)
   }
   if (rb_obj_is_kind_of(obj, xb_cTxn)) {
     bdb_TXN *txnst;
-    Data_Get_Struct(obj, bdb_TXN, txnst);
-    if (txnst->txnid == 0) {
-      rb_raise(xb_eFatal, "closed transaction");
-    }
-    p = (DbTxn *)txnst->txn_cxx;
+    GetTxnDBErr(obj, txnst, xb_eFatal);
+    p = static_cast<DbTxn *>(txnst->txn_cxx);
     env = txnst->env;
   }
   else {
     env = obj;
   }
-  Data_Get_Struct(env, bdb_ENV, dbenvst);
-  if (dbenvst->dbenvp == 0) {
-    rb_raise(xb_eFatal, "closed environment");
-  }
-  env_cxx = (DbEnv *)dbenvst->dbenvp->app_private;
+  GetEnvDBErr(env, dbenvst, id_current_env, xb_eFatal);
+  env_cxx = static_cast<DbEnv *>(dbenvst->dbenvp->app_private);
   PROTECT(env_cxx->txn_begin(p, &q, flags));
-  txnr.txn_cxx = (void *)q;
+  txnr.txn_cxx = static_cast<void *>(q);
   txnr.txn = q->get_DB_TXN();
   return bdb_env_rslbl_begin((VALUE)&txnr, argc, argv, obj);
 }
@@ -941,30 +988,28 @@ extern "C" {
     int argc, i;
     VALUE *argv;
 
-    Data_Get_Struct(a, bdb_TXN, txnst);
-    if (txnst->txnid == 0) {
-      rb_raise(xb_eFatal, "closed transaction");
-    }
+    GetTxnDBErr(a, txnst, xb_eFatal);
     Data_Get_Struct(obj, xcon, con);
-    if (!con->arguments) {
-      rb_raise(xb_eFatal, "unexpected Xml handle for a transaction");
-    }
-    argc = RARRAY(con->arguments)->len;
-    argv = ALLOCA_N(VALUE, argc);
-    for (i = 0; i < argc; i++) {
-	argv[i] = RARRAY(con->arguments)->ptr[i];
-    }
-    res = rb_funcall2(a, rb_intern("open_xml"), argc, argv);
-    Data_Get_Struct(res, xcon, con1);
+    res = Data_Make_Struct(CLASS_OF(obj), xcon, (RDF)xb_con_mark, (RDF)free, con1);
+    MEMCPY(con1, con, xcon, 1);
     con1->txn_val = a;
     con1->ori_val = obj;
     return res;
   }
 
   static VALUE
-  xb_con_txn_close(VALUE obj, VALUE commit)
+  xb_con_txn_close(VALUE obj, VALUE commit, VALUE real)
   {
-    return xb_con_close(0, 0, obj);
+    if (!real) {
+      xcon *con;
+
+      Data_Get_Struct(obj, xcon, con);
+      con->closed = Qtrue;
+    }
+    else {
+      xb_con_close(0, 0, obj);
+    }
+    return Qnil;
   }
 
 
@@ -977,6 +1022,7 @@ extern "C" {
       rb_raise(rb_eNameError, "module already defined");
     }
     rb_require("bdb");
+    id_current_env = rb_intern("bdb_current_env");
     xb_mDb = rb_const_get(rb_cObject, rb_intern("BDB"));
     major = NUM2INT(rb_const_get(xb_mDb, rb_intern("VERSION_MAJOR")));
     minor = NUM2INT(rb_const_get(xb_mDb, rb_intern("VERSION_MINOR")));
@@ -1001,13 +1047,14 @@ extern "C" {
     rb_define_method(xb_cTxn, "transaction", RMF(xb_env_begin), -1);
     xb_mXML = rb_define_module_under(xb_mDb, "XML");
     xb_cCon = rb_define_class_under(xb_mXML, "Container", rb_cObject);
+    rb_include_module(xb_cCon, rb_mEnumerable);
     rb_define_singleton_method(xb_cCon, "allocate", RMF(xb_con_s_alloc), -1);
     rb_define_singleton_method(xb_cCon, "new", RMF(xb_s_new), -1);
     rb_define_private_method(xb_cCon, "initialize", RMF(xb_con_init), -1);
     rb_define_method(xb_cCon, "rename", RMF(xb_con_rename), 1);
     rb_define_method(xb_cCon, "remove", RMF(xb_con_remove), 0);
     rb_define_private_method(xb_cCon, "__txn_dup__", RMF(xb_con_txn_dup), 1);
-    rb_define_private_method(xb_cCon, "__txn_close__", RMF(xb_con_txn_close), 1);
+    rb_define_private_method(xb_cCon, "__txn_close__", RMF(xb_con_txn_close), 2);
     rb_define_method(xb_cCon, "index", RMF(xb_con_index), 2);
     rb_define_method(xb_cCon, "name", RMF(xb_con_name), 1);
     rb_define_method(xb_cCon, "[]", RMF(xb_con_get), -1);

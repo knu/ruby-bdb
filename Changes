@@ -186,7 +186,18 @@
    - cache_priority, cache_priority=
    - set_encrypt
    - dbremove, dbrename
-   - BDB::Txn::open_db
+* new BDB::Txn::open_db
 * BDB::ENV, BDB::Common : "set_feedback", feedback= for db >= 3.
 * documentation : make rd2; make rdoc
 * experimental bdbxml for DbXml (not yet released)
+
+--- 0.3.4
+
+* set_rep_limit, set_app_dispatch for db 4.1.16
+* BDB::Common::[]
+* better (???) interface to transaction for 4.1.16
+* Lsn#env
+* corrected set_fetch_value
+* complete support for AUTO_COMMIT
+* added "flags" for #each, #cursor. new #write_cursor 
+        (Thanks Darrin Thompson <darrint@progeny.com>)

@@ -287,8 +287,8 @@ it will return <var>nil</var> if the specified key exist, otherwise <var>true</v
 <dt><a name="label:67" id="label:67"><code>dup_count(<var>key</var>)</code></a></dt><!-- RDLabel: "dup_count" -->
 <dd>
 <p>Return the count of duplicate for <var>key</var></p></dd>
-<dt><a name="label:68" id="label:68"><code>cursor()</code></a><!-- RDLabel: "cursor" -->
-<dt><a name="label:69" id="label:69"><code>db_cursor()</code></a></dt><!-- RDLabel: "db_cursor" -->
+<dt><a name="label:68" id="label:68"><code>cursor(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "cursor" -->
+<dt><a name="label:69" id="label:69"><code>db_cursor(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "db_cursor" -->
 <dd>
 <p>Open a new cursor.</p></dd>
 <dt><a name="label:70" id="label:70"><code>database()</code></a><!-- RDLabel: "database" -->
@@ -310,7 +310,7 @@ key don't exist.</p></dd>
 <dd>
 <p>Return an array of all duplicate associations for <var>key</var></p>
 <p>if <var>assoc</var> is <var>false</var> return only the values.</p></dd>
-<dt><a name="label:77" id="label:77"><code>each(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>]) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "each" -->
+<dt><a name="label:77" id="label:77"><code>each(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>, "<var>flags</var>" =&gt; <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a><!-- RDLabel: "each" -->
 <dt><a name="label:78" id="label:78"><code>each_pair(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_pair" -->
 <dd>
 <p>Iterates over associations.</p>

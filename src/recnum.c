@@ -122,9 +122,9 @@ bdb_intern_shift_pop(obj, depart, len)
     VALUE res;
 
     rb_secure(4);
-    init_txn(txnid, obj, dbst);
+    INIT_TXN(txnid, obj, dbst);
     MEMZERO(&key, DBT, 1);
-    init_recno(dbst, key, recno);
+    INIT_RECNO(dbst, key, recno);
     MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
@@ -132,13 +132,13 @@ bdb_intern_shift_pop(obj, depart, len)
 #else
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
 #endif
-    set_partial(dbst, data);
-    flags = test_init_lock(dbst);
+    SET_PARTIAL(dbst, data);
+    flags = TEST_INIT_LOCK(dbst);
     res = rb_ary_new2(len);
     for (i = 0; i < len; i++) {
 	ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, depart | flags));
 	if (ret == DB_NOTFOUND) break;
-	rb_ary_push(res, bdb_test_load(obj, data, FILTER_VALUE));
+	rb_ary_push(res, bdb_test_load(obj, &data, FILTER_VALUE));
 	bdb_test_error(dbcp->c_del(dbcp, 0));
 	if (dbst->len > 0) dbst->len--;
     }
@@ -417,6 +417,25 @@ bdb_sary_push_m(argc, argv, obj)
 	}
     }
     return obj;
+}
+
+static VALUE
+bdb_sary_s_create(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    VALUE res;
+    int i;
+
+    res = rb_funcall2(obj, rb_intern("new"), 0, 0);
+    if (argc < 0) {
+        rb_raise(rb_eArgError, "negative number of arguments");
+    }
+    if (argc > 0) {
+	bdb_sary_push_m(argc, argv, res);
+    }
+    return res;
 }
     
 static VALUE
@@ -708,11 +727,27 @@ bdb_sary_replace_m(obj, obj2)
 }
 
 static VALUE
-bdb_sary_clear(obj)
-    VALUE obj;
+bdb_sary_clear(argc, argv, obj)
+    VALUE obj, *argv;
+    int argc;
 {
     bdb_DB *dbst;
-    bdb_clear(obj);
+    VALUE g;
+    int flags;
+
+    if (argc && TYPE(argv[argc - 1]) == T_HASH) {
+	VALUE f = argv[argc - 1];
+	if ((g = rb_hash_aref(f, rb_intern("flags"))) != RHASH(f)->ifnone ||
+	    (g = rb_hash_aref(f, rb_str_new2("flags"))) != RHASH(f)->ifnone) {
+	    flags = NUM2INT(g);
+	}
+	argc--;
+    }
+    if (argc == 1) {
+	flags = NUM2INT(argv[0]);
+    }
+    g = INT2FIX(flags);
+    bdb_clear(1, &g, obj);
     GetDB(obj, dbst);
     dbst->len = 0;
     return obj;
@@ -931,6 +966,7 @@ void bdb_init_recnum()
 {
     id_cmp = rb_intern("<=>");
     bdb_cRecnum = rb_define_class_under(bdb_mDb, "Recnum", bdb_cCommon);
+    rb_define_singleton_method(bdb_cRecnum, "[]", bdb_sary_s_create, -1);
     rb_define_private_method(bdb_cRecnum, "initialize", bdb_recnum_init, -1);
     rb_define_method(bdb_cRecnum, "[]", bdb_sary_aref, -1);
     rb_define_method(bdb_cRecnum, "[]=", bdb_sary_aset, -1);
@@ -972,7 +1008,7 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecnum, "delete_if", bdb_sary_delete_if, 0);
     rb_define_method(bdb_cRecnum, "reject!", bdb_sary_reject_bang, 0);
     rb_define_method(bdb_cRecnum, "replace", bdb_sary_replace_m, 1);
-    rb_define_method(bdb_cRecnum, "clear", bdb_sary_clear, 0);
+    rb_define_method(bdb_cRecnum, "clear", bdb_sary_clear, -1);
     rb_define_method(bdb_cRecnum, "fill", bdb_sary_fill, -1);
     rb_define_method(bdb_cRecnum, "include?", bdb_has_value, 1);
     rb_define_method(bdb_cRecnum, "<=>", bdb_sary_cmp, 1);

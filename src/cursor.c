@@ -15,8 +15,9 @@ bdb_cursor_free(dbcst)
 }
 
 static VALUE
-bdb_cursor(obj)
-    VALUE obj;
+bdb_cursor(argc, argv, obj)
+    VALUE obj, *argv;
+    int argc;
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -25,8 +26,19 @@ bdb_cursor(obj)
     VALUE a;
     int flags;
 
-    init_txn(txnid, obj, dbst);
+    INIT_TXN(txnid, obj, dbst);
     flags = 0;
+    if (argc && TYPE(argv[argc - 1]) == T_HASH) {
+	VALUE g, f = argv[argc - 1];
+	if ((g = rb_hash_aref(f, rb_intern("flags"))) != RHASH(f)->ifnone ||
+	    (g = rb_hash_aref(f, rb_str_new2("flags"))) != RHASH(f)->ifnone) {
+	    flags = NUM2INT(g);
+	}
+	argc--;
+    }
+    if (argc) {
+	flags = NUM2INT(argv[0]);
+    }
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbc));
 #else
@@ -36,6 +48,19 @@ bdb_cursor(obj)
     dbcst->dbc = dbc;
     dbcst->db = obj;
     return a;
+}
+
+static VALUE
+bdb_write_cursor(obj)
+    VALUE obj;
+{
+    VALUE f;
+#if DB_VERSION_MAJOR == 2
+    f = INT2FIX(DB_RMW);
+#else
+    f = INT2FIX(DB_WRITECURSOR);
+#endif
+    return bdb_cursor(1, &f, obj);
 }
 
 static VALUE
@@ -123,7 +148,7 @@ bdb_cursor_count(obj)
     key_o.flags |= DB_DBT_MALLOC;
     MEMZERO(&data_o, DBT, 1);
     data_o.flags |= DB_DBT_MALLOC;
-    set_partial(dbst, data);
+    SET_PARTIAL(dbst, data);
     ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key_o, &data_o, DB_CURRENT));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return INT2NUM(0);
@@ -133,12 +158,12 @@ bdb_cursor_count(obj)
 	if (ret == DB_NOTFOUND) {
 	    bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key_o, &data_o, DB_SET));
 
-	    free_key(dbst, key_o);
+	    FREE_KEY(dbst, key_o);
 	    free(data_o.data);
 	    return INT2NUM(count);
 	}
 	if (ret == DB_KEYEMPTY) continue;
-	free_key(dbst, key);
+	FREE_KEY(dbst, key);
 	free(data.data);
 	count++;
     }
@@ -203,7 +228,7 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
 	key.flags |= DB_DBT_MALLOC;
 	data.flags |= DB_DBT_MALLOC;
     }
-    set_partial(dbst, data);
+    SET_PARTIAL(dbst, data);
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
     if (c_pget) {
 	if (dbst->secondary != Qnil) {
@@ -220,10 +245,10 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qnil;
     if (c_pget) {
-	return bdb_assoc3(dbcst->db, key, pkey, data);
+	return bdb_assoc3(dbcst->db, &key, &pkey, &data);
     }
     else {
-	return bdb_assoc_dyna(dbcst->db, key, data);
+	return bdb_assoc_dyna(dbcst->db, &key, &data);
     }
 }
 
@@ -363,10 +388,10 @@ bdb_cursor_put(argc, argv, obj)
         e = bdb_test_dump(dbcst->db, &data, b, FILTER_VALUE);
 	f = b;
     }
-    set_partial(dbst, data);
+    SET_PARTIAL(dbst, data);
     ret = bdb_test_error(dbcst->dbc->c_put(dbcst->dbc, &key, &data, flags));
     if (cnt == 3) {
-	free_key(dbst, key);
+	FREE_KEY(dbst, key);
     }
     if (data.flags & DB_DBT_MALLOC)
 	free(data.data);
@@ -385,8 +410,10 @@ bdb_cursor_put(argc, argv, obj)
 
 void bdb_init_cursor()
 {
-    rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, 0);
-    rb_define_method(bdb_cCommon, "cursor", bdb_cursor, 0);
+    rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, -1);
+    rb_define_method(bdb_cCommon, "cursor", bdb_cursor, -1);
+    rb_define_method(bdb_cCommon, "db_write_cursor", bdb_write_cursor, 0);
+    rb_define_method(bdb_cCommon, "write_cursor", bdb_write_cursor, 0);
     bdb_cCursor = rb_define_class_under(bdb_mDb, "Cursor", rb_cObject);
     rb_undef_method(CLASS_OF(bdb_cCursor), "allocate");
     rb_undef_method(CLASS_OF(bdb_cCursor), "new");

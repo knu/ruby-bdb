@@ -29,8 +29,8 @@ VALUE bdb_cLsn;
 
 VALUE bdb_mMarshal;
 
-ID id_dump, id_load;
-ID id_current_db;
+ID bdb_id_dump, bdb_id_load;
+ID bdb_id_current_db;
 
 VALUE bdb_errstr;
 int bdb_errcall = 0;
@@ -156,9 +156,9 @@ Init_bdb()
 		 major, minor, patch);
     }
     bdb_mMarshal = rb_const_get(rb_cObject, rb_intern("Marshal"));
-    id_current_db = rb_intern("bdb_current_db");
-    id_dump = rb_intern("dump");
-    id_load = rb_intern("load");
+    bdb_id_current_db = rb_intern("bdb_current_db");
+    bdb_id_dump = rb_intern("dump");
+    bdb_id_load = rb_intern("load");
     bdb_mDb = rb_define_module("BDB");
     bdb_eFatal = rb_define_class_under(bdb_mDb, "Fatal", rb_eStandardError);
     bdb_eLock = rb_define_class_under(bdb_mDb, "LockError", bdb_eFatal);
@@ -416,6 +416,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "SYSTEM_MEM", INT2FIX(DB_SYSTEM_MEM));
 #endif
     rb_define_const(bdb_mDb, "THREAD", INT2FIX(DB_THREAD));
+#ifdef DB_ENV_THREAD
+    rb_define_const(bdb_mDb, "ENV_THREAD", INT2FIX(DB_ENV_THREAD));
+#endif
     rb_define_const(bdb_mDb, "TRUNCATE", INT2FIX(DB_TRUNCATE));
 #if DB_VERSION_MAJOR > 3 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
     rb_define_const(bdb_mDb, "TXN_ABORT", INT2FIX(DB_TXN_ABORT));
@@ -442,7 +445,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "VERB_DEADLOCK", INT2FIX(1));
     rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(1));
     rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(1));
-    rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(0));
+    rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(DB_RMW));
 #else
     rb_define_const(bdb_mDb, "TXN_NOWAIT", INT2FIX(DB_TXN_NOWAIT));
     rb_define_const(bdb_mDb, "TXN_SYNC", INT2FIX(DB_TXN_SYNC));

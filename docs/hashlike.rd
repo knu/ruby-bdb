@@ -312,8 +312,8 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- dup_count(key)
     Return the count of duplicate for ((|key|))
 
---- cursor()
---- db_cursor()
+--- cursor(flags = 0)
+--- db_cursor(flags = 0)
     Open a new cursor.
 
 --- database()
@@ -338,7 +338,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
     if ((|assoc|)) is ((|false|)) return only the values.
 
---- each(set = nil, bulk = 0]) { |key, value| ... }
+--- each(set = nil, bulk = 0, "flags" => 0) { |key, value| ... }
 --- each_pair(set = nil, bulk = 0) { |key, value| ... }
     Iterates over associations.
 

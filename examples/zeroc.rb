@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-require 'bdb'
+require '../src/bdb'
 module ZeroC
    def bdb_fetch_value(a)
       a.sub(/\0$/, '')
@@ -19,7 +19,7 @@ end
 
 $option = {"set_pagesize" => 1024, "set_cachesize" => [0, 32 * 1024, 0]}
 
-db = BDB::A.open "basic", nil, "w", $option
+db = BDB::A.open "tmp/basic", nil, "w", $option
 File.foreach("wordlist") do |line|
     line.chomp!
     db[line] = line.reverse
@@ -31,7 +31,7 @@ db.each do |k, v|
 end
 db.close
 
-db = BDB::Btree.open "basic", $option
+db = BDB::Btree.open "tmp/basic", $option
 db.each do |k, v|
    if k[-1] != 0 || v[-1] != 0
       print "ERROR : #{k.inspect} -- #{v.inspect}\n"

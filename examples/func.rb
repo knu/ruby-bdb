@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-require 'bdb'
+require '../src/bdb'
 module BDB
    class Btreesort < Btree
       def bdb_bt_compare(a, b)
@@ -16,6 +16,7 @@ end
 db.each do |x, y|
    puts "SORT : #{x} -- #{y}"
 end
+db.close
 db = BDB::Hash.open "alpha", nil, "w", "env" => env, 
    "set_h_hash" => lambda { |x| x.hash }
 a.each do |x, y|

@@ -8,14 +8,6 @@ using namespace DbXml;
 #define RMF(func) RUBY_METHOD_FUNC(func)
 #define RDF RUBY_DATA_FUNC
 
-#define PROTECT(comm)				\
-  try {						\
-    comm;					\
-  }						\
-  catch (XmlException &e) {			\
-    rb_raise(xb_eFatal, e.what());		\
-  }
-
 #define PROTECT2(comm, libr)				\
   try {							\
     comm;						\
@@ -28,6 +20,8 @@ using namespace DbXml;
     }							\
     rb_raise(xb_eFatal, e.what());			\
   }
+
+#define PROTECT(comm) PROTECT2(comm,)
 
 #define GetConTxn(obj, con, txn)			\
   {							\
@@ -45,8 +39,7 @@ typedef struct {
   VALUE env_val;
   VALUE txn_val;
   VALUE ori_val;
-  int closed;
-  VALUE arguments;
+  int closed, flag;
 } xcon;
 
 typedef struct {

@@ -109,7 +109,46 @@ environment can then be identified by the name of that directory.
          locking on an environment-wide basis rather than per-database.
       
     : ((|options|))
-      hash. See the documentation of Berkeley DB for possible values.
+      Hash, Possible options are (see the documentation of Berkeley DB
+      for more informations) 
+
+      : ((|set_app_dispatch|)) : configure application recovery interface (DB >= 4.1)
+      : ((|set_cachesize|)) :   set the database cache size
+      : ((|set_data_dir|)) : set the environment data directory (DB >= 3)
+      : ((|set_encrypt|)) : set the environment cryptographic key (DB >= 4.1)
+      : ((|set_feedback|)) : set feedback callback (DB >= 3)
+      : ((|set_flags|)) : environment configuration (DB >= 3.2)
+      : ((|set_lg_bsize|)) : set log buffer size (DB >= 3)
+      : ((|set_lg_dir|)) : set the environment logging directory (DB >= 3)
+      : ((|set_lg_max|)) : set log file size
+      : ((|set_lg_regionmax|)) : set logging region size (DB >= 3)
+      : ((|set_lk_conflicts|)) : set lock conflicts matrix (DB >= 3)
+      : ((|set_lk_detect|)) : set automatic deadlock detection
+      : ((|set_lk_max_lockers|)) : set maximum number of lockers
+      : ((|set_lk_max_locks|)) : set maximum number of locks
+      : ((|set_lk_max_objects|)) : set maximum number of lock objects
+      : ((|set_rep_transport|)) : configure replication transport (DB >= 4)
+      : ((|set_rep_limit|)) : limit data sent in response to a single message (DB >= 4.1)
+      : ((|set_rpc_server|)) : establish an RPC server connection (DB >= 3.1)
+      : ((|set_tas_spins|)) : set the number of test-and-set spins (DB >= 3)
+      : ((|set_tmp_dir|)) : set the environment temporary file directory (DB >= 3)
+      : ((|set_timeout|)) : set lock and transaction timeout (DB >= 4)
+      : ((|set_tx_max|)) : set maximum number of transactions (DB >= 3)
+      : ((|set_tx_timestamp|)) : set recovery timestamp (DB >= 3.1)
+      : ((|set_verbose|)) : set verbose messages
+      : ((|set_verb_chkpoint|)) :display checkpoint location information when searching the log for checkpoints. (DB >= 3)
+      : ((|set_verb_deadlock|)) : display additional information when doing deadlock detection. (DB >= 3)
+      : ((|set_verb_recovery|)) : display additional information when performing recovery. (DB >= 3)
+      : ((|set_verb_replication|)) : display additional information when processing replication messages. (DB >= 4)
+      : ((|set_verb_waitsfor|)) : display the waits-for table when doing deadlock detection. (DB >= 3)
+
+      Proc given to ((|set_feedback|)), ((|set_app_dispatch|)) and
+      ((|set_rep_transport|)) can be also specified as a method
+      (replace the prefix ((|set_|)) with ((|bdb_|)))
+
+      For ((|bdb_rep_transport|)) the constant ((|ENVID|)) must be defined
+
+      The constant ((|BDB_ENCRYPT|)) can be used to replace ((|set_encrypt|))
 
 --- remove()
 --- unlink()

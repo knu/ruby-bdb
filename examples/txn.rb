@@ -4,7 +4,6 @@ module BDB
    class ThreadHash < Hash
       def start(val, num)
          Thread.start do
-            p "Thread #{num}"
             self.env.begin(self) do |txn, b1|
                b1.delete_if do |k, v|
 		  print "\t#{num} #{k} -- #{v}\n"
@@ -38,8 +37,8 @@ db.each do |k, v|
 end
 t1 = db.start("alpha", 1)
 t2 = db.start("gamma", 2)
-t2.join
 t1.join
+t2.join
 db.each do |k, v|
     print "0 #{k} -- #{v}\n"
 end

@@ -8,17 +8,29 @@
 extern "C" {
 #endif
 
-#define BDB_MARSHAL        1
-#define BDB_TXN            2
-#define BDB_RE_SOURCE      4
-#define BDB_BT_COMPARE     8
-#define BDB_BT_PREFIX     16
-#define BDB_DUP_COMPARE   32
-#define BDB_H_HASH        64
-#define BDB_APPEND_RECNO 128
-#define BDB_FEEDBACK     256
+#ifndef DB_AUTO_COMMIT
+#define DB_AUTO_COMMIT 0
+#endif
 
-#define BDB_FUNCTION (BDB_BT_COMPARE|BDB_BT_PREFIX|BDB_DUP_COMPARE|BDB_H_HASH|BDB_APPEND_RECNO|BDB_FEEDBACK)
+#define BDB_MARSHAL        (1<<0)
+#define BDB_NOT_OPEN       (1<<1)
+#define BDB_RE_SOURCE      (1<<2)
+#define BDB_BT_COMPARE     (1<<3)
+#define BDB_BT_PREFIX      (1<<4)
+#define BDB_DUP_COMPARE    (1<<5)
+#define BDB_H_HASH         (1<<6)
+#define BDB_APPEND_RECNO   (1<<7)
+
+#define BDB_FEEDBACK       (1<<8)
+#define BDB_AUTO_COMMIT    (1<<9)
+#define BDB_NO_THREAD      (1<<10)
+#define BDB_INIT_LOCK      (1<<11)
+
+#define BDB_TXN_COMMIT     (1<<0)
+
+#define BDB_APP_DISPATCH   (1<<0)
+#define BDB_REP_TRANSPORT  (1<<1)
+#define BDB_ENV_ENCRYPT    (1<<2)
 
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3) || DB_VERSION_MAJOR >= 4
 #define BDB_ERROR_PRIVATE 44444
@@ -28,11 +40,11 @@ extern "C" {
 #define BDB_INIT_LOMP (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_LOG)
 #define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH | BDB_APPEND_RECNO | BDB_FEEDBACK)
 
+#define BDB_NEED_ENV_CURRENT (BDB_FEEDBACK | BDB_APP_DISPATCH)
+
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
 #define DB_RMW 0
 #endif
-
-#define BDB_TXN_COMMIT 0x80
 
 extern VALUE bdb_cEnv;
 extern VALUE bdb_eFatal;
@@ -56,8 +68,8 @@ extern VALUE bdb_cLsn;
 
 extern VALUE bdb_mMarshal;
 
-extern ID id_dump, id_load;
-extern ID id_current_db;
+extern ID bdb_id_dump, bdb_id_load;
+extern ID bdb_id_current_db, bdb_id_current_env;
 
 extern VALUE bdb_deleg_to_orig _((VALUE));
 
@@ -66,8 +78,7 @@ extern VALUE bdb_env_s_rslbl _((int, VALUE *, VALUE, DB_ENV *));
 #endif
 
 typedef struct  {
-    int no_thread;
-    int flags27;
+    int options;
     VALUE marshal;
     VALUE db_ary;
     VALUE home;
@@ -82,8 +93,10 @@ typedef struct  {
     VALUE rep_transport;
 #endif
 #if DB_VERSION_MAJOR >= 3
-    int options;
     VALUE feedback;
+#endif
+#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
+    VALUE app_dispatch;
 #endif
 } bdb_ENV;
 
@@ -97,10 +110,10 @@ struct txn_rslbl {
 #endif
 
 typedef struct {
-    int status, commit;
+    int status, options;
     VALUE marshal, mutex;
-    int flags27;
     VALUE db_ary;
+    VALUE db_assoc;
     VALUE env;
     DB_TXN *txnid;
     DB_TXN *parent;
@@ -113,9 +126,8 @@ typedef struct {
 #define FILTER_VALUE 1
 
 typedef struct {
-    int options, no_thread;
+    int options;
     VALUE marshal;
-    int flags27;
     DBTYPE type;
     VALUE env, orig, secondary;
     VALUE filename, database;
@@ -137,7 +149,6 @@ typedef struct {
     VALUE feedback;
 #endif
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
-    VALUE arguments;
     VALUE append_recno;
 #endif
 #ifdef DB_PRIORITY_DEFAULT
@@ -200,28 +211,33 @@ struct dblsnst {
     GetDB(dbcst->db, dbst);			\
 }
 
-#define GetEnvDB(obj, dbenvst)				\
-{							\
-    Data_Get_Struct(obj, bdb_ENV, dbenvst);		\
-    if (dbenvst->dbenvp == 0)				\
-        rb_raise(bdb_eFatal, "closed environment");	\
+#define GetEnvDBErr(obj, dbenvst, id_c, eErr)			\
+{								\
+    Data_Get_Struct(obj, bdb_ENV, dbenvst);			\
+    if (dbenvst->dbenvp == 0)					\
+        rb_raise(eErr, "closed environment");			\
+    if (dbenvst->options & BDB_NEED_ENV_CURRENT) {		\
+    	rb_thread_local_aset(rb_thread_current(), id_c, obj);	\
+    }								\
 }
 
-#define GetDB(obj, dbst)						\
-{									\
-    Data_Get_Struct(obj, bdb_DB, dbst);					\
-    if (dbst->dbp == 0) {						\
-        rb_raise(bdb_eFatal, "closed DB");				\
-    }									\
-    if (dbst->options & BDB_NEED_CURRENT) {				\
-    	rb_thread_local_aset(rb_thread_current(), id_current_db, obj);	\
-    }									\
+#define GetEnvDB(obj, dbenvst)	GetEnvDBErr(obj, dbenvst, bdb_id_current_env, bdb_eFatal)
+
+#define GetDB(obj, dbst)						   \
+{									   \
+    Data_Get_Struct(obj, bdb_DB, dbst);					   \
+    if (dbst->dbp == 0) {						   \
+        rb_raise(bdb_eFatal, "closed DB");				   \
+    }									   \
+    if (dbst->options & BDB_NEED_CURRENT) {				   \
+    	rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, obj); \
+    }									   \
 }
 
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
 
-#define init_recno(dbst, key, recno)		\
+#define INIT_RECNO(dbst, key, recno)		\
 {						\
     recno = 1;					\
     if (RECNUM_TYPE(dbst)) {			\
@@ -234,7 +250,7 @@ struct dblsnst {
     }						\
 }
 
-#define free_key(dbst, key)					\
+#define FREE_KEY(dbst, key)					\
 {								\
     if (((key).flags & DB_DBT_MALLOC) && !RECNUM_TYPE(dbst)) {	\
 	free((key).data);					\
@@ -243,7 +259,7 @@ struct dblsnst {
 
 #else
 
-#define init_recno(dbst, key, recno)		\
+#define INIT_RECNO(dbst, key, recno)		\
 {						\
     recno = 1;					\
     if (RECNUM_TYPE(dbst)) {			\
@@ -255,7 +271,7 @@ struct dblsnst {
     }						\
 }
 
-#define free_key(dbst, key)			\
+#define FREE_KEY(dbst, key)			\
 {						\
     if ((key).flags & DB_DBT_MALLOC) {		\
 	free((key).data);			\
@@ -264,7 +280,7 @@ struct dblsnst {
 
 #endif
 
-#define init_txn(txnid, obj, dbst) {					  \
+#define INIT_TXN(txnid, obj, dbst) {					  \
   txnid = NULL;								  \
   GetDB(obj, dbst);							  \
   if (dbst->txn != NULL) {						  \
@@ -274,22 +290,24 @@ struct dblsnst {
   }									  \
 }
 
-#define set_partial(db, data)			\
+#define SET_PARTIAL(db, data)			\
     (data).flags |= db->partial;		\
     (data).dlen = db->dlen;			\
     (data).doff = db->doff;
 
-#define GetTxnDB(obj, txnst, error)		\
+#define GetTxnDBErr(obj, txnst, error)		\
 {						\
     Data_Get_Struct(obj, bdb_TXN, txnst);	\
     if (txnst->txnid == 0)			\
         rb_raise(error, "closed transaction");	\
 }
 
+#define GetTxnDB(obj, txnst) GetTxnDBErr(obj, txnst, bdb_eFatal)
+
 #if DB_VERSION_MAJOR < 3
-#define test_init_lock(dbst) (((dbst)->flags27 & DB_INIT_LOCK)?DB_RMW:0)
+#define TEST_INIT_LOCK(dbst) (((dbst)->options & BDB_INIT_LOCK)?DB_RMW:0)
 #else
-#define test_init_lock(dbst) (0)
+#define TEST_INIT_LOCK(dbst) (0)
 #endif
 
 #define BDB_ST_KEY    1
@@ -319,11 +337,10 @@ extern char *db_strerror _((int));
 extern VALUE bdb_test_recno _((VALUE, DBT *, db_recno_t *, VALUE));
 extern VALUE bdb_test_dump _((VALUE, DBT *, VALUE, int));
 extern VALUE bdb_test_ret _((VALUE, VALUE, VALUE, int));
-extern void bdb_mark _((bdb_DB *));
-extern VALUE bdb_assoc _((VALUE, DBT, DBT));
-extern VALUE bdb_assoc3 _((VALUE, DBT, DBT, DBT));
-extern VALUE bdb_assoc_dyna _((VALUE, DBT, DBT));
-extern VALUE bdb_clear _((VALUE));
+extern VALUE bdb_assoc _((VALUE, DBT *, DBT *));
+extern VALUE bdb_assoc3 _((VALUE, DBT *, DBT *, DBT *));
+extern VALUE bdb_assoc_dyna _((VALUE, DBT *, DBT *));
+extern VALUE bdb_clear _((int, VALUE *, VALUE));
 extern VALUE bdb_del _((VALUE, VALUE));
 extern void bdb_deleg_mark _((struct deleg_class *));
 extern void bdb_deleg_free _((struct deleg_class *));
@@ -334,7 +351,6 @@ extern VALUE bdb_each_valuec _((int, VALUE *, VALUE, int, VALUE));
 extern VALUE bdb_each_kvc _((int, VALUE *, VALUE, int, VALUE, int));
 extern void bdb_env_errcall _((const char *, char *));
 extern VALUE bdb_env_open_db _((int, VALUE *, VALUE));
-extern void bdb_free _((bdb_DB *));
 extern VALUE bdb_get _((int, VALUE *, VALUE));
 extern VALUE bdb_has_env _((VALUE));
 extern VALUE bdb_has_value _((VALUE, VALUE));
@@ -342,7 +358,7 @@ extern VALUE bdb_index _((VALUE, VALUE));
 extern VALUE bdb_internal_value _((VALUE, VALUE, VALUE, int));
 extern VALUE bdb_put _((int, VALUE *, VALUE));
 extern VALUE bdb_s_new _((int, VALUE *, VALUE));
-extern VALUE bdb_test_load _((VALUE, DBT, int));
+extern VALUE bdb_test_load _((VALUE, DBT *, int));
 extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
 extern VALUE bdb_tree_stat _((int, VALUE *, VALUE));
 extern VALUE bdb_init _((int, VALUE *, VALUE));
@@ -354,7 +370,7 @@ extern void bdb_init_cursor _((void));
 extern void bdb_init_lock _((void));
 extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
-extern VALUE MakeLsn _((VALUE));
+extern VALUE bdb_makelsn _((VALUE));
 extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
 extern VALUE bdb_return_err _((void));
 

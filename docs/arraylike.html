@@ -40,51 +40,159 @@ is removed, incidentally removing all subdatabases that it contained.</p></dd>
 <h3><a name="label:10" id="label:10">Methods</a></h3><!-- RDLabel: "Methods" -->
 <p><em>All this methods has the same syntax than for the class <var>Array</var></em></p>
 <dl>
-<dt><a name="label:11" id="label:11"><code>self[nth]</code></a><!-- RDLabel: "self[nth]" -->
-<dt><a name="label:12" id="label:12"><code>self[start..end]</code></a><!-- RDLabel: "self[start..end]" -->
-<dt><a name="label:13" id="label:13"><code>self[start, <var>length</var>]</code></a><!-- RDLabel: "self[start, length]" -->
-<dt><a name="label:14" id="label:14"><code>self[nth] = <var>val</var></code></a><!-- RDLabel: "self[nth] = val" -->
-<dt><a name="label:15" id="label:15"><code>self[start..end] = <var>val</var></code></a><!-- RDLabel: "self[start..end] = val" -->
-<dt><a name="label:16" id="label:16"><code>self[start, <var>length</var>] = <var>val</var></code></a><!-- RDLabel: "self[start, length] = val" -->
-<dt><a name="label:17" id="label:17"><code><var>self</var> + <var>other</var></code></a><!-- RDLabel: "self + other" -->
-<dt><a name="label:18" id="label:18"><code><var>self</var> * <var>times</var></code></a><!-- RDLabel: "self * times" -->
-<dt><a name="label:19" id="label:19"><code><var>self</var> - <var>other</var></code></a><!-- RDLabel: "self - other" -->
-<dt><a name="label:20" id="label:20"><code><var>self</var> &amp; <var>other</var></code></a><!-- RDLabel: "self & other" -->
-<dt><a name="label:21" id="label:21"><code><var>self</var> | <var>other</var></code></a><!-- RDLabel: "self | other" -->
-<dt><a name="label:22" id="label:22"><code><var>self</var> &lt;&lt; <var>obj</var></code></a><!-- RDLabel: "self << obj" -->
-<dt><a name="label:23" id="label:23"><code><var>self</var> &lt;=&gt; <var>other</var></code></a><!-- RDLabel: "self <=> other" -->
-<dt><a name="label:24" id="label:24"><code>clear</code></a><!-- RDLabel: "clear" -->
-<dt><a name="label:25" id="label:25"><code>concat(<var>other</var>)</code></a><!-- RDLabel: "concat" -->
-<dt><a name="label:26" id="label:26"><code>delete(<var>val</var>)</code></a><!-- RDLabel: "delete" -->
-<dt><a name="label:27" id="label:27"><code>delete_at(<var>pos</var>)</code></a><!-- RDLabel: "delete_at" -->
-<dt><a name="label:28" id="label:28"><code>delete_if {...}</code></a><!-- RDLabel: "delete_if" -->
-<dt><a name="label:29" id="label:29"><code>reject!{|<var>x</var>|...}</code></a><!-- RDLabel: "reject!" -->
-<dt><a name="label:30" id="label:30"><code>each {...}</code></a><!-- RDLabel: "each" -->
-<dt><a name="label:31" id="label:31"><code>each_index {...}</code></a><!-- RDLabel: "each_index" -->
-<dt><a name="label:32" id="label:32"><code>empty?</code></a><!-- RDLabel: "empty?" -->
-<dt><a name="label:33" id="label:33"><code>fill(<var>val</var>)</code></a><!-- RDLabel: "fill" -->
-<dt><a name="label:34" id="label:34"><code>fill(<var>val</var>, <var>start</var>[, <var>length</var>])</code></a><!-- RDLabel: "fill" -->
-<dt><a name="label:35" id="label:35"><code>fill(<var>val</var>, <var>start</var>..<var>end</var>)</code></a><!-- RDLabel: "fill" -->
-<dt><a name="label:36" id="label:36"><code>filter{|<var>item</var>| ..}</code></a><!-- RDLabel: "filter" -->
-<dt><a name="label:37" id="label:37"><code>freeze</code></a><!-- RDLabel: "freeze" -->
-<dt><a name="label:38" id="label:38"><code>frozen</code></a><!-- RDLabel: "frozen" -->
-<dt><a name="label:39" id="label:39"><code>include?(<var>val</var>)</code></a><!-- RDLabel: "include?" -->
-<dt><a name="label:40" id="label:40"><code>index(<var>val</var>)</code></a><!-- RDLabel: "index" -->
-<dt><a name="label:41" id="label:41"><code>indexes(<var>index_1</var>,..., <var>index_n</var>)</code></a><!-- RDLabel: "indexes" -->
-<dt><a name="label:42" id="label:42"><code>indices(<var>index_1</var>,..., <var>index_n</var>)</code></a><!-- RDLabel: "indices" -->
-<dt><a name="label:43" id="label:43"><code>join([<var>sep</var>])</code></a><!-- RDLabel: "join" -->
-<dt><a name="label:44" id="label:44"><code>length</code></a><!-- RDLabel: "length" -->
-<dt><a name="label:45" id="label:45"><code>size</code></a><!-- RDLabel: "size" -->
-<dt><a name="label:46" id="label:46"><code>nitems</code></a><!-- RDLabel: "nitems" -->
-<dt><a name="label:47" id="label:47"><code>pop</code></a><!-- RDLabel: "pop" -->
-<dt><a name="label:48" id="label:48"><code>push(<var>obj</var>...)</code></a><!-- RDLabel: "push" -->
-<dt><a name="label:49" id="label:49"><code>replace(<var>other</var>)</code></a><!-- RDLabel: "replace" -->
-<dt><a name="label:50" id="label:50"><code>reverse</code></a><!-- RDLabel: "reverse" -->
-<dt><a name="label:51" id="label:51"><code>reverse!</code></a><!-- RDLabel: "reverse!" -->
-<dt><a name="label:52" id="label:52"><code>reverse_each {...}</code></a><!-- RDLabel: "reverse_each" -->
-<dt><a name="label:53" id="label:53"><code>rindex(<var>val</var>)</code></a><!-- RDLabel: "rindex" -->
-<dt><a name="label:54" id="label:54"><code>shift</code></a><!-- RDLabel: "shift" -->
-<dt><a name="label:55" id="label:55"><code>unshift(<var>obj</var>)</code></a><!-- RDLabel: "unshift" -->
+<dt><a name="label:11" id="label:11"><code>self[nth]</code></a></dt><!-- RDLabel: "self[nth]" -->
+<dd>
+<p>retrieves the <var>nth</var> item from an array. Index starts from zero.
+If index is the negative, counts backward from the end of the array. 
+The index of the last element is -1. Returns <var>nil</var>, if the <var>nth</var>
+element is not exist in the array. </p></dd>
+<dt><a name="label:12" id="label:12"><code>self[start..end]</code></a></dt><!-- RDLabel: "self[start..end]" -->
+<dd>
+<p>returns an array containing the objects from <var>start</var> to <var>end</var>,
+including both ends. if end is larger than the length of the array,
+it will be rounded to the length. If <var>start</var> is out of an array 
+range , returns <var>nil</var>.
+And if <var>start</var> is larger than end with in array range, returns
+empty array ([]). </p></dd>
+<dt><a name="label:13" id="label:13"><code>self[start, <var>length</var>]</code></a></dt><!-- RDLabel: "self[start, length]" -->
+<dd>
+<p>returns an array containing <var>length</var> items from <var>start</var>. 
+Returns <var>nil</var> if <var>length</var> is negative. </p></dd>
+<dt><a name="label:14" id="label:14"><code>self[nth] = <var>val</var></code></a></dt><!-- RDLabel: "self[nth] = val" -->
+<dd>
+<p>changes the <var>nth</var> element of the array into <var>val</var>. 
+If <var>nth</var> is larger than array length, the array shall be extended
+automatically. Extended region shall be initialized by <var>nil</var>. </p></dd>
+<dt><a name="label:15" id="label:15"><code>self[start..end] = <var>val</var></code></a></dt><!-- RDLabel: "self[start..end] = val" -->
+<dd>
+<p>replace the items from <var>start</var> to <var>end</var> with <var>val</var>. 
+If <var>val</var> is not an array, the type of <var>val</var> will be converted
+into the Array using <var>to_a</var> method. </p></dd>
+<dt><a name="label:16" id="label:16"><code>self[start, <var>length</var>] = <var>val</var></code></a></dt><!-- RDLabel: "self[start, length] = val" -->
+<dd>
+<p>replace the <var>length</var> items from <var>start</var> with <var>val</var>. 
+If <var>val</var> is not an array, the type of <var>val</var> will be converted 
+into the Array using <var>to_a</var>. </p></dd>
+<dt><a name="label:17" id="label:17"><code><var>self</var> + <var>other</var></code></a></dt><!-- RDLabel: "self + other" -->
+<dd>
+<p>concatenation</p></dd>
+<dt><a name="label:18" id="label:18"><code><var>self</var> * <var>times</var></code></a></dt><!-- RDLabel: "self * times" -->
+<dd>
+<p>repetition</p></dd>
+<dt><a name="label:19" id="label:19"><code><var>self</var> - <var>other</var></code></a></dt><!-- RDLabel: "self - other" -->
+<dd>
+<p>substraction</p></dd>
+<dt><a name="label:20" id="label:20"><code><var>self</var> &amp; <var>other</var></code></a></dt><!-- RDLabel: "self & other" -->
+<dd>
+<p>returns a new array which contains elements belong to both elements.</p></dd>
+<dt><a name="label:21" id="label:21"><code><var>self</var> | <var>other</var></code></a></dt><!-- RDLabel: "self | other" -->
+<dd>
+<p>join</p></dd>
+<dt><a name="label:22" id="label:22"><code><var>self</var> &lt;&lt; <var>obj</var></code></a></dt><!-- RDLabel: "self << obj" -->
+<dd>
+<p>append a new item with value <var>obj</var>. Return <var>self</var></p></dd>
+<dt><a name="label:23" id="label:23"><code><var>self</var> &lt;=&gt; <var>other</var></code></a></dt><!-- RDLabel: "self <=> other" -->
+<dd>
+<p>comparison : return -1, 0 or 1</p></dd>
+<dt><a name="label:24" id="label:24"><code>clear</code></a></dt><!-- RDLabel: "clear" -->
+<dd>
+<p>delete all elements </p></dd>
+<dt><a name="label:25" id="label:25"><code>collect {|<var>item</var>| ..}</code></a></dt><!-- RDLabel: "collect" -->
+<dd>
+<p>Returns a new array by invoking block once for every element,
+passing each element as a parameter to block. The result of block
+is used as the given element </p></dd>
+<dt><a name="label:26" id="label:26"><code>collect! {|<var>item</var>| ..}</code></a></dt><!-- RDLabel: "collect!" -->
+<dd>
+<p>invokes block once for each element of db, replacing the element
+with the value returned by block.</p></dd>
+<dt><a name="label:27" id="label:27"><code>concat(<var>other</var>)</code></a></dt><!-- RDLabel: "concat" -->
+<dd>
+<p>append <var>other</var> to the end</p></dd>
+<dt><a name="label:28" id="label:28"><code>delete(<var>val</var>)</code></a></dt><!-- RDLabel: "delete" -->
+<dd>
+<p>delete the item which matches to <var>val</var></p></dd>
+<dt><a name="label:29" id="label:29"><code>delete_at(<var>pos</var>)</code></a></dt><!-- RDLabel: "delete_at" -->
+<dd>
+<p>delete the item at <var>pos</var></p></dd>
+<dt><a name="label:30" id="label:30"><code>delete_if {|<var>x</var>| ...}</code></a></dt><!-- RDLabel: "delete_if" -->
+<dd>
+<p>delete the item if the block return <var>true</var></p></dd>
+<dt><a name="label:31" id="label:31"><code>reject!{|<var>x</var>|...}</code></a></dt><!-- RDLabel: "reject!" -->
+<dd>
+<p>delete the item if the block return <var>true</var></p></dd>
+<dt><a name="label:32" id="label:32"><code>each {|<var>x</var>| ...}</code></a></dt><!-- RDLabel: "each" -->
+<dd>
+<p>iterate over each item</p></dd>
+<dt><a name="label:33" id="label:33"><code>each_index {|<var>i</var>| ...}</code></a></dt><!-- RDLabel: "each_index" -->
+<dd>
+<p>iterate over each index</p></dd>
+<dt><a name="label:34" id="label:34"><code>empty?</code></a></dt><!-- RDLabel: "empty?" -->
+<dd>
+<p>return <var>true</var> if the db file is empty </p></dd>
+<dt><a name="label:35" id="label:35"><code>fill(<var>val</var>)</code></a></dt><!-- RDLabel: "fill" -->
+<dd>
+<p>set the entire db with <var>val</var> </p></dd>
+<dt><a name="label:36" id="label:36"><code>fill(<var>val</var>, <var>start</var>[, <var>length</var>])</code></a></dt><!-- RDLabel: "fill" -->
+<dd>
+<p>fill the db with <var>val</var> from <var>start</var> </p></dd>
+<dt><a name="label:37" id="label:37"><code>fill(<var>val</var>, <var>start</var>..<var>end</var>)</code></a></dt><!-- RDLabel: "fill" -->
+<dd>
+<p>set the db with <var>val</var> from <var>start</var> to <var>end</var> </p></dd>
+<dt><a name="label:38" id="label:38"><code>include?(<var>val</var>)</code></a></dt><!-- RDLabel: "include?" -->
+<dd>
+<p>returns true if the given <var>val</var> is present</p></dd>
+<dt><a name="label:39" id="label:39"><code>index(<var>val</var>)</code></a></dt><!-- RDLabel: "index" -->
+<dd>
+<p>returns the index of the item which equals to <var>val</var>. 
+If no item found, returns <var>nil</var></p></dd>
+<dt><a name="label:40" id="label:40"><code>indexes(<var>index_1</var>,..., <var>index_n</var>)</code></a></dt><!-- RDLabel: "indexes" -->
+<dd>
+<p>returns an array consisting of elements at the given indices</p></dd>
+<dt><a name="label:41" id="label:41"><code>indices(<var>index_1</var>,..., <var>index_n</var>)</code></a></dt><!-- RDLabel: "indices" -->
+<dd>
+<p>returns an array consisting of elements at the given indices</p></dd>
+<dt><a name="label:42" id="label:42"><code>join([<var>sep</var>])</code></a></dt><!-- RDLabel: "join" -->
+<dd>
+<p>returns a string created by converting each element to a string</p></dd>
+<dt><a name="label:43" id="label:43"><code>length</code></a><!-- RDLabel: "length" -->
+<dt><a name="label:44" id="label:44"><code>size</code></a></dt><!-- RDLabel: "size" -->
+<dd>
+<p>return the number of elements of the db file</p></dd>
+<dt><a name="label:45" id="label:45"><code>nitems</code></a></dt><!-- RDLabel: "nitems" -->
+<dd>
+<p>return the number of non-nil elements of the db file</p></dd>
+<dt><a name="label:46" id="label:46"><code>pop</code></a></dt><!-- RDLabel: "pop" -->
+<dd>
+<p>pops and returns the last value</p></dd>
+<dt><a name="label:47" id="label:47"><code>push(<var>obj</var>...)</code></a></dt><!-- RDLabel: "push" -->
+<dd>
+<p>appends obj</p></dd>
+<dt><a name="label:48" id="label:48"><code>replace(<var>other</var>)</code></a></dt><!-- RDLabel: "replace" -->
+<dd>
+<p>replaces the contents of the db file  with the contents of <var>other</var></p></dd>
+<dt><a name="label:49" id="label:49"><code>reverse</code></a></dt><!-- RDLabel: "reverse" -->
+<dd>
+<p>returns the array of the items in reverse order</p></dd>
+<dt><a name="label:50" id="label:50"><code>reverse!</code></a></dt><!-- RDLabel: "reverse!" -->
+<dd>
+<p>replaces the items in reverse order.</p></dd>
+<dt><a name="label:51" id="label:51"><code>reverse_each {|<var>x</var>| ...}</code></a></dt><!-- RDLabel: "reverse_each" -->
+<dd>
+<p>iterate over each item in reverse order</p></dd>
+<dt><a name="label:52" id="label:52"><code>rindex(<var>val</var>)</code></a></dt><!-- RDLabel: "rindex" -->
+<dd>
+<p>returns the index of the last item which verify <var>item == val</var></p></dd>
+<dt><a name="label:53" id="label:53"><code>shift</code></a></dt><!-- RDLabel: "shift" -->
+<dd>
+<p>remove and return the first element</p></dd>
+<dt><a name="label:54" id="label:54"><code>to_a</code></a><!-- RDLabel: "to_a" -->
+<dt><a name="label:55" id="label:55"><code>to_ary</code></a></dt><!-- RDLabel: "to_ary" -->
+<dd>
+<p>return an <var>Array</var> with all elements</p></dd>
+<dt><a name="label:56" id="label:56"><code>unshift(<var>obj</var>)</code></a></dt><!-- RDLabel: "unshift" -->
+<dd>
+<p>insert <var>obj</var> to the front of the db file</p></dd>
 </dl>
 
 </body>

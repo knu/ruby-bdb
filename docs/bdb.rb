@@ -118,184 +118,254 @@ def  db_upgrade(name)
 end
 end
 
+#retrieves the <em>nth</em> item from an array. Index starts from zero.
+#If index is the negative, counts backward from the end of the array. 
+#The index of the last element is -1. Returns <em>nil</em>, if the <em>nth</em>
+#element is not exist in the array. 
 #
 def  self[nth] 
 end
 
+#returns an array containing the objects from <em>start</em> to <em>end</em>,
+#including both ends. if end is larger than the length of the array,
+#it will be rounded to the length. If <em>start</em> is out of an array 
+#range , returns <em>nil</em>.
+#And if <em>start</em> is larger than end with in array range, returns
+#empty array ([]). 
 #
 def  self[start..end] 
 end
 
+#returns an array containing <em>length</em> items from <em>start</em>. 
+#Returns <em>nil</em> if <em>length</em> is negative. 
 #
 def  self[start, length] 
 end
 
+#changes the <em>nth</em> element of the array into <em>val</em>. 
+#If <em>nth</em> is larger than array length, the array shall be extended
+#automatically. Extended region shall be initialized by <em>nil</em>. 
 #
 def  self[nth] = val 
 end
 
+#replace the items from <em>start</em> to <em>end</em> with <em>val</em>. 
+#If <em>val</em> is not an array, the type of <em>val</em> will be converted
+#into the Array using <em>to_a</em> method. 
 #
 def  self[start..end] = val 
 end
 
+#replace the <em>length</em> items from <em>start</em> with <em>val</em>. 
+#If <em>val</em> is not an array, the type of <em>val</em> will be converted 
+#into the Array using <em>to_a</em>. 
 #
 def  self[start, length] = val 
 end
 
+#concatenation
 #
 def  self + other 
 end
 
+#repetition
 #
 def  self * times 
 end
 
+#substraction
 #
 def  self - other 
 end
 
+#returns a new array which contains elements belong to both elements.
 #
 def  self & other 
 end
 
+#join
 #
 def  self | other 
 end
 
+#append a new item with value <em>obj</em>. Return <em>self</em>
 #
 def  self << obj 
 end
 
+#comparison : return -1, 0 or 1
 #
 def  self <=> other 
 end
 
+#delete all elements 
 #
-def  clear 
+def  clear
 end
 
+#Returns a new array by invoking block once for every element,
+#passing each element as a parameter to block. The result of block
+#is used as the given element 
+#
+def  collect  
+yield item
+end
+
+#invokes block once for each element of db, replacing the element
+#with the value returned by block.
+#
+def  collect!  
+yield item
+end
+
+#append <em>other</em> to the end
 #
 def  concat(other) 
 end
 
+#delete the item which matches to <em>val</em>
 #
 def  delete(val) 
 end
 
+#delete the item at <em>pos</em>
 #
 def  delete_at(pos) 
 end
 
+#delete the item if the block return <em>true</em>
 #
-def  delete_if {...} 
+def  delete_if  
+yield x
 end
 
+#delete the item if the block return <em>true</em>
 #
 def  reject! 
 yield x
 end
 
+#iterate over each item
 #
-def  each {...} 
+def  each  
+yield x
 end
 
+#iterate over each index
 #
-def  each_index {...} 
+def  each_index  
+yield i
 end
 
+#return <em>true</em> if the db file is empty 
 #
-def  empty? 
+def  empty?
 end
 
+#set the entire db with <em>val</em> 
 #
-def  fill(val) 
+def  fill(val)
 end
 
+#fill the db with <em>val</em> from <em>start</em> 
 #
-def  fill(val, start[, length]) 
+def  fill(val, start[, length])
 end
 
+#set the db with <em>val</em> from <em>start</em> to <em>end</em> 
 #
-def  fill(val, start..end) 
+def  fill(val, start..end)
 end
 
-#
-def  filter 
-yield item
-end
-
-#
-def  freeze 
-end
-
-#
-def  frozen 
-end
-
+#returns true if the given <em>val</em> is present
 #
 def  include?(val) 
 end
 
+#returns the index of the item which equals to <em>val</em>. 
+#If no item found, returns <em>nil</em>
 #
 def  index(val) 
 end
 
+#returns an array consisting of elements at the given indices
 #
 def  indexes(index_1,..., index_n) 
 end
 
+#returns an array consisting of elements at the given indices
 #
 def  indices(index_1,..., index_n) 
 end
 
+#returns a string created by converting each element to a string
 #
 def  join([sep]) 
 end
 
-# 
+#return the number of elements of the db file
+#
 def  length
 end
-
-#
+#same than <em> length</em>
 def  size 
 end
 
+#return the number of non-nil elements of the db file
 #
 def  nitems 
 end
 
+#pops and returns the last value
 #
 def  pop 
 end
 
+#appends obj
 #
 def  push(obj...) 
 end
 
+#replaces the contents of the db file  with the contents of <em>other</em>
 #
 def  replace(other) 
 end
 
+#returns the array of the items in reverse order
 #
 def  reverse 
 end
 
+#replaces the items in reverse order.
 #
 def  reverse! 
 end
 
+#iterate over each item in reverse order
 #
-def  reverse_each {...} 
+def  reverse_each  
+yield x
 end
 
+#returns the index of the last item which verify <em>item == val</em>
 #
 def  rindex(val) 
 end
 
+#remove and return the first element
 #
 def  shift 
 end
 
+#return an <em>Array</em> with all elements
+#
+def  to_a
+end
+#same than <em> to_a</em>
+def  to_ary
+end
+
+#insert <em>obj</em> to the front of the db file
 #
 def  unshift(obj) 
 end
@@ -325,7 +395,7 @@ end
 def  c_count()
 end
 
-#Same than (({get(BDB::CURRENT)}))
+#Same than <tt>get(BDB::CURRENT)</tt>
 #
 def  current()
 end
@@ -365,7 +435,7 @@ end
 def  c_clone(flags = 0)
 end
 
-#Same than (({get(BDB::FIRST)}))
+#Same than <tt>get(BDB::FIRST)</tt>
 #
 def  first()
 end
@@ -375,7 +445,7 @@ end
 
 #Retrieve key/data pair from the database
 #
-#See the description of (({c_get})) in the Berkeley distribution
+#See the description of <tt>c_get</tt> in the Berkeley distribution
 #for the different values of the <em>flags</em> parameter.
 #
 #<em>key</em> must be given if the <em>flags</em> parameter is 
@@ -389,7 +459,7 @@ end
 def  c_get(flags, key = nil, value = nil)
 end
 
-#Same than (({get(BDB::LAST)}))
+#Same than <tt>get(BDB::LAST)</tt>
 #
 def  last()
 end
@@ -397,7 +467,7 @@ end
 def  c_last()
 end
 
-#Same than (({get(BDB::NEXT)}))
+#Same than <tt>get(BDB::NEXT)</tt>
 #
 def  next()
 end
@@ -413,7 +483,7 @@ end
 def  c_pget(flags, key = nil, value = nil)
 end
 
-#Same than (({get(BDB::PREV)}))
+#Same than <tt>get(BDB::PREV)</tt>
 #
 def  prev()
 end
@@ -423,7 +493,7 @@ end
 
 #Stores data value into the database.
 #
-#See the description of (({c_put})) in the Berkeley distribution
+#See the description of <tt>c_put</tt> in the Berkeley distribution
 #for the different values of the <em>flags</em> parameter.
 #
 def  put(flags, value)
@@ -444,7 +514,7 @@ end
 def  c_put(flags, key, value)
 end
 
-#Same than (({get})) with the flags <em>BDB::SET</em> or <em>BDB::SET_RANGE</em>
+#Same than <tt>get</tt> with the flags <em>BDB::SET</em> or <em>BDB::SET_RANGE</em>
 #or <em>BDB::SET_RECNO</em>
 #
 def  set(key)
@@ -555,7 +625,46 @@ class << self
 #    locking on an environment-wide basis rather than per-database.
 #      
 #* <em>options</em>
-#  hash. See the documentation of Berkeley DB for possible values.
+#  Hash, Possible options are (see the documentation of Berkeley DB
+#  for more informations) 
+#
+#  * <em>set_app_dispatch</em> : configure application recovery interface (DB >= 4.1)
+#  * <em>set_cachesize</em> :   set the database cache size
+#  * <em>set_data_dir</em> : set the environment data directory (DB >= 3)
+#  * <em>set_encrypt</em> : set the environment cryptographic key (DB >= 4.1)
+#  * <em>set_feedback</em> : set feedback callback (DB >= 3)
+#  * <em>set_flags</em> : environment configuration (DB >= 3.2)
+#  * <em>set_lg_bsize</em> : set log buffer size (DB >= 3)
+#  * <em>set_lg_dir</em> : set the environment logging directory (DB >= 3)
+#  * <em>set_lg_max</em> : set log file size
+#  * <em>set_lg_regionmax</em> : set logging region size (DB >= 3)
+#  * <em>set_lk_conflicts</em> : set lock conflicts matrix (DB >= 3)
+#  * <em>set_lk_detect</em> : set automatic deadlock detection
+#  * <em>set_lk_max_lockers</em> : set maximum number of lockers
+#  * <em>set_lk_max_locks</em> : set maximum number of locks
+#  * <em>set_lk_max_objects</em> : set maximum number of lock objects
+#  * <em>set_rep_transport</em> : configure replication transport (DB >= 4)
+#  * <em>set_rep_limit</em> : limit data sent in response to a single message (DB >= 4.1)
+#  * <em>set_rpc_server</em> : establish an RPC server connection (DB >= 3.1)
+#  * <em>set_tas_spins</em> : set the number of test-and-set spins (DB >= 3)
+#  * <em>set_tmp_dir</em> : set the environment temporary file directory (DB >= 3)
+#  * <em>set_timeout</em> : set lock and transaction timeout (DB >= 4)
+#  * <em>set_tx_max</em> : set maximum number of transactions (DB >= 3)
+#  * <em>set_tx_timestamp</em> : set recovery timestamp (DB >= 3.1)
+#  * <em>set_verbose</em> : set verbose messages
+#  * <em>set_verb_chkpoint</em> :display checkpoint location information when searching the log for checkpoints. (DB >= 3)
+#  * <em>set_verb_deadlock</em> : display additional information when doing deadlock detection. (DB >= 3)
+#  * <em>set_verb_recovery</em> : display additional information when performing recovery. (DB >= 3)
+#  * <em>set_verb_replication</em> : display additional information when processing replication messages. (DB >= 4)
+#  * <em>set_verb_waitsfor</em> : display the waits-for table when doing deadlock detection. (DB >= 3)
+#
+#  Proc given to <em>set_feedback</em>, <em>set_app_dispatch</em> and
+#  <em>set_rep_transport</em> can be also specified as a method
+#  (replace the prefix <em>set_</em> with <em>bdb_</em>)
+#
+#  For <em>bdb_rep_transport</em> the constant <em>ENVID</em> must be defined
+#
+#  The constant <em>BDB_ENCRYPT</em> can be used to replace <em>set_encrypt</em>
 #
 def  open(home, flags = 0, mode = 0, options = {})
 end
@@ -1179,10 +1288,10 @@ end
 
 #Open a new cursor.
 #
-def  cursor()
+def  cursor(flags = 0)
 end
 #same than <em> cursor</em>
-def  db_cursor()
+def  db_cursor(flags = 0)
 end
 
 #Return the subname
@@ -1227,7 +1336,7 @@ end
 #
 #<em>set</em> <em>bulk</em>
 #
-def  each(set = nil, bulk = 0]) 
+def  each(set = nil, bulk = 0, "flags" => 0) 
 yield key, value
 end
 #same than <em> each</em>

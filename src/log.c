@@ -26,7 +26,7 @@ free_lsn(lsnst)
 }
 
 VALUE
-MakeLsn(env)
+bdb_makelsn(env)
     VALUE env;
 {
     bdb_ENV *dbenvst;
@@ -52,7 +52,7 @@ bdb_s_log_put_internal(obj, a, flag)
 
     GetEnvDB(obj, dbenvst);
     if (TYPE(a) != T_STRING) a = rb_str_to_str(a);
-    ret = MakeLsn(obj);
+    ret = bdb_makelsn(obj);
     Data_Get_Struct(ret, struct dblsnst, lsnst);
     data.data = RSTRING(a)->ptr;
     data.size = RSTRING(a)->len;
@@ -238,7 +238,7 @@ bdb_env_log_get(obj, a)
     flag = NUM2INT(a);
     MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
-    lsn = MakeLsn(obj);
+    lsn = bdb_makelsn(obj);
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
 #if DB_VERSION_MAJOR < 3
     if (!dbenvst->dbenvp->lg_info) {
@@ -287,7 +287,7 @@ bdb_i_each_log_get(obj, flag)
     init = 0; /* strange ??? */
     do {
 #if DB_VERSION_MAJOR < 4
-	lsn = MakeLsn(obj);
+	lsn = bdb_makelsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 #endif
 	MEMZERO(&data, DBT, 1);
@@ -369,7 +369,7 @@ static VALUE
 bdb_env_log_cursor(obj)
     VALUE obj;
 {
-    return bdb_log_cursor(MakeLsn(obj));
+    return bdb_log_cursor(bdb_makelsn(obj));
 }
 
 static VALUE
@@ -404,7 +404,7 @@ bdb_env_log_each(obj)
     VALUE lsn;
     struct dblsnst *lsnst;
 
-    lsn = MakeLsn(obj);
+    lsn = bdb_makelsn(obj);
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
     lsnst->flags = DB_NEXT;
     return rb_ensure(bdb_log_i_get, lsn, bdb_log_cursor_close, lsn);
@@ -428,7 +428,7 @@ bdb_env_log_hcae(obj)
     VALUE lsn;
     struct dblsnst *lsnst;
 
-    lsn = MakeLsn(obj);
+    lsn = bdb_makelsn(obj);
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
     lsnst->flags = DB_PREV;
     return rb_ensure(bdb_log_i_get, lsn, bdb_log_cursor_close, lsn);
@@ -480,6 +480,16 @@ bdb_env_log_archive(argc, argv, obj)
 {							\
     Data_Get_Struct(obj, struct dblsnst, lsnst);	\
     GetEnvDB(lsnst->env, dbenvst);			\
+}
+
+static VALUE
+bdb_lsn_env(obj)
+    VALUE obj;
+{
+    struct dblsnst *lsnst;
+    bdb_ENV *dbenvst;
+    GetLsn(obj, lsnst, dbenvst);
+    return lsnst->env;
 }
 
 static VALUE
@@ -685,6 +695,7 @@ void bdb_init_log()
     rb_include_module(bdb_cLsn, rb_mComparable);
     rb_undef_method(CLASS_OF(bdb_cLsn), "allocate");
     rb_undef_method(CLASS_OF(bdb_cLsn), "new");
+    rb_define_method(bdb_cLsn, "env", bdb_lsn_env, 0);
 #if DB_VERSION_MAJOR >= 4
     rb_define_method(bdb_cLsn, "log_cursor", bdb_log_cursor, 0);
     rb_define_method(bdb_cLsn, "cursor", bdb_log_cursor, 0);

@@ -8,12 +8,12 @@ if prefix = with_config("db-prefix")
       $LDFLAGS += " -R#{prefix}/lib"
    end
 end
-$CFLAGS += " -DBDB_NO_THREAD" if enable_config("thread") == false
+$CFLAGS += " -DBDB_NO_THREAD_COMPILE" if enable_config("thread") == false
 if incdir = with_config("db-include-dir")
    $CFLAGS += " -I#{incdir}" 
 end
 if libdir = with_config("db-lib-dir")
-   $LDFLAGS += " -I#{libdir}" 
+   $LDFLAGS += " -L#{libdir}" 
    case Config::CONFIG["arch"]
    when /solaris2/
       $LDFLAGS += " -R#{libdir}"

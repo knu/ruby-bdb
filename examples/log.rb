@@ -1,18 +1,18 @@
 #!/usr/bin/ruby
-require 'bdb'
+require '../src/bdb'
 class << BDB::Env
-   def cleanup(dir)
+   def cleanup(dir, all = false)
       begin
 	 remove dir
 	 Dir.foreach(dir) do |file| 
-	    File.unlink("#{dir}/#{file}") if /^log/ =~ file
+	    File.unlink("#{dir}/#{file}") if all || /^log/ =~ file
 	 end
       end
    rescue
    end
 end
 
-BDB::Env.cleanup "tmp"
+BDB::Env.cleanup "tmp", true
 
 env = BDB::Env.open "tmp", BDB::CREATE | BDB::INIT_LOG, "thread" => false
 lsn = []
@@ -21,13 +21,17 @@ lsn = []
 end
 env.log_flush
 i = 0
-env.log_each do |l,| 
-   puts "Error #{l}" if l != "test toto #{i}"
+env.log_each do |l,|
+   if l != "test toto #{i}"
+      puts "Error #{i} -- #{l}"
+   end
    i += 1
 end
 i = 99
-env.log_reverse_each do |l,| 
-   puts "Error #{l}" if l != "test toto #{i}"
+env.log_reverse_each do |l,|
+   if l != "test toto #{i}"
+      puts "Error #{l}"
+   end
    i -= 1 
 end
 1000.times do

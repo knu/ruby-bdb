@@ -33,6 +33,8 @@ $order.each do |key|
    end
 end
 
+$CFLAGS += " -DBDB_NO_THREAD" if enable_config("thread") == false
+
 $order.each do |key|
    val = $library[key]
    if val.kind_of?(Array) && val.size == 2

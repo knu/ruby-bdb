@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-require 'bdb'
+require '../src/bdb'
 
 Dir.mkdir 'zippy' unless File.directory? 'zippy'
 

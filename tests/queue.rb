@@ -90,6 +90,19 @@ class TestQueue < Inh::TestCase
         "set_array_base" => 0), "<reopen with ARRAY_BASE>")
       assert_equal(0, $bdb.size, "<must be 0 after reopen>")
    end
+   def test_06_push
+      assert_equal(nil, $bdb.close, "<close>")
+      assert_kind_of(BDB::Queue, $bdb = BDB::Queue.open("tmp/aa", nil, "w", 
+        "set_array_base" => 0), "<reopen with ARRAY_BASE>")
+      assert_equal($bdb, $bdb.push("a"), "<push>")
+      assert_equal($bdb, $bdb << "b", "<push>")
+      assert_equal(2, $bdb.size, "<size>")
+      assert_equal("a", $bdb[0], "<[0]>")
+      assert_equal("b", $bdb[1], "<[1]>")
+      assert_equal([0, "a"], $bdb.shift, "<shift>")
+      assert_equal([1, "b"], $bdb.shift, "<shift>")
+      assert_equal(0, $bdb.size, "<size>")
+   end
    def test_07_in_memory
       assert_equal(nil, $bdb.close, "<close>")
       assert_kind_of(BDB::Queue, $bdb = BDB::Queue.open(nil, nil), "<open in memory>")

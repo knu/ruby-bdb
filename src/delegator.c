@@ -136,7 +136,7 @@ bdb_deleg_dump(obj, limit)
     bdb_DB *dbst;
     Data_Get_Struct(obj, struct deleg_class, delegst);
     Data_Get_Struct(delegst->db, bdb_DB, dbst);
-    return rb_funcall(dbst->marshal, rb_intern("dump"), 1, delegst->obj);
+    return rb_funcall(dbst->marshal, bdb_id_dump, 1, delegst->obj);
 }
 
 static VALUE
@@ -145,11 +145,11 @@ bdb_deleg_load(obj, str)
 {
     bdb_DB *dbst;
 
-    if ((obj = rb_thread_local_aref(rb_thread_current(), id_current_db)) == Qnil) {
+    if ((obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db)) == Qnil) {
 	rb_raise(bdb_eFatal, "BUG : current_db not set");
     }
     Data_Get_Struct(obj, bdb_DB, dbst);
-    return rb_funcall(dbst->marshal, rb_intern("load"), 1, str);
+    return rb_funcall(dbst->marshal, bdb_id_load, 1, str);
 }
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/ruby -I../src
-require 'bdb'
+require '../src/bdb'
 module BDB
    class Bcomp < Btree
       extend Marshal
@@ -13,9 +13,9 @@ end
 record1Class = Struct.new('Record1', :f1, :f2 ,:f3)
 record2Class = Struct.new('Record2', :f3, :f2 ,:f1)
 
-File.delete('hash1.bdb') if File.exists?('hash1.bdb')
+File.delete('tmp/hash1.bdb') if File.exists?('tmp/hash1.bdb')
 
-hash1 = BDB::Bcomp.create('hash1.bdb', nil, "w", 0644,
+hash1 = BDB::Bcomp.create('tmp/hash1.bdb', nil, "w", 0644,
 			  'set_pagesize' => 1024) 
 f1 = 'aaaa'
 f2 = 'lmno'
@@ -28,9 +28,9 @@ f3 = 'rrrr'
    hash1[rec1.f1] = rec1 
 end
 
-File.delete('hash2.bdb') if File.exists?('hash2.bdb')
+File.delete('tmp/hash2.bdb') if File.exists?('tmp/hash2.bdb')
 
-hash2 = BDB::Bcomp.create('hash2.bdb', nil, "w", 0644, 
+hash2 = BDB::Bcomp.create('tmp/hash2.bdb', nil, "w", 0644, 
 			  'set_pagesize' => 1024)
 hash1.each do |k,rec1|
    rec2 = record2Class.new

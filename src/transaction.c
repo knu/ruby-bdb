@@ -23,6 +23,7 @@ bdb_txn_mark(txnst)
     if (txnst->marshal) rb_gc_mark(txnst->marshal);
     if (txnst->mutex) rb_gc_mark(txnst->mutex);
     rb_gc_mark(txnst->db_ary);
+    rb_gc_mark(txnst->db_assoc);
 }
 
 static VALUE
@@ -36,15 +37,35 @@ bdb_txn_assoc(argc, argv, obj)
     bdb_TXN *txnst;
 
     ary = rb_ary_new();
-    GetTxnDB(obj, txnst, bdb_eFatal);
+    GetTxnDB(obj, txnst);
     for (i = 0; i < argc; i++) {
 	a = rb_funcall(argv[i], rb_intern("__txn_dup__"), 1, obj);
+	rb_ary_push(txnst->db_assoc, a);
         rb_ary_push(ary, a);
     }
     switch (RARRAY(ary)->len) {
     case 0: return Qnil;
     case 1: return RARRAY(ary)->ptr[0];
     default: return ary;
+    }
+}
+
+static void
+bdb_txn_close_all(txnst, result)
+    bdb_TXN *txnst;
+    VALUE result;
+{
+    VALUE db;
+
+    while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
+	if (rb_respond_to(db, id_txn_close)) {
+	    rb_funcall(db, id_txn_close, 2, result, Qtrue);
+	}
+    }
+    while ((db = rb_ary_pop(txnst->db_assoc)) != Qnil) {
+	if (rb_respond_to(db, id_txn_close)) {
+	    rb_funcall(db, id_txn_close, 2, result, Qfalse);
+	}
     }
 }
 
@@ -63,7 +84,7 @@ bdb_txn_commit(argc, argv, obj)
     if (rb_scan_args(argc, argv, "01", &a) == 1) {
         flags = NUM2INT(a);
     }
-    GetTxnDB(obj, txnst, bdb_eFatal);
+    GetTxnDB(obj, txnst);
 #if DB_VERSION_MAJOR < 3
     bdb_test_error(txn_commit(txnst->txnid));
 #else
@@ -73,11 +94,7 @@ bdb_txn_commit(argc, argv, obj)
     bdb_test_error(txn_commit(txnst->txnid, flags));
 #endif
 #endif
-    while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	if (rb_respond_to(db, id_txn_close)) {
-	    rb_funcall(db, id_txn_close, 1, Qtrue);
-	}
-    }
+    bdb_txn_close_all(txnst, Qtrue);
     txnst->txnid = NULL;
     if (txnst->status == 1) {
 	txnst->status = 0;
@@ -93,17 +110,13 @@ bdb_txn_abort(obj)
     bdb_TXN *txnst;
     VALUE db;
 
-    GetTxnDB(obj, txnst, bdb_eFatal);
+    GetTxnDB(obj, txnst);
 #if DB_VERSION_MAJOR >= 4
     bdb_test_error(txnst->txnid->abort(txnst->txnid));
 #else
     bdb_test_error(txn_abort(txnst->txnid));
 #endif
-    while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-	if (rb_respond_to(db, id_txn_close)) {
-	    rb_funcall(db, id_txn_close, 1, Qfalse);
-	}
-    }
+    bdb_txn_close_all(txnst, Qfalse);
     txnst->txnid = NULL;
     if (txnst->status == 1) {
 	txnst->status = 0;
@@ -155,24 +168,22 @@ bdb_txn_lock(obj)
     if (rb_obj_is_kind_of(result, bdb_cTxnCatch)) {
 	bdb_TXN *txn1;
 	Data_Get_Struct(result, bdb_TXN, txn1);
-	if (txn1 == txnst)
+	if (txn1 == txnst) {
 	    return Qnil;
+	}
 	else {
-	    VALUE db;
-	    while ((db = rb_ary_pop(txnst->db_ary)) != Qnil) {
-		if (rb_respond_to(db, id_txn_close)) {
-		    rb_funcall(db, id_txn_close, 1, Qfalse);
-		}
-	    }
+	    bdb_txn_close_all(txnst, Qfalse);
 	    rb_throw("__bdb__begin", result);
 	}
     }
     txnst->status = 0;
     if (txnst->txnid) {
-	if (txnst->commit)
+	if (txnst->options & BDB_TXN_COMMIT) {
 	    bdb_txn_commit(0, 0, txnv);
-	else
+	}
+	else {
 	    bdb_txn_abort(txnv);
+	}
     }
     return Qnil;
 }
@@ -274,7 +285,7 @@ bdb_env_rslbl_begin(origin, argc, argv, obj)
         argc--; argv++;
     }
     if (rb_obj_is_kind_of(obj, bdb_cTxn)) {
-        GetTxnDB(obj, txnstpar, bdb_eFatal);
+        GetTxnDB(obj, txnstpar);
         txnpar = txnstpar->txnid;
 	env = txnstpar->env;
 	GetEnvDB(env, dbenvst);
@@ -310,10 +321,13 @@ bdb_env_rslbl_begin(origin, argc, argv, obj)
     txnst->txnid = txn;
     txnst->parent = txnpar;
     txnst->status = 0;
-    txnst->flags27 = dbenvst->flags27;
+    txnst->options = dbenvst->options & BDB_INIT_LOCK;
     txnst->db_ary = rb_ary_new2(0);
+    txnst->db_assoc = rb_ary_new2(0);
     txnst->mutex = opt.mutex;
-    txnst->commit = commit;
+    if (commit) {
+	txnst->options |= BDB_TXN_COMMIT;
+    }
 #if DB_VERSION_MAJOR >= 4
     if (origin != Qfalse) {
 	txnst->txn_cxx = ((struct txn_rslbl *)origin)->txn_cxx;
@@ -361,7 +375,7 @@ bdb_txn_id(obj)
     bdb_TXN *txnst;
     int res;
 
-    GetTxnDB(obj, txnst, bdb_eFatal);
+    GetTxnDB(obj, txnst);
 #if DB_VERSION_MAJOR >= 4
     res = txnst->txnid->id(txnst->txnid);
 #else
@@ -382,7 +396,7 @@ bdb_txn_prepare(obj)
     bdb_TXN *txnst;
     unsigned char id;
 
-    GetTxnDB(obj, txnst, bdb_eFatal);
+    GetTxnDB(obj, txnst);
 #if DB_VERSION_MAJOR >= 4
     id = (unsigned char)NUM2INT(txnid);
     bdb_test_error(txnst->txnid->prepare(txnst->txnid, &id));
@@ -466,8 +480,9 @@ bdb_env_recover(obj)
     txnv = Data_Make_Struct(bdb_cTxn, bdb_TXN, bdb_txn_mark, bdb_txn_free, txnst);
     txnst->env = obj;
     txnst->marshal = dbenvst->marshal;
-    txnst->flags27 = dbenvst->flags27;
+    txnst->options = dbenvst->options & BDB_INIT_LOCK;
     txnst->db_ary = rb_ary_new2(0);
+    txnst->db_assoc = rb_ary_new2(0);
     flags = DB_FIRST;
     while (1) {
 #if DB_VERSION_MAJOR >=4
@@ -493,7 +508,7 @@ bdb_txn_discard(obj)
 
     rb_secure(4);
     flags = 0;
-    GetTxnDB(obj, txnst, bdb_eFatal);
+    GetTxnDB(obj, txnst);
 #if DB_VERSION_MAJOR >=4
     bdb_test_error(txnst->txnid->discard(txnst->txnid, flags));
 #else
@@ -563,12 +578,12 @@ bdb_env_stat(argc, argv, obj)
 	int i;
 
 	rb_hash_aset(a, rb_tainted_str_new2("st_nrestores"), INT2NUM(bdb_stat->st_nrestores));
-	lsn = MakeLsn(obj);
+	lsn = bdb_makelsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	MEMCPY(lsnst->lsn, &bdb_stat->st_last_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_last_ckp"), lsn);
 #if DB_VERSION_MINOR < 1
-	lsn = MakeLsn(obj);
+	lsn = bdb_makelsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	MEMCPY(lsnst->lsn, &bdb_stat->st_pending_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_pending_ckp"), lsn);
@@ -578,7 +593,7 @@ bdb_env_stat(argc, argv, obj)
 	    hash = rb_hash_new();
 	    rb_hash_aset(hash, rb_tainted_str_new2("txnid"), INT2NUM(bdb_stat->st_txnarray[i].txnid));
 	    rb_hash_aset(hash, rb_tainted_str_new2("parentid"), INT2NUM(bdb_stat->st_txnarray[i].parentid));
-	    lsn = MakeLsn(obj);
+	    lsn = bdb_makelsn(obj);
 	    Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	    MEMCPY(lsnst->lsn, &bdb_stat->st_txnarray[i].lsn, DB_LSN, 1);
 	    rb_hash_aset(hash, rb_tainted_str_new2("lsn"), lsn);
@@ -600,7 +615,7 @@ bdb_txn_set_txn_timeout(obj, a)
     bdb_ENV dbenvst;
 
     if (!NIL_P(a)) {
-	GetTxnDB(obj, txnst, bdb_eFatal);
+	GetTxnDB(obj, txnst);
 	bdb_test_error(txnst->txnid->set_timeout(txnst->txnid, NUM2UINT(a), DB_SET_TXN_TIMEOUT));
     }
     return obj;
@@ -614,7 +629,7 @@ bdb_txn_set_lock_timeout(obj, a)
     bdb_ENV dbenvst;
 
     if (!NIL_P(a)) {
-	GetTxnDB(obj, txnst, bdb_eFatal);
+	GetTxnDB(obj, txnst);
 	bdb_test_error(txnst->txnid->set_timeout(txnst->txnid, NUM2UINT(a), DB_SET_LOCK_TIMEOUT));
     }
     return obj;
@@ -672,12 +687,15 @@ bdb_env_dbremove(argc, argv, obj)
     }
     txnid = NULL;
     if (rb_obj_is_kind_of(obj, bdb_cTxn)) {
-        GetTxnDB(obj, txnst, bdb_eFatal);
+        GetTxnDB(obj, txnst);
 	txnid = txnst->txnid;
 	GetEnvDB(txnst->env, dbenvst);
     }
     else {
 	GetEnvDB(obj, dbenvst);
+    }
+    if (txnid == NULL && (dbenvst->options & BDB_AUTO_COMMIT)) {
+      flags |= DB_AUTO_COMMIT;
     }
     bdb_test_error(dbenvst->dbenvp->dbremove(dbenvst->dbenvp, txnid,
 					     file, database, flags));
@@ -724,12 +742,15 @@ bdb_env_dbrename(argc, argv, obj)
     }
     txnid = NULL;
     if (rb_obj_is_kind_of(obj, bdb_cTxn)) {
-        GetTxnDB(obj, txnst, bdb_eFatal);
+        GetTxnDB(obj, txnst);
 	txnid = txnst->txnid;
 	GetEnvDB(txnst->env, dbenvst);
     }
     else {
 	GetEnvDB(obj, dbenvst);
+    }
+    if (txnid == NULL && (dbenvst->options & BDB_AUTO_COMMIT)) {
+      flags |= DB_AUTO_COMMIT;
     }
     bdb_test_error(dbenvst->dbenvp->dbrename(dbenvst->dbenvp, txnid,
 					     file, database, newname, flags));

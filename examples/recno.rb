@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-require 'bdb'
+require '../src/bdb'
 out = open("tmp/recno.rb", "w")
 File.foreach("recno.rb") do |line|
    out.print line

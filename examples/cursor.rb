@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
-require 'bdb'
-db = BDB::Btree.open "cursor", nil, BDB::CREATE | BDB::TRUNCATE, 0644,
+require '../src/bdb'
+db = BDB::Btree.open "tmp/cursor", nil, BDB::CREATE | BDB::TRUNCATE, 0644,
      "set_pagesize" => 1024, "set_flags" => BDB::RECNUM
 indice = 0
 File.foreach("wordlist") do |line|
