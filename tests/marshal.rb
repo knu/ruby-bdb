@@ -36,6 +36,7 @@ print "\nVERSION of BDB is #{BDB::VERSION}\n"
 Inh = defined?(RUNIT) ? RUNIT : Test::Unit
 
 class TestBtree < Inh::TestCase
+
    def test_00_error
       assert_raises(BDB::Fatal, "invalid name") do
 	 BDB::Btree.new(".", nil, "a")
@@ -259,23 +260,26 @@ class TestBtree < Inh::TestCase
          txn.begin(db) do |txn1, db1|
             db1["cc1"] = "cc"
 	    db1["aa"].push({"a" => "c"})
-	    assert_equal(["e", "f", {"a" => "c"}], db["aa"].to_orig, "<change array>");
+	    res = db["aa"].to_orig
+	    assert_equal(["e", "f", {"a" => "c"}], res, "<change array>");
             assert_equal(6, db1.size, "<size in txn>")
             txn.commit
             assert_fail("<after an commit>")
          end
          assert_fail("<after an commit>")
       end
-      assert_equal(["e", "f", {"a" => "c"}], $bdb["aa"].to_orig, "<change array>");
+      res = $bdb["aa"].to_orig
+      assert_equal(["e", "f", {"a" => "c"}], res, "<change array>");
       assert_equal(6, $bdb.size, "<size after commit>")
    end
 
    def test_17_sh
       val = 'a' .. 'zz'
       assert_equal(nil, $bdb.close, "<close>")
-      assert_kind_of(BDB::Btree, $bdb = BDB::AZ.open("tmp/aa", nil, "w"), "<sh>")
+      $bdb = BDB::AZ.open("tmp/aa", nil, "w")
+      assert_kind_of(BDB::Btree, $bdb, "<sh>")
       val.each do |l|
-	 assert_equal(l, $bdb[l] = l, "<store>")
+	 $bdb[l] = l
       end
       $bdb.each do |k, v|
 	 assert_equal(k, v, "<fetch>")

@@ -208,3 +208,7 @@
        (Thanks Darrin Thompson <darrint@progeny.com>)
 
 * adapted for 4.1.24 (DB_CURLSN is removed)
+
+--- 0.3.8
+
+* adapted for 1.8.0

@@ -9,7 +9,7 @@ static ID id_current_env;
 static VALUE
 xb_s_new(int argc, VALUE *argv, VALUE obj)
 {
-  VALUE res = rb_funcall2(obj, rb_intern("allocate"), argc, argv);
+  VALUE res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
   rb_obj_call_init(res, argc, argv);
   return res;
 }
@@ -46,7 +46,7 @@ xb_doc_mark(xdoc *doc)
 }
 
 static VALUE
-xb_doc_s_alloc(int argc, VALUE *argv, VALUE obj)
+xb_doc_s_alloc(VALUE obj)
 {
   xdoc *doc;
   VALUE res = Data_Make_Struct(obj, xdoc, (RDF)xb_doc_mark, (RDF)xb_doc_free, doc);
@@ -100,7 +100,11 @@ static VALUE
 xb_doc_content_set(VALUE obj, VALUE a)
 {
   xdoc *doc;
+#if RUBY_VERSION_CODE >= 180
+  long int len = 0;
+#else
   int len = 0;
+#endif
   char *str = NULL;
 
   Data_Get_Struct(obj, xdoc, doc);
@@ -368,7 +372,7 @@ xb_cxt_free(XmlQueryContext *cxt)
 }
 
 static VALUE
-xb_cxt_s_alloc(int argc, VALUE *argv, VALUE obj)
+xb_cxt_s_alloc(VALUE obj)
 {
   return Data_Wrap_Struct(obj, 0, (RDF)xb_cxt_free, new XmlQueryContext());
 }
@@ -569,12 +573,8 @@ xb_con_free(xcon *con)
 }
 
 static VALUE
-xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
+xb_con_s_alloc(VALUE obj)
 {
-  DbEnv *envcc = NULL;
-  bdb_ENV *dbenvst = NULL;
-  int flags = 0, pagesize = 0, nargc;
-  char *name = NULL;
   xcon *con;
   VALUE res;
 
@@ -582,6 +582,22 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
 #ifndef BDB_NO_THREAD
   con->flag |= DB_THREAD;
 #endif
+  return res;
+}
+
+static VALUE
+xb_con_s_new(int argc, VALUE *argv, VALUE obj)
+{
+  DbEnv *envcc = NULL;
+  bdb_ENV *dbenvst = NULL;
+  int flags = 0, pagesize = 0, nargc;
+  char *name = NULL;
+  xcon *con;
+  VALUE res;
+  bool init = true;
+
+  res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+  Data_Get_Struct(res, xcon, con);
   nargc = argc;
   if (argc && TYPE(argv[argc - 1]) == T_HASH) {
     VALUE env = Qfalse;
@@ -620,6 +636,9 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
     if ((v = rb_hash_aref(f, rb_str_new2("set_pagesize"))) != RHASH(f)->ifnone) {
       pagesize = NUM2INT(v);
     }
+    if ((v = rb_hash_aref(f, INT2NUM(rb_intern("__ts__no__init__")))) != RHASH(f)->ifnone) {
+      init = false;
+    }
     nargc--;
   }
   if (nargc) {
@@ -630,6 +649,9 @@ xb_con_s_alloc(int argc, VALUE *argv, VALUE obj)
   PROTECT(con->con = new XmlContainer(envcc, name, flags));
   if (pagesize) {
     PROTECT(con->con->setPageSize(pagesize));
+  }
+  if (init) {
+      rb_obj_call_init(res, nargc, argv);
   }
   return res;
 }
@@ -767,7 +789,7 @@ xb_env_open_xml(int argc, VALUE *argv, VALUE obj)
   else {
     rb_hash_aset(nargv[nargc - 1], rb_tainted_str_new2("txn"), obj);
   }
-  return xb_s_new(nargc, nargv, xb_cCon);
+  return xb_con_s_new(nargc, nargv, xb_cCon);
 }
 
 static VALUE
@@ -986,16 +1008,17 @@ xb_con_i_alloc(VALUE obj, VALUE name)
   int argc;
   VALUE klass, argv[2];
 
-  argc = 1;
+  argc = 2;
   argv[0] = name;
+  argv[1] = rb_hash_new();
+  rb_hash_aset(argv[1], INT2NUM(rb_intern("__ts__no__init__")), Qtrue);
   klass = obj;
   if (rb_obj_is_kind_of(obj, xb_cTxn)) {
     argc = 2;
     klass = xb_cCon;
-    argv[1] = rb_hash_new();
     rb_hash_aset(argv[1], rb_tainted_str_new2("txn"), obj);
   }
-  return rb_funcall2(klass, rb_intern("allocate"), argc, argv);
+  return rb_funcall2(klass, rb_intern("new"), argc, argv);
 }
 
 static VALUE
@@ -1130,7 +1153,7 @@ xb_i_txn(VALUE obj, int *flags)
 }
 
 static VALUE
-xb_env_s_alloc(int argc, VALUE *argv, VALUE obj)
+xb_env_s_new(int argc, VALUE *argv, VALUE obj)
 {
   DbEnv *env = new DbEnv(0);
   DB_ENV *envd = env->get_DB_ENV();
@@ -1230,11 +1253,13 @@ extern "C" {
     }
     xb_eFatal = rb_const_get(xb_mDb, rb_intern("Fatal"));
     xb_cEnv = rb_const_get(xb_mDb, rb_intern("Env"));
-    rb_define_singleton_method(xb_cEnv, "allocate", RMF(xb_env_s_alloc), -1);
+    rb_define_singleton_method(xb_cEnv, "new", RMF(xb_env_s_new), -1);
+    rb_define_singleton_method(xb_cEnv, "create", RMF(xb_env_s_new), -1);
     rb_define_method(xb_cEnv, "open_xml", RMF(xb_env_open_xml), -1);
     rb_define_method(xb_cEnv, "begin", RMF(xb_env_begin), -1);
     rb_define_method(xb_cEnv, "txn_begin", RMF(xb_env_begin), -1);
     rb_define_method(xb_cEnv, "transaction", RMF(xb_env_begin), -1);
+    DbXml::setLogLevel(DbXml::LEVEL_ALL,false);
     xb_cTxn = rb_const_get(xb_mDb, rb_intern("Txn"));
     rb_define_method(xb_cTxn, "open_xml", RMF(xb_env_open_xml), -1);
     rb_define_method(xb_cTxn, "begin", RMF(xb_env_begin), -1);
@@ -1245,9 +1270,13 @@ extern "C" {
     xb_mXML = rb_define_module_under(xb_mDb, "XML");
     xb_cCon = rb_define_class_under(xb_mXML, "Container", rb_cObject);
     rb_include_module(xb_cCon, rb_mEnumerable);
-    rb_define_singleton_method(xb_cCon, "allocate", RMF(xb_con_s_alloc), -1);
-    rb_define_singleton_method(xb_cCon, "new", RMF(xb_s_new), -1);
-    rb_define_singleton_method(xb_cCon, "open", RMF(xb_s_open), -1);
+#if RUBY_VERSION_CODE >= 180
+    rb_define_alloc_func(xb_cCon, RMF(xb_con_s_alloc));
+#else
+    rb_define_singleton_method(xb_cCon, "allocate", RMF(xb_con_s_alloc), 0);
+#endif
+    rb_define_singleton_method(xb_cCon, "new", RMF(xb_con_s_new), -1);
+    rb_define_singleton_method(xb_cCon, "open", RMF(xb_con_s_new), -1);
     rb_define_singleton_method(xb_cCon, "rename", RMF(xb_con_rename), 2);
     rb_define_singleton_method(xb_cCon, "remove", RMF(xb_con_remove), 1);
     rb_define_singleton_method(xb_cCon, "dump", RMF(xb_con_dump), -1);
@@ -1282,7 +1311,11 @@ extern "C" {
     rb_define_const(xb_cDoc, "UCS4", INT2FIX(XmlDocument::UCS4));
     rb_define_const(xb_cDoc, "UCS4_ASCII", INT2FIX(XmlDocument::UCS4_ASCII));
     rb_define_const(xb_cDoc, "EBCDIC", INT2FIX(XmlDocument::EBCDIC));
-    rb_define_singleton_method(xb_cDoc, "allocate", RMF(xb_doc_s_alloc), -1);
+#if RUBY_VERSION_CODE >= 180
+    rb_define_alloc_func(xb_cDoc, RMF(xb_doc_s_alloc));
+#else
+    rb_define_singleton_method(xb_cDoc, "allocate", RMF(xb_doc_s_alloc), 0);
+#endif
     rb_define_singleton_method(xb_cDoc, "new", RMF(xb_s_new), -1);
     rb_define_private_method(xb_cDoc, "initialize", RMF(xb_doc_init), -1);
     rb_define_method(xb_cDoc, "name", RMF(xb_doc_name_get), 0);
@@ -1307,7 +1340,11 @@ extern "C" {
     rb_define_const(xb_cCxt, "Candidates", INT2FIX(XmlQueryContext::CandidateDocuments));
     rb_define_const(xb_cCxt, "Eager", INT2FIX(XmlQueryContext::Eager));
     rb_define_const(xb_cCxt, "Lazy", INT2FIX(XmlQueryContext::Lazy));
-    rb_define_singleton_method(xb_cCxt, "allocate", RMF(xb_cxt_s_alloc), -1);
+#if RUBY_VERSION_CODE >= 180
+    rb_define_alloc_func(xb_cCxt, RMF(xb_cxt_s_alloc));
+#else
+    rb_define_singleton_method(xb_cCxt, "allocate", RMF(xb_cxt_s_alloc), 0);
+#endif
     rb_define_singleton_method(xb_cCxt, "new", RMF(xb_s_new), -1);
     rb_define_private_method(xb_cCxt, "initialize", RMF(xb_cxt_init), -1);
     rb_define_method(xb_cCxt, "set_namespace", RMF(xb_cxt_name_set), 2);

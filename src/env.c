@@ -796,7 +796,18 @@ bdb_env_s_i_options(obj, flags)
 }
 
 static VALUE
-bdb_env_s_alloc(argc, argv, obj)
+bdb_env_s_alloc(obj)
+    VALUE obj;
+{
+    VALUE res;
+    bdb_ENV *dbenvst;
+
+    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, dbenvst);
+    return res;
+}
+
+static VALUE
+bdb_env_s_new(argc, argv, obj)
     int argc;
     VALUE *argv;
     VALUE obj;
@@ -805,7 +816,8 @@ bdb_env_s_alloc(argc, argv, obj)
     VALUE res;
     int flags = 0;
 
-    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, dbenvst);
+    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+    Data_Get_Struct(res, bdb_ENV, dbenvst);
 #if DB_VERSION_MAJOR < 3
     dbenvst->dbenvp = ALLOC(DB_ENV);
     MEMZERO(dbenvst->dbenvp, DB_ENV, 1);
@@ -824,8 +836,10 @@ bdb_env_s_alloc(argc, argv, obj)
     bdb_test_error(dbenvst->dbenvp->set_alloc(dbenvst->dbenvp, malloc, realloc, free));
 #endif
 #endif
+    rb_obj_call_init(res, argc, argv);
     return res;
 }
+
 
 #if DB_VERSION_MAJOR >= 4
 
@@ -835,11 +849,13 @@ bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
     bdb_ENV *dbenvst;
     VALUE res;
 
-    res = Data_Make_Struct(obj, bdb_ENV, bdb_env_mark, bdb_env_free, dbenvst);
+    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+    Data_Get_Struct(res, bdb_ENV, dbenvst);
     dbenvst->dbenvp = env;
     dbenvst->dbenvp->set_errpfx(dbenvst->dbenvp, "BDB::");
     dbenvst->dbenvp->set_errcall(dbenvst->dbenvp, bdb_env_errcall);
     bdb_test_error(dbenvst->dbenvp->set_alloc(dbenvst->dbenvp, malloc, realloc, free));
+    rb_obj_call_init(res, argc, argv);
     return res;
 }
 
@@ -1160,9 +1176,13 @@ void bdb_init_env()
 #endif
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
     rb_define_private_method(bdb_cEnv, "initialize", bdb_env_init, -1);
-    rb_define_singleton_method(bdb_cEnv, "allocate", bdb_env_s_alloc, -1);
-    rb_define_singleton_method(bdb_cEnv, "new", bdb_s_new, -1);
-    rb_define_singleton_method(bdb_cEnv, "create", bdb_s_new, -1);
+#if RUBY_VERSION_CODE >= 180
+    rb_define_alloc_func(bdb_cEnv, bdb_env_s_alloc);
+#else
+    rb_define_singleton_method(bdb_cEnv, "allocate", bdb_env_s_alloc, 0);
+#endif
+    rb_define_singleton_method(bdb_cEnv, "new", bdb_env_s_new, -1);
+    rb_define_singleton_method(bdb_cEnv, "create", bdb_env_s_new, -1);
     rb_define_singleton_method(bdb_cEnv, "open", bdb_env_s_open, -1);
     rb_define_singleton_method(bdb_cEnv, "remove", bdb_env_s_remove, -1);
     rb_define_singleton_method(bdb_cEnv, "unlink", bdb_env_s_remove, -1);

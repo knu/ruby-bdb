@@ -45,9 +45,9 @@ class TestRecno < Inh::TestCase
       assert($bdb.both?(1, "alpha"), "<has both>")
       assert(! $bdb.both?(1, "beta"), "<don't has both>")
       assert(! $bdb.both?(3, "alpha"), "<don't has both>")
-      assert_equal([1, 2, 3].to_s, $bdb[4] = [1, 2, 3], "<array>")
+      assert_equal([1, 2, 3], $bdb[4] = [1, 2, 3], "<array>")
       assert_equal([1, 2, 3].to_s, $bdb[4], "<retrieve array>")
-      assert_equal({"a" => "b"}.to_s, $bdb[5] = {"a" => "b"}, "<hash>")
+      assert_equal({"a" => "b"}, $bdb[5] = {"a" => "b"}, "<hash>")
       assert_equal({"a" => "b"}.to_s, $bdb[5], "<retrieve hash>")
       assert($bdb.sync, "<sync>")
    end
@@ -157,10 +157,10 @@ class TestRecno < Inh::TestCase
    end
    def test_10_partial_set
       $bdb.set_partial(0, 2)
-      assert_equal("at", $bdb[2] = "", "<partial set>")
+      assert_equal("", $bdb[2] = "", "<partial set>")
       assert_equal("AB", $bdb[6] = "AB", "<partial set>")
-      assert_equal("XY", $bdb[12] = "XYZ", "<partial set>")
-      assert_equal("KL", $bdb[10] = "KLM", "<partial set>")
+      assert_equal("XYZ", $bdb[12] = "XYZ", "<partial set>")
+      assert_equal("KLM", $bdb[10] = "KLM", "<partial set>")
       pon, off, len = $bdb.clear_partial
       assert(pon, "<pon>")
       assert_equal(0, off, "<off>")
@@ -173,9 +173,9 @@ class TestRecno < Inh::TestCase
       assert(!pon, "<pon>")
       assert_equal(0, off, "<off>")
       assert_equal(0, len, "<len>")
-      assert_equal("PP", $bdb[2] = "PPP", "<partial set>")
+      assert_equal("PPP", $bdb[2] = "PPP", "<partial set>")
       assert_equal("Q", $bdb[6] = "Q", "<partial set>")
-      assert_equal("XY", $bdb[12] = "XYZ", "<partial set>")
+      assert_equal("XYZ", $bdb[12] = "XYZ", "<partial set>")
       assert_equal("TU", $bdb[10] = "TU", "<partial set>")
       pon, off, len = $bdb.clear_partial
       assert(pon, "<pon>")

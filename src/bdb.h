@@ -74,7 +74,7 @@ extern ID bdb_id_current_db, bdb_id_current_env;
 extern VALUE bdb_deleg_to_orig _((VALUE));
 
 #if DB_VERSION_MAJOR >= 4
-extern VALUE bdb_env_s_rslbl _((int, VALUE *, VALUE, DB_ENV *));
+extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
 #endif
 
 typedef struct  {
@@ -357,7 +357,6 @@ extern VALUE bdb_has_value _((VALUE, VALUE));
 extern VALUE bdb_index _((VALUE, VALUE));
 extern VALUE bdb_internal_value _((VALUE, VALUE, VALUE, int));
 extern VALUE bdb_put _((int, VALUE *, VALUE));
-extern VALUE bdb_s_new _((int, VALUE *, VALUE));
 extern VALUE bdb_test_load _((VALUE, DBT *, int));
 extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
 extern VALUE bdb_tree_stat _((int, VALUE *, VALUE));

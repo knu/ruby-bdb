@@ -1,5 +1,6 @@
 #include "bdb.h"
 #include <rubyio.h>
+#include <version.h>
 
 static ID id_bt_compare, id_bt_prefix, id_dup_compare, id_h_hash;
 #if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 1
@@ -825,6 +826,93 @@ bdb_recno_length(obj)
     return hash;
 }
 
+static VALUE
+bdb_s_new(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
+{
+    VALUE res;
+    bdb_DB *dbst;
+    DB_ENV *dbenvp = 0;
+
+    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+    Data_Get_Struct(res, bdb_DB, dbst);
+    if (argc && TYPE(argv[argc - 1]) == T_HASH) {
+	bdb_ENV *dbenvst = NULL;
+	VALUE v, f = argv[argc - 1];
+
+	if ((v = rb_hash_aref(f, rb_str_new2("txn"))) != RHASH(f)->ifnone) {
+	    bdb_TXN *txnst;
+
+	    if (!rb_obj_is_kind_of(v, bdb_cTxn)) {
+		rb_raise(bdb_eFatal, "argument of txn must be a transaction");
+	    }
+	    Data_Get_Struct(v, bdb_TXN, txnst);
+	    rb_ary_push(txnst->db_ary, res);
+	    dbst->txn = txnst;
+	    dbst->env = txnst->env;
+	    Data_Get_Struct(txnst->env, bdb_ENV, dbenvst);
+	    /* #ts:
+	       rb_ary_push(dbenvst->db_ary, res);
+	    */
+	    dbenvp = dbenvst->dbenvp;
+	    dbst->options |= dbenvst->options & BDB_NO_THREAD;
+	    dbst->marshal = txnst->marshal;
+	}
+	else if ((v = rb_hash_aref(f, rb_str_new2("env"))) != RHASH(f)->ifnone) {
+	    if (!rb_obj_is_kind_of(v, bdb_cEnv)) {
+		rb_raise(bdb_eFatal, "argument of env must be an environnement");
+	    }
+	    Data_Get_Struct(v, bdb_ENV, dbenvst);
+	    rb_ary_push(dbenvst->db_ary, res);
+	    dbst->env = v;
+	    dbenvp = dbenvst->dbenvp;
+	    dbst->options |= dbenvst->options & BDB_NO_THREAD;
+	    dbst->marshal = dbenvst->marshal;
+	}
+#ifdef DB_ENCRYPT 
+	if (dbenvst && (dbenvst->options & BDB_ENV_ENCRYPT)) {
+	    VALUE tmp = rb_str_new2("set_flags");
+	    if ((v = rb_hash_aref(f, rb_intern("set_flags"))) != RHASH(f)->ifnone) {
+		rb_hash_aset(f, rb_intern("set_flags"), 
+			     INT2NUM(NUM2INT(v) | DB_ENCRYPT));
+	    }
+	    else if ((v = rb_hash_aref(f, tmp)) != RHASH(f)->ifnone) {
+		rb_hash_aset(f, tmp, INT2NUM(NUM2INT(v) | DB_ENCRYPT));
+	    }
+	    else {
+		rb_hash_aset(f, tmp, INT2NUM(DB_ENCRYPT));
+	    }
+	}
+#endif
+    }
+#if DB_VERSION_MAJOR >= 3
+    bdb_test_error(db_create(&(dbst->dbp), dbenvp, 0));
+    dbst->dbp->set_errpfx(dbst->dbp, "BDB::");
+    dbst->dbp->set_errcall(dbst->dbp, bdb_env_errcall);
+    dbst->options |= BDB_NOT_OPEN;
+#endif
+    if (rb_respond_to(obj, bdb_id_load) == Qtrue &&
+	rb_respond_to(obj, bdb_id_dump) == Qtrue) {
+	dbst->marshal = obj;
+	dbst->options |= BDB_MARSHAL;
+    }
+    if (rb_method_boundp(obj, rb_intern("bdb_store_key"), 0) == Qtrue) {
+	dbst->filter[FILTER_KEY] = INT2FIX(rb_intern("bdb_store_key"));
+    }
+    if (rb_method_boundp(obj, rb_intern("bdb_fetch_key"), 0) == Qtrue) {
+	dbst->filter[2 + FILTER_KEY] = INT2FIX(rb_intern("bdb_fetch_key"));
+    }
+    if (rb_method_boundp(obj, rb_intern("bdb_store_value"), 0) == Qtrue) {
+	dbst->filter[FILTER_VALUE] = INT2FIX(rb_intern("bdb_store_value"));
+    }
+    if (rb_method_boundp(obj, rb_intern("bdb_fetch_value"), 0) == Qtrue) {
+	dbst->filter[2 + FILTER_VALUE] = INT2FIX(rb_intern("bdb_fetch_value"));
+    }
+    rb_obj_call_init(res, argc, argv);
+    return res;
+}
+
 VALUE
 bdb_init(argc, argv, obj)
     int argc;
@@ -1124,14 +1212,11 @@ bdb_init(argc, argv, obj)
 }
 
 static VALUE
-bdb_s_alloc(argc, argv, obj)
-    int argc;
-    VALUE *argv;
+bdb_s_alloc(obj)
     VALUE obj;
 {
     VALUE res, cl;
     bdb_DB *dbst;
-    DB_ENV *dbenvp = 0;
 
     res = Data_Make_Struct(obj, bdb_DB, bdb_mark, bdb_free, dbst);
     cl = obj;
@@ -1167,89 +1252,6 @@ bdb_s_alloc(argc, argv, obj)
     if (!cl) {
 	rb_raise(bdb_eFatal, "unknown database type");
     }
-    if (argc && TYPE(argv[argc - 1]) == T_HASH) {
-	bdb_ENV *dbenvst = NULL;
-	VALUE v, f = argv[argc - 1];
-
-	if ((v = rb_hash_aref(f, rb_str_new2("txn"))) != RHASH(f)->ifnone) {
-	    bdb_TXN *txnst;
-
-	    if (!rb_obj_is_kind_of(v, bdb_cTxn)) {
-		rb_raise(bdb_eFatal, "argument of txn must be a transaction");
-	    }
-	    Data_Get_Struct(v, bdb_TXN, txnst);
-	    rb_ary_push(txnst->db_ary, res);
-	    dbst->txn = txnst;
-	    dbst->env = txnst->env;
-	    Data_Get_Struct(txnst->env, bdb_ENV, dbenvst);
-	    /* #ts:
-	       rb_ary_push(dbenvst->db_ary, res);
-	    */
-	    dbenvp = dbenvst->dbenvp;
-	    dbst->options |= dbenvst->options & BDB_NO_THREAD;
-	    dbst->marshal = txnst->marshal;
-	}
-	else if ((v = rb_hash_aref(f, rb_str_new2("env"))) != RHASH(f)->ifnone) {
-	    if (!rb_obj_is_kind_of(v, bdb_cEnv)) {
-		rb_raise(bdb_eFatal, "argument of env must be an environnement");
-	    }
-	    Data_Get_Struct(v, bdb_ENV, dbenvst);
-	    rb_ary_push(dbenvst->db_ary, res);
-	    dbst->env = v;
-	    dbenvp = dbenvst->dbenvp;
-	    dbst->options |= dbenvst->options & BDB_NO_THREAD;
-	    dbst->marshal = dbenvst->marshal;
-	}
-#ifdef DB_ENCRYPT 
-	if (dbenvst && (dbenvst->options & BDB_ENV_ENCRYPT)) {
-	    VALUE tmp = rb_str_new2("set_flags");
-	    if ((v = rb_hash_aref(f, rb_intern("set_flags"))) != RHASH(f)->ifnone) {
-		rb_hash_aset(f, rb_intern("set_flags"), 
-			     INT2NUM(NUM2INT(v) | DB_ENCRYPT));
-	    }
-	    else if ((v = rb_hash_aref(f, tmp)) != RHASH(f)->ifnone) {
-		rb_hash_aset(f, tmp, INT2NUM(NUM2INT(v) | DB_ENCRYPT));
-	    }
-	    else {
-		rb_hash_aset(f, tmp, INT2NUM(DB_ENCRYPT));
-	    }
-	}
-#endif
-    }
-#if DB_VERSION_MAJOR >= 3
-    bdb_test_error(db_create(&(dbst->dbp), dbenvp, 0));
-    dbst->dbp->set_errpfx(dbst->dbp, "BDB::");
-    dbst->dbp->set_errcall(dbst->dbp, bdb_env_errcall);
-    dbst->options |= BDB_NOT_OPEN;
-#endif
-    if (rb_respond_to(obj, bdb_id_load) == Qtrue &&
-	rb_respond_to(obj, bdb_id_dump) == Qtrue) {
-	dbst->marshal = obj;
-	dbst->options |= BDB_MARSHAL;
-    }
-    if (rb_method_boundp(obj, rb_intern("bdb_store_key"), 0) == Qtrue) {
-	dbst->filter[FILTER_KEY] = INT2FIX(rb_intern("bdb_store_key"));
-    }
-    if (rb_method_boundp(obj, rb_intern("bdb_fetch_key"), 0) == Qtrue) {
-	dbst->filter[2 + FILTER_KEY] = INT2FIX(rb_intern("bdb_fetch_key"));
-    }
-    if (rb_method_boundp(obj, rb_intern("bdb_store_value"), 0) == Qtrue) {
-	dbst->filter[FILTER_VALUE] = INT2FIX(rb_intern("bdb_store_value"));
-    }
-    if (rb_method_boundp(obj, rb_intern("bdb_fetch_value"), 0) == Qtrue) {
-	dbst->filter[2 + FILTER_VALUE] = INT2FIX(rb_intern("bdb_fetch_value"));
-    }
-    return res;
-}
-
-VALUE
-bdb_s_new(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
-{
-    VALUE res = rb_funcall2(obj, rb_intern("allocate"), argc, argv);
-    rb_obj_call_init(res, argc, argv);
     return res;
 }
 
@@ -1505,6 +1507,17 @@ bdb_put(argc, argv, obj)
 	    return bdb_test_ret(obj, b0, b, FILTER_VALUE);
 	}
     }
+}
+
+static VALUE
+bdb_aset(obj, a, b)
+    VALUE obj, a, b;
+{
+    VALUE tmp[2];
+    tmp[0] = a;
+    tmp[1] = b;
+    bdb_put(2, tmp, obj);
+    return b;
 }
 
 static VALUE
@@ -3581,7 +3594,11 @@ void bdb_init_common()
     bdb_cCommon = rb_define_class_under(bdb_mDb, "Common", rb_cObject);
     rb_define_private_method(bdb_cCommon, "initialize", bdb_init, -1);
     rb_include_module(bdb_cCommon, rb_mEnumerable);
-    rb_define_singleton_method(bdb_cCommon, "allocate", bdb_s_alloc, -1);
+#if RUBY_VERSION_CODE >= 180
+    rb_define_alloc_func(bdb_cCommon, bdb_s_alloc);
+#else
+    rb_define_singleton_method(bdb_cCommon, "allocate", bdb_s_alloc, 0);
+#endif
     rb_define_singleton_method(bdb_cCommon, "new", bdb_s_new, -1);
     rb_define_singleton_method(bdb_cCommon, "create", bdb_s_new, -1);
     rb_define_singleton_method(bdb_cCommon, "open", bdb_s_open, -1);
@@ -3605,7 +3622,7 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "db_close", bdb_close, -1);
     rb_define_method(bdb_cCommon, "put", bdb_put, -1);
     rb_define_method(bdb_cCommon, "db_put", bdb_put, -1);
-    rb_define_method(bdb_cCommon, "[]=", bdb_put, -1);
+    rb_define_method(bdb_cCommon, "[]=", bdb_aset, 2);
     rb_define_method(bdb_cCommon, "store", bdb_put, -1);
     rb_define_method(bdb_cCommon, "env", bdb_env, 0);
     rb_define_method(bdb_cCommon, "has_env?", bdb_has_env, 0);

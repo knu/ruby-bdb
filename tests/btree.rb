@@ -72,9 +72,9 @@ class TestBtree < Inh::TestCase
       assert(! $bdb.both?("alpha", "beta"), "<don't has both>")
       assert(! $bdb.get("alpha", "beta", BDB::GET_BOTH), "<don't has both>")
       assert(! $bdb.both?("unknown", "alpha"), "<don't has both>")
-      assert_equal([1, 2, 3].to_s, $bdb["array"] = [1, 2, 3], "<array>")
+      assert_equal([1, 2, 3], $bdb["array"] = [1, 2, 3], "<array>")
       assert_equal([1, 2, 3].to_s, $bdb["array"], "<retrieve array>")
-      assert_equal({"a" => "b"}.to_s, $bdb["hash"] = {"a" => "b"}, "<hash>")
+      assert_equal({"a" => "b"}, $bdb["hash"] = {"a" => "b"}, "<hash>")
       assert_equal({"a" => "b"}.to_s, $bdb["hash"], "<retrieve hash>")
       assert($bdb.sync, "<sync>")
    end
@@ -194,10 +194,10 @@ class TestBtree < Inh::TestCase
    end
    def test_10_partial_set
       $bdb.set_partial(0, 2)
-      assert_equal("at", $bdb["red"] = "", "<partial set>")
+      assert_equal("", $bdb["red"] = "", "<partial set>")
       assert_equal("AB", $bdb["green"] = "AB", "<partial set>")
-      assert_equal("XY", $bdb["blue"] = "XYZ", "<partial set>")
-      assert_equal("KL", $bdb["yellow"] = "KLM", "<partial set>")
+      assert_equal("XYZ", $bdb["blue"] = "XYZ", "<partial set>")
+      assert_equal("KLM", $bdb["yellow"] = "KLM", "<partial set>")
       pon, off, len = $bdb.clear_partial
       assert(pon, "<pon>")
       assert_equal(0, off, "<off>")
@@ -210,9 +210,9 @@ class TestBtree < Inh::TestCase
       assert(!pon, "<pon>")
       assert_equal(0, off, "<off>")
       assert_equal(0, len, "<len>")
-      assert_equal("PP", $bdb["red"] = "PPP", "<partial set>")
+      assert_equal("PPP", $bdb["red"] = "PPP", "<partial set>")
       assert_equal("Q", $bdb["green"] = "Q", "<partial set>")
-      assert_equal("XY", $bdb["blue"] = "XYZ", "<partial set>")
+      assert_equal("XYZ", $bdb["blue"] = "XYZ", "<partial set>")
       assert_equal("TU", $bdb["yellow"] = "TU", "<partial set>")
       pon, off, len = $bdb.clear_partial
       assert(pon, "<pon>")

@@ -1,5 +1,12 @@
 #!/usr/bin/ruby
 require 'mkmf'
+stat_lib = if CONFIG.key?("LIBRUBYARG_STATIC")
+	      $LDFLAGS += " -L#{CONFIG['libdir']}"
+	      CONFIG["LIBRUBYARG_STATIC"]
+	   else
+	      "-lruby"
+	   end
+
 if prefix = with_config("db-prefix")
    $CFLAGS += " -I#{prefix}/include"
    $LDFLAGS += " -L#{prefix}/lib"
@@ -43,7 +50,7 @@ begin
 
 unknown: $(DLLIB)
 \t@echo "main() {}" > /tmp/a.c
-\t$(CC) -static /tmp/a.c $(OBJS) $(CPPFLAGS) $(DLDFLAGS) -lruby #{CONFIG["LIBS"]} $(LIBS) $(LOCAL_LIBS)
+\t$(CC) -static /tmp/a.c $(OBJS) $(CPPFLAGS) $(DLDFLAGS) #{stat_lib} #{CONFIG["LIBS"]} $(LIBS) $(LOCAL_LIBS)
 \t@-rm /tmp/a.c a.out
    EOF
 ensure

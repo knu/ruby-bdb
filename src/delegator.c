@@ -15,13 +15,8 @@ bdb_deleg_mark(delegst)
 {
     bdb_DB *dbst;
 
-    if (delegst->db) {
-	Data_Get_Struct(delegst->db, bdb_DB, dbst);
-	if (dbst->dbp) {
-	    rb_gc_mark(delegst->db);
-	    if (delegst->key) rb_gc_mark(delegst->key);
-	}
-    }
+    if (delegst->db) rb_gc_mark(delegst->db);
+    if (delegst->key) rb_gc_mark(delegst->key);
     if (delegst->obj) rb_gc_mark(delegst->obj);
 }
 
