@@ -277,6 +277,62 @@ bdb_env_check(argc, argv, obj)
     return Qnil;
 }
 
+#if DB_VERSION_MAJOR >= 3 && DB_VERSION_MINOR >= 3
+
+static VALUE
+bdb_env_recover(obj)
+    VALUE obj;
+{
+    unsigned int flags;
+    long count, retp;
+    unsigned char id;
+    DB_PREPLIST preplist[1];
+    bdb_ENV *dbenvst;
+    DB_TXN *txn;
+    bdb_TXN *txnst;
+    VALUE txnv;
+
+    if (!rb_block_given_p()) {
+        rb_raise(bdb_eFatal, "call out of an iterator");
+    }
+    rb_secure(4);
+    GetEnvDB(obj, dbenvst);
+    txnv = Data_Make_Struct(bdb_cTxn, bdb_TXN, bdb_txn_mark, bdb_txn_free, txnst);
+    txnst->env = obj;
+    txnst->marshal = dbenvst->marshal;
+    txnst->flags27 = dbenvst->flags27;
+    txnst->db_ary = rb_ary_new2(0);
+    flags = DB_FIRST;
+    while (1) {
+	bdb_test_error(txn_recover(dbenvst->dbenvp, preplist, 1, &retp, flags));
+	if (retp == 0) break;
+	txnst->txnid = preplist[0].txn;
+	id = (unsigned char)preplist[0].gid[0];
+	rb_yield(rb_assoc_new(txnv, INT2NUM(id)));
+	flags = DB_NEXT;
+    }
+    return obj;
+}
+
+static VALUE
+bdb_txn_discard(obj)
+    VALUE obj;
+{
+    bdb_TXN *txnst;
+    int flags;
+
+    rb_secure(4);
+    flags = 0;
+    GetTxnDB(obj, txnst);
+    bdb_test_error(txn_discard(txnst->txnid, flags));
+    txnst->txnid = NULL;
+    return Qtrue;
+}
+
+#endif
+	
+
+
 static VALUE
 bdb_env_stat(obj)
     VALUE obj;
@@ -328,6 +384,10 @@ void bdb_init_transaction()
     rb_define_method(bdb_cEnv, "txn_stat", bdb_env_stat, 0);
     rb_define_method(bdb_cEnv, "checkpoint", bdb_env_check, -1);
     rb_define_method(bdb_cEnv, "txn_checkpoint", bdb_env_check, -1);
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    rb_define_method(bdb_cEnv, "txn_recover", bdb_env_recover, 0);
+    rb_define_method(bdb_cEnv, "recover", bdb_env_recover, 0);
+#endif
     rb_define_method(bdb_cTxn, "begin", bdb_env_begin, -1);
     rb_define_method(bdb_cTxn, "txn_begin", bdb_env_begin, -1);
     rb_define_method(bdb_cTxn, "transaction", bdb_env_begin, -1);
@@ -340,6 +400,8 @@ void bdb_init_transaction()
     rb_define_method(bdb_cTxn, "id", bdb_txn_id, 0);
     rb_define_method(bdb_cTxn, "txn_id", bdb_txn_id, 0);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 3
+    rb_define_method(bdb_cTxn, "discard", bdb_txn_discard, 0);
+    rb_define_method(bdb_cTxn, "txn_discard", bdb_txn_discard, 0);
     rb_define_method(bdb_cTxn, "prepare", bdb_txn_prepare, 1);
     rb_define_method(bdb_cTxn, "txn_prepare", bdb_txn_prepare, 1);
 #else

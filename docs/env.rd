@@ -199,7 +199,17 @@ environment can then be identified by the name of that directory.
 --- open_db(type [, name, subname, flags, mode])
      open the database in the current environment. type must be one of
      the constant ((|BDB::BTREE|)), ((|BDB::HASH|)), ((|BDB::RECNO|)), 
-     ((|BDB::QUEUE|)). See ((<open|URL:access.html#open>)) for other arguments
+     ((|BDB::QUEUE|)). See ((<open|URL:access.html#open>)) for other
+     arguments
+
+
+--- recover { |txn, id| ... }
+     only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 3
+
+     iterate over all prepared transactions. The transaction ((|txn|))
+     must be made a call to #abort, #commit, #discard
+
+     ((|id|)) is the global transaction ID for the transaction
 
 --- set_flags(flags [, onoff]) 
       only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 2

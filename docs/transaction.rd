@@ -84,6 +84,13 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
      This behavior may be set for an entire Berkeley DB environment as
      part of the open interface.
 
+--- discard
+--- txn_discard
+     only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 3
+
+     Discard a prepared but not resolved transaction handle, must be called
+     only within BDB::Env#recover
+
 --- id()
 --- txn_id()
      The txn_id function returns the unique transaction id associated

@@ -92,3 +92,12 @@
 * corrected set_rpc_server for 3.3.11
 * added support for bulk retrieval (#each, #each_value, #each_key) 3.3.11
 
+-- 0.2.3
+
+* search libdb3 before libdb (src/extconf.rb) 
+         (Thanks "Akinori MUSHA" <knu@iDaemons.org>)
+* BDB::Common::remove for >= 3
+* BDB::Common::truncate alias of BDB::Common::clear
+* BDB::Env#recover && BDB::Txn#discard for >= 3.3.11
+* BDB::Common#each_dup, BDB::Common#each_dup_value, BDB::Common#duplicates
+* BDB::Common#each_primary, BDB::Common#reverse_each_primary 3.3.11

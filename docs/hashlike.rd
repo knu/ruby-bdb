@@ -155,6 +155,9 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
      ((|flags|)) can have the values ((|BDB::GET_BOTH|)), 
      ((|BDB::SET_RECNO|)) or ((|BDB::RMW|))
 
+     In presence of duplicates it will return the first data item, use
+     #duplicates if you want all duplicates (see also #each_dup)
+
 --- pget(key [, flags])
      Returns the primary key and the value corresponding to ((|key|))
      in the secondary index
@@ -216,16 +219,31 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
       ((<bulk>))
 
+--- duplicates(key [, assoc = true])
+      Return an array of all duplicate associations for ((|key|))
+
+      if ((|assoc|)) is ((|false|)) return only the values.
+
 --- each([bulk]) { |key, value| ... }
 --- each_pair([bulk]) { |key, value| ... }
       Iterates over associations.
 
       ((<bulk>))
 
+--- each_dup(key) { |key, value| ... }
+      Iterates over each duplicate associations for ((|key|))
+
+--- each_dup_value(key) { |value| ... }
+      Iterates over each duplicate values for ((|key|))
+
 --- each_key([bulk]) { |key| ... }
       Iterates over keys. 
 
       ((<bulk>))
+
+--- each_primary { |skey, pkey, pvalue| ... }
+      Iterates over secondary indexes and give secondary key, primary key
+      and value
 
 --- each_value([bulk]) { |value| ... }
       Iterates over values. 
@@ -284,6 +302,10 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- reverse_each_key { |key| ... }
       Iterates over keys in reverse order 
 
+--- reverse_each_primary { |skey, pkey, pvalue| ... }
+      Iterates over secondary indexes in reverse order and give secondary key,
+      primary key and value
+
 --- reverse_each_value { |value| ... }
       Iterates over values in reverse order.
 
@@ -299,6 +321,10 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- to_hash
        Return an hash of all associations {key => value}
 
+--- truncate
+--- clear
+       Empty a database
+       
 --- values 
        Returns the array of the values in the database.
 

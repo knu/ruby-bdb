@@ -1,89 +1,63 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML>
-<HEAD>
-<TITLE>docs/transaction.rd</TITLE>
-</HEAD>
-<BODY>
-<H2><A NAME="label:0">BDB::Txn
-</A></H2><!-- RDLabel: "BDB::Txn" -->
-<P>
-The transaction subsystem makes operations atomic, consistent,
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/transaction.rd</title>
+</head>
+<body>
+<h2><a name="label:0" id="label:0">BDB::Txn</a></h2><!-- RDLabel: "BDB::Txn" -->
+<p>The transaction subsystem makes operations atomic, consistent,
 isolated, and durable in the face of system and application
 failures. The subsystem requires that the data be properly logged and
 locked in order to attain these properties. Berkeley DB contains all
 the components necessary to transaction-protect the Berkeley DB access
 methods and other forms of data may be protected if they are logged
-and locked appropriately.
-</P>
-<P>
-The transaction subsystem is created, initialized, and opened by calls
-to <A HREF="env.html#open">BDB::Env#open</A> with the <VAR>BDB::INIT_TXN</VAR>
-flag (or <VAR>BDB::INIT_TRANSACTION</VAR>) specified.
+and locked appropriately.</p>
+<p>The transaction subsystem is created, initialized, and opened by calls
+to <a href="env.html#open">BDB::Env#open</a> with the <var>BDB::INIT_TXN</var>
+flag (or <var>BDB::INIT_TRANSACTION</var>) specified.
 Note that enabling transactions automatically enables
 logging, but does not enable locking, as a single thread of control
-that needed atomicity and recoverability would not require it.
-</P>
-<P>
-The following option can be given when the environnement is created
-</P>
-<DL>
-<DT><A NAME="label:2"><VAR>"set_tx_max"</VAR>
-</A><!-- RDLabel: ""set_tx_max"" -->
-<DD>
-<P>
-Set maximum number of transactions
-</P>
-</DD>
-</DL>
-<P>
-The transaction is created with <A HREF="env.html#begin">BDB::Env#begin</A>
-or with <A HREF="#begin">begin</A> 
-</P>
-<P>
-See also <A HREF="env.html#txn_stat">BDB::Env#txn_stat</A> and
-<A HREF="env.html#txn_checkpoint">BDB::Env#txn_checkpoint</A>
-</P>
-<H3><A NAME="label:1">Methods
-</A></H3><!-- RDLabel: "Methods" -->
-<DL>
-<DT><A NAME="abort"><CODE>abort()</CODE></A><!-- RDLabel: "abort" -->
-<DT><A NAME="txn_abort"><CODE>txn_abort()</CODE></A><!-- RDLabel: "txn_abort" -->
-<DD>
-<P>
-Abort the transaction. This is will terminate the transaction.
-</P>
-</DD>
-<DT><A NAME="assoc"><CODE>assoc(<var>db</var> [, <var>db</var>, ...])</CODE></A><!-- RDLabel: "assoc" -->
-<DT><A NAME="associate"><CODE>associate(<var>db</var> [, <var>db</var>, ...])</CODE></A><!-- RDLabel: "associate" -->
-<DT><A NAME="txn_assoc"><CODE>txn_assoc(<var>db</var> [, <var>db</var>, ...])</CODE></A><!-- RDLabel: "txn_assoc" -->
-<DD>
-<P>
-Associate a database with the transaction, return a new database
-handle which is transaction protected.
-</P>
-</DD>
-<DT><A NAME="begin"><CODE>begin([<var>flags</var>, <var>db</var>, ...])</CODE></A><!-- RDLabel: "begin" -->
-<DT><A NAME="begin"><CODE>begin([<var>flags</var>, <var>db</var>, ...]) { |<var>txn</var> [, <var>db</var>, ...]| ...}</CODE></A><!-- RDLabel: "begin" -->
-<DT><A NAME="txn_begin"><CODE>txn_begin([<var>flags</var>, <var>db</var>, ...])</CODE></A><!-- RDLabel: "txn_begin" -->
-<DD>
-<P>
-begin a transaction (the transaction manager must be enabled). flags
-can have the value <VAR>DBD::TXN_COMMIT</VAR>, in this case the transaction
-will be commited at end.
-</P>
-
-<P>
-Return a new transaction object, and the associated database handle
-if specified.
-</P>
-
-<P>
-If <VAR>#begin</VAR> is called as an iterator, <VAR>#commit</VAR> and <VAR>#abort</VAR>
-will  terminate the iterator.
-</P>
-
-<PRE>
-env.begin(db) do |txn, b|
+that needed atomicity and recoverability would not require it.</p>
+<p>The following option can be given when the environnement is created</p>
+<dl>
+<dt><a name="label:1" id="label:1"><var>"set_tx_max"</var>
+</a></dt><!-- RDLabel: ""set_tx_max"
+" -->
+<dd>
+<p>Set maximum number of transactions</p>
+</dd>
+</dl>
+<p>The transaction is created with <a href="env.html#begin">BDB::Env#begin</a>
+or with <a href="#label:8">begin</a> </p>
+<p>See also <a href="env.html#txn_stat">BDB::Env#txn_stat</a> and
+<a href="env.html#txn_checkpoint">BDB::Env#txn_checkpoint</a></p>
+<h3><a name="label:2" id="label:2">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label:3" id="label:3"><code>abort()</code></a><!-- RDLabel: "abort" -->
+<dt><a name="label:4" id="label:4"><code>txn_abort()</code></a></dt><!-- RDLabel: "txn_abort" -->
+<dd>
+<p>Abort the transaction. This is will terminate the transaction.</p></dd>
+<dt><a name="label:5" id="label:5"><code>assoc(<var>db</var> [, <var>db</var>, ...])</code></a><!-- RDLabel: "assoc" -->
+<dt><a name="label:6" id="label:6"><code>associate(<var>db</var> [, <var>db</var>, ...])</code></a><!-- RDLabel: "associate" -->
+<dt><a name="label:7" id="label:7"><code>txn_assoc(<var>db</var> [, <var>db</var>, ...])</code></a></dt><!-- RDLabel: "txn_assoc" -->
+<dd>
+<p>Associate a database with the transaction, return a new database
+handle which is transaction protected.</p></dd>
+<dt><a name="label:8" id="label:8"><code>begin([<var>flags</var>, <var>db</var>, ...])</code></a><!-- RDLabel: "begin" -->
+<dt><a name="label:9" id="label:9"><code>begin([<var>flags</var>, <var>db</var>, ...]) { |<var>txn</var> [, <var>db</var>, ...]| ...}</code></a><!-- RDLabel: "begin" -->
+<dt><a name="label:10" id="label:10"><code>txn_begin([<var>flags</var>, <var>db</var>, ...])</code></a></dt><!-- RDLabel: "txn_begin" -->
+<dd>
+<p>begin a transaction (the transaction manager must be enabled). flags
+can have the value <var>DBD::TXN_COMMIT</var>, in this case the transaction
+will be commited at end.</p>
+<p>Return a new transaction object, and the associated database handle
+if specified.</p>
+<p>If <var>#begin</var> is called as an iterator, <var>#commit</var> and <var>#abort</var>
+will  terminate the iterator.</p>
+<pre>env.begin(db) do |txn, b|
 ...
 end
 
@@ -92,69 +66,52 @@ is the same than
 env.begin do |txn|
     b = txn.assoc(db)
     ...
-end
-</PRE>
-</DD>
-<DT><A NAME="commit"><CODE>commit([<var>flags</var>])</CODE></A><!-- RDLabel: "commit" -->
-<DT><A NAME="close"><CODE>close([<var>flags</var>])</CODE></A><!-- RDLabel: "close" -->
-<DT><A NAME="txn_commit"><CODE>txn_commit([<var>flags</var>])</CODE></A><!-- RDLabel: "txn_commit" -->
-<DT><A NAME="txn_close"><CODE>txn_close([<var>flags</var>])</CODE></A><!-- RDLabel: "txn_close" -->
-<DD>
-<P>
-Commit the transaction. This will finish the transaction.
-The <VAR>flags</VAR> can have the value 
-</P>
-
-<P>
-<VAR>BDB::TXN_SYNC</VAR> Synchronously flush the log. This means the
+end</pre></dd>
+<dt><a name="label:11" id="label:11"><code>commit([<var>flags</var>])</code></a><!-- RDLabel: "commit" -->
+<dt><a name="label:12" id="label:12"><code>close([<var>flags</var>])</code></a><!-- RDLabel: "close" -->
+<dt><a name="label:13" id="label:13"><code>txn_commit([<var>flags</var>])</code></a><!-- RDLabel: "txn_commit" -->
+<dt><a name="label:14" id="label:14"><code>txn_close([<var>flags</var>])</code></a></dt><!-- RDLabel: "txn_close" -->
+<dd>
+<p>Commit the transaction. This will finish the transaction.
+The <var>flags</var> can have the value </p>
+<p><var>BDB::TXN_SYNC</var> Synchronously flush the log. This means the
 transaction will exhibit all of the ACID (atomicity, consistency
-and isolation and durability) properties. This is the default value.
-</P>
-
-<P>
-<VAR>BDB::TXN_NOSYNC</VAR> Do not synchronously flush the log. This
+and isolation and durability) properties. This is the default value.</p>
+<p><var>BDB::TXN_NOSYNC</var> Do not synchronously flush the log. This
 means the transaction will exhibit the ACI (atomicity, consistency
 and isolation) properties, but not D (durability), i.e., database
 integrity will be maintained but it is possible that this
-transaction may be undone during recovery instead of being redone.
-</P>
-
-<P>
-This behavior may be set for an entire Berkeley DB environment as
-part of the open interface.
-</P>
-</DD>
-<DT><A NAME="id"><CODE>id()</CODE></A><!-- RDLabel: "id" -->
-<DT><A NAME="txn_id"><CODE>txn_id()</CODE></A><!-- RDLabel: "txn_id" -->
-<DD>
-<P>
-The txn_id function returns the unique transaction id associated
+transaction may be undone during recovery instead of being redone.</p>
+<p>This behavior may be set for an entire Berkeley DB environment as
+part of the open interface.</p></dd>
+<dt><a name="label:15" id="label:15"><code>discard</code></a><!-- RDLabel: "discard" -->
+<dt><a name="label:16" id="label:16"><code>txn_discard</code></a></dt><!-- RDLabel: "txn_discard" -->
+<dd>
+<p>only with BDB::VERSION_MAJOR == 3 &amp;&amp; BDB::VERSION_MINOR &gt;= 3</p>
+<p>Discard a prepared but not resolved transaction handle, must be called
+only within BDB::Env#recover</p></dd>
+<dt><a name="label:17" id="label:17"><code>id()</code></a><!-- RDLabel: "id" -->
+<dt><a name="label:18" id="label:18"><code>txn_id()</code></a></dt><!-- RDLabel: "txn_id" -->
+<dd>
+<p>The txn_id function returns the unique transaction id associated
 with the specified transaction. Locking calls made on behalf of
 this transaction should use the value returned from txn_id as the
-locker parameter to the lock_get or lock_vec calls.
-</P>
-</DD>
-<DT><A NAME="prepare"><CODE>prepare()</CODE></A><!-- RDLabel: "prepare" -->
-<DT><A NAME="txn_prepare"><CODE>txn_prepare()</CODE></A><!-- RDLabel: "txn_prepare" -->
-<DT><A NAME="prepare"><CODE>prepare(<var>id</var>)        # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></CODE></A><!-- RDLabel: "prepare" -->
-<DT><A NAME="txn_prepare"><CODE>txn_prepare(<var>id</var>)    # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></CODE></A><!-- RDLabel: "txn_prepare" -->
-<DD>
-<P>
-The txn_prepare function initiates the beginning of a two-phase commit.
-</P>
-
-<P>
-In a distributed transaction environment, Berkeley DB can be used
+locker parameter to the lock_get or lock_vec calls.</p></dd>
+<dt><a name="label:19" id="label:19"><code>prepare()</code></a><!-- RDLabel: "prepare" -->
+<dt><a name="label:20" id="label:20"><code>txn_prepare()</code></a><!-- RDLabel: "txn_prepare" -->
+<dt><a name="label:21" id="label:21"><code>prepare(<var>id</var>)        # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a><!-- RDLabel: "prepare" -->
+<dt><a name="label:22" id="label:22"><code>txn_prepare(<var>id</var>)    # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a></dt><!-- RDLabel: "txn_prepare" -->
+<dd>
+<p>The txn_prepare function initiates the beginning of a two-phase commit.</p>
+<p>In a distributed transaction environment, Berkeley DB can be used
 as a local transaction manager. In this case, the distributed
 transaction manager must send prepare messages to each local
 manager. The local manager must then issue a txn_prepare and await its
 successful return before responding to the distributed transaction
 manager. Only after the distributed transaction manager receives
 successful responses from all of its prepare messages should it issue
-any commit messages.
-</P>
-</DD>
-</DL>
+any commit messages.</p></dd>
+</dl>
 
-</BODY>
-</HTML>
+</body>
+</html>

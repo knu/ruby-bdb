@@ -247,6 +247,103 @@ bdb_cursor_next(obj)
     return bdb_cursor_xxx(obj, DB_NEXT);
 }
 
+#if DB_VERSION_MAJOR == 3 || DB_VERSION_MINOR >= 6
+
+static VALUE
+bdb_cursor_next_dup(obj)
+    VALUE obj;
+{
+    return bdb_cursor_xxx(obj, DB_NEXT_DUP);
+}
+
+struct iea_st {
+    VALUE cursor;
+    VALUE key;
+    VALUE ret;
+    int assoc;
+};
+
+static VALUE
+bdb_i_each_dup_ensure(iea)
+    struct iea_st *iea;
+{
+    return bdb_cursor_close(iea->cursor);
+}
+
+static VALUE
+bdb_i_each_dup(iea)
+    struct iea_st *iea;
+{
+    VALUE res;
+    
+    res = bdb_cursor_set(iea->cursor, iea->key);
+    if (res == Qnil) return Qnil;
+    if (!iea->assoc) {
+	res = RARRAY(res)->ptr[1];
+    }
+    if (iea->ret != Qnil) {
+	rb_ary_push(iea->ret, res);
+    }
+    else {
+	rb_yield(res);
+	    
+    }
+    while ((res = bdb_cursor_next_dup(iea->cursor)) != Qnil) {
+	if (!iea->assoc) {
+	    res = RARRAY(res)->ptr[1];
+	}
+	if (iea->ret != Qnil) {
+	    rb_ary_push(iea->ret, res);
+	}
+	else {
+	    rb_yield(res);
+	}
+    }
+    return Qtrue;
+}
+
+static VALUE
+bdb_common_dups(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
+{
+    VALUE a, b, ret;
+    struct iea_st iea;
+
+    iea.assoc = 1;
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	iea.assoc = RTEST(b);
+    }
+    iea.ret = Qnil;
+    if (!rb_block_given_p()) {
+	iea.ret = rb_ary_new();
+    }
+    iea.cursor = bdb_cursor(obj);
+    iea.key = a;
+    rb_ensure(bdb_i_each_dup, (VALUE)&iea, bdb_i_each_dup_ensure, (VALUE)&iea);
+    if (!rb_block_given_p()) return iea.ret;
+    return obj;
+}
+
+static VALUE
+bdb_common_each_dup(obj, a)
+    VALUE obj, a;
+{
+    return bdb_common_dups(1, &a, obj);
+}
+
+static VALUE
+bdb_common_each_dup_val(obj, a)
+    VALUE obj, a;
+{
+    VALUE tmp[2];
+    tmp[0] = a;
+    tmp[1] = Qfalse;
+    return bdb_common_dups(2, tmp, obj);
+}
+
+#endif
+
 static VALUE
 bdb_cursor_prev(obj)
     VALUE obj;
@@ -329,6 +426,12 @@ void bdb_init_cursor()
 {
     rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, 0);
     rb_define_method(bdb_cCommon, "cursor", bdb_cursor, 0);
+#if DB_VERSION_MAJOR == 3
+    rb_define_method(bdb_cCommon, "each_dup", bdb_common_each_dup, 1);
+    rb_define_method(bdb_cCommon, "each_dup_value", bdb_common_each_dup_val, 1);
+    rb_define_method(bdb_cCommon, "dups", bdb_common_dups, -1);
+    rb_define_method(bdb_cCommon, "duplicates", bdb_common_dups, -1);
+#endif
     bdb_cCursor = rb_define_class_under(bdb_mDb, "Cursor", rb_cObject);
     rb_undef_method(CLASS_OF(bdb_cCursor), "new");
     rb_define_method(bdb_cCursor, "close", bdb_cursor_close, 0);
@@ -350,6 +453,10 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_put", bdb_cursor_put, -1);
     rb_define_method(bdb_cCursor, "c_next", bdb_cursor_next, 0);
     rb_define_method(bdb_cCursor, "next", bdb_cursor_next, 0);
+#if DB_VERSION_MAJOR == 3 || DB_VERSION_MINOR >= 6
+    rb_define_method(bdb_cCursor, "c_next_dup", bdb_cursor_next_dup, 0);
+    rb_define_method(bdb_cCursor, "next_dup", bdb_cursor_next_dup, 0);
+#endif
     rb_define_method(bdb_cCursor, "c_first", bdb_cursor_first, 0);
     rb_define_method(bdb_cCursor, "first", bdb_cursor_first, 0);
     rb_define_method(bdb_cCursor, "c_last", bdb_cursor_last, 0);
