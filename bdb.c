@@ -74,6 +74,7 @@ typedef struct {
     DB_INFO *dbinfo;
 #else
     int re_len;
+    char re_pad;
 #endif
 } bdb_DB;
 
@@ -477,10 +478,14 @@ bdb_env_each_failed(dbenvst)
 }
 
 #ifndef NT
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
 struct timeval {
     long    tv_sec;
     long    tv_usec;
 };
+#endif /* HAVE_SYS_TIME_H */
 #endif /* NT */
 
 static int
@@ -702,9 +707,20 @@ test_load(dbst, a)
     DBT a;
 {
     VALUE res;
+    int i;
+
     if (dbst->options & BDB_MARSHAL)
         res = rb_funcall(bdb_mMarshal, id_load, 1, rb_str_new(a.data, a.size));
     else {
+#if DB_VERSION_MAJOR == 3
+	if (dbst->type == DB_QUEUE) {
+	    for (i = a.size - 1; i >= 0; i--) {
+		if (((char *)a.data)[i] != dbst->re_pad)
+		    break;
+	    }
+	    a.size = i + 1;
+	}
+#endif
 	if (a.size == 1 && ((char *)a.data)[0] == '\000') {
 	    res = Qnil;
 	}
@@ -1397,6 +1413,7 @@ bdb_queue_s_new(argc, argv, obj)
 	MEMCPY(nargv, argv, VALUE, argc);
 	nargv[argc] = rb_hash_new();
 	rest.re_len = DEFAULT_RECORD_LENGTH;
+	rest.re_pad = DEFAULT_RECORD_PAD;
 	rb_hash_aset(nargv[argc], rb_tainted_str_new2("set_re_len"), INT2NUM(DEFAULT_RECORD_LENGTH));
 	rb_hash_aset(nargv[argc], rb_tainted_str_new2("set_re_pad"), INT2NUM(DEFAULT_RECORD_PAD));
 	argc += 1;
@@ -1404,6 +1421,7 @@ bdb_queue_s_new(argc, argv, obj)
     ret = bdb_s_new(argc, nargv, obj);
     Data_Get_Struct(ret, bdb_DB, dbst);
     dbst->re_len = rest.re_len;
+    dbst->re_pad = rest.re_pad;
     return ret;
 }
 #endif
@@ -1968,7 +1986,9 @@ bdb_has_both(obj, a, b)
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qfalse;
     free(data.data);
-    free(key.data);
+    if (dbst->type != DB_RECNO && dbst->type != DB_QUEUE) {
+	free(key.data);
+    }
     return Qtrue;
 #endif
 }
@@ -2609,6 +2629,7 @@ bdb_tree_stat(obj)
     bdb_DB *dbst;
     DB_BTREE_STAT *stat;
     VALUE hash;
+    char pad;
 
     GetDB(obj, dbst);
     test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
@@ -2635,7 +2656,8 @@ bdb_tree_stat(obj)
     rb_hash_aset(hash, rb_tainted_str_new2("bt_over_pgfree"), INT2NUM(stat->bt_over_pgfree));
     rb_hash_aset(hash, rb_tainted_str_new2("bt_pagesize"), INT2NUM(stat->bt_pagesize));
     rb_hash_aset(hash, rb_tainted_str_new2("bt_re_len"), INT2NUM(stat->bt_re_len));
-    rb_hash_aset(hash, rb_tainted_str_new2("bt_re_pad"), INT2NUM(stat->bt_re_pad));
+    pad = (char)stat->bt_re_pad;
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_re_pad"), rb_tainted_str_new(&pad, 1));
     free(stat);
     return hash;
 }
@@ -2667,6 +2689,7 @@ bdb_queue_stat(obj)
     bdb_DB *dbst;
     DB_QUEUE_STAT *stat;
     VALUE hash;
+    char pad;
 
     GetDB(obj, dbst);
     test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
@@ -2684,10 +2707,28 @@ bdb_queue_stat(obj)
     rb_hash_aset(hash, rb_tainted_str_new2("qs_pagesize"), INT2NUM(stat->qs_pagesize));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_pgfree"), INT2NUM(stat->qs_pgfree));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_re_len"), INT2NUM(stat->qs_re_len));
-    rb_hash_aset(hash, rb_tainted_str_new2("qs_re_pad"), INT2NUM(stat->qs_re_pad));
+    pad = (char)stat->qs_re_pad;
+    rb_hash_aset(hash, rb_tainted_str_new2("qs_re_pad"), rb_tainted_str_new(&pad, 1));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_start"), INT2NUM(stat->qs_start));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_first_recno"), INT2NUM(stat->qs_first_recno));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_cur_recno"), INT2NUM(stat->qs_cur_recno));
+    free(stat);
+    return hash;
+}
+
+static VALUE
+bdb_queue_padlen(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+    DB_QUEUE_STAT *stat;
+    VALUE hash;
+    char pad;
+
+    GetDB(obj, dbst);
+    test_error(dbst->dbp->stat(dbst->dbp, &stat, 0, 0));
+    pad = (char)stat->qs_re_pad;
+    hash = rb_assoc_new(rb_tainted_str_new(&pad, 1), INT2NUM(stat->qs_re_len));
     free(stat);
     return hash;
 }
@@ -4100,7 +4141,7 @@ Init_bdb()
     bdb_cBtree = rb_define_class_under(bdb_mDb, "Btree", bdb_cCommon);
     rb_define_method(bdb_cBtree, "stat", bdb_tree_stat, 0);
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1
-    bdb_sKeyrange = rb_struct_define("Keyrange", "less", "equal", "greater");
+    bdb_sKeyrange = rb_struct_define("Keyrange", "less", "equal", "greater", 0);
     rb_global_variable(&bdb_sKeyrange);
     rb_define_method(bdb_cBtree, "key_range", bdb_btree_key_range, 1);
 #endif
@@ -4121,6 +4162,7 @@ Init_bdb()
     rb_define_method(bdb_cQueue, "push", bdb_append, -1);
     rb_define_method(bdb_cQueue, "shift", bdb_consume, 0);
     rb_define_method(bdb_cQueue, "stat", bdb_queue_stat, 0);
+    rb_define_method(bdb_cQueue, "pad", bdb_queue_padlen, 0);
 #endif
     bdb_cUnknown = rb_define_class_under(bdb_mDb, "Unknown", bdb_cCommon);
 /* TRANSACTION */
