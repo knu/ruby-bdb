@@ -1,0 +1,74 @@
+
+This directory contains example "DBXML Getting Started Examples" translated
+in ruby 
+
+You must first load the database, to do this
+
+  1) change the variable data in load.rb 
+
+       data = "/home/ts/db/dbxml-1.1.0/examples/xmlData"
+
+     to specify where are located the 2 directories simpleData and nsData
+
+  2) execute load.rb
+
+You can then use the examples.
+
+
+* query.rb
+  Executes several XPath queries and prints query results to the console.
+
+* context.rb
+  Identical to query.rb, except that contexts are used to define
+  namespaces and variables. 
+
+* document.rb
+  Identical to context.rb, except that specific document data is
+  retrieved from each document found in the query's result set.
+
+* names.rb
+  Identical to context.rb, except that the query is performed using the
+  document name that was set when load.rb placed the document
+  into the container.
+
+* metadata.rb
+  Identical to context.rb, except that the timestamp that was stored as
+  metadata is retrieved and displayed. This timestamp was set on the document
+  when load.rb placed the document into the container.
+
+* update.rb
+  Identical to context.rb, except that the document retrieved as the
+  result of the query is updated in a trivial way and then stored back into
+  the container.
+
+* delete.rb
+  Identical to context.rb, except that every document retrieved as the
+  result of the query is deleted from the container.
+
+* add_index.rb
+  Adds indexes to a specific document node.
+
+* replace_index.rb
+  Replaces the indexes on a specific document node with new indexes. Iterates
+  through the indexes maintained for the container and shows what is being
+  used. For best results, run add_index.rb before running this example.
+  
+* delete_index.rb
+  Deletes indexes from a specific document. Iterates through the indexes
+  maintained for the container and shows what is being used. For best results,
+  run add_index.rb before running this example.
+  
+* build_db.rb 
+  Illustrates how a DBXML container can be used with a Berkeley DB database. A
+  Berkeley DB database is created in the same environment as the container and
+  data corresponding to documents in the container is loaded into the
+  database. The DBXML query and database put are all wrapped in a common
+  transaction.
+
+* retrieve_db.rb
+  Illustrates how a DBXML container can be used with a Berkeley DB database.
+  Documents are retrieved from the container and then data corresponding to
+  each document is retrieved from the Berkeley DB database. Again, all queries
+  are wrapped in a common transaction. For best results, run build_db.rb
+  before running this example.
+  

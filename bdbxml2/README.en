@@ -1,0 +1,42 @@
+
+ This is an interface to Berkeley DB XML, distributed by Sleepycat
+ (http://www.sleepycat.com/products/xml.shtml)
+
+
+* Installation
+
+.... first build bdb which is in '../src', and use this version of 
+     bdb for use with bdbxml
+
+
+.... modify './myconfig' to adapt it to your configuration
+     IMPORTANT : you must use a version of xercesc compiled *without* threads
+
+.... This version must be used with [db-4.3.*, DbXml 2.0.*]
+
+.... ruby extconf.rb
+     make
+     make install
+
+.... if you want to make a shared version which use the object files
+     from ../src, specify the flag --with-bdb-objs when you run
+     extconf.rb
+
+     ruby extconf.rb --with-bdb-objs
+     make
+     make install
+
+* Documentation : 
+
+     make rd2
+     make rdoc
+
+* Copying
+ 
+ This extension module is copyrighted free software by Guy Decoux
+ 
+ You can redistribute it and/or modify it under the same term as
+ Ruby.
+ 
+ 
+Guy Decoux <ts@moulon.inra.fr>

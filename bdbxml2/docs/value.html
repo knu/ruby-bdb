@@ -1,0 +1,91 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/value.rd</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::Value</a></h2><!-- RDLabel: "BDB::XML::Value" -->
+<p>The XML::Value class encapsulates the value of a node in an XML document.</p>
+<h3><a name="label-1" id="label-1">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>attributes</code></a></dt><!-- RDLabel: "attributes" -->
+<dd>
+<p>return an XML::Results that contains all of the attributes appearing
+on this node.</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-3" id="label-3"><code>boolean?</code></a></dt><!-- RDLabel: "boolean?" -->
+<dd>
+return true if type is XML::Value::BOOLEAN</dd>
+<dt><a name="label-4" id="label-4"><code>first_child</code></a></dt><!-- RDLabel: "first_child" -->
+<dd>
+<p>returns  current node's first child node, or nil</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-5" id="label-5"><code>last_child</code></a></dt><!-- RDLabel: "last_child" -->
+<dd>
+<p>returns  current node's last child node, or nil</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-6" id="label-6"><code>local_name</code></a></dt><!-- RDLabel: "local_name" -->
+<dd>
+<p>returns the node's local name.</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-7" id="label-7"><code>namespace</code></a></dt><!-- RDLabel: "namespace" -->
+<dd>
+<p>returns the URI used for the node's namespace.</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-8" id="label-8"><code>next_sibling</code></a></dt><!-- RDLabel: "next_sibling" -->
+<dd>
+<p>returns the sibling node immediately following this node in the
+document, or nil.</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-9" id="label-9"><code>nil?</code></a></dt><!-- RDLabel: "nil?" -->
+<dd>
+return true if type is XML::Value::NONE</dd>
+<dt><a name="label-10" id="label-10"><code>node?</code></a></dt><!-- RDLabel: "node?" -->
+<dd>
+return true if type is XML::Value::NODE</dd>
+<dt><a name="label-11" id="label-11"><code>node_name</code></a></dt><!-- RDLabel: "node_name" -->
+<dd>
+<p>return the type of the value contained in this value</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-12" id="label-12"><code>node_value</code></a></dt><!-- RDLabel: "node_value" -->
+<dd>
+<p>return the node's value</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-13" id="label-13"><code>number?</code></a></dt><!-- RDLabel: "number?" -->
+<dd>
+return true if type is one of the numeric types</dd>
+<dt><a name="label-14" id="label-14"><code>owner_element</code></a></dt><!-- RDLabel: "owner_element" -->
+<dd>
+<p>If the current node is an attribute node, returns the document
+element node that contains this attribute node. Otherwise, raise
+an exception</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-15" id="label-15"><code>parent_node</code></a></dt><!-- RDLabel: "parent_node" -->
+<dd>
+<p>returns current node's parent, or nil</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-16" id="label-16"><code>prefix</code></a></dt><!-- RDLabel: "prefix" -->
+<dd>
+<p>returns the prefix set for the node's namespace.</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-17" id="label-17"><code>previous_sibling</code></a></dt><!-- RDLabel: "previous_sibling" -->
+<dd>
+<p>returns  the sibling node immediately preceding this node
+in the document, or nil</p>
+<p>node type must be XML::Value::Node</p></dd>
+<dt><a name="label-18" id="label-18"><code>string?</code></a></dt><!-- RDLabel: "string?" -->
+<dd>
+return true if type is XML::Value::STRING</dd>
+<dt><a name="label-19" id="label-19"><code>type?(<var>type</var>)</code></a></dt><!-- RDLabel: "type?" -->
+<dd>
+return true if the value has the specified type</dd>
+<dt><a name="label-20" id="label-20"><code>type</code></a></dt><!-- RDLabel: "type" -->
+<dd>
+return the type associated with a value</dd>
+</dl>
+
+</body>
+</html>

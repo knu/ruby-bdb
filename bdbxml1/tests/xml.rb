@@ -3,14 +3,6 @@ $LOAD_PATH.unshift *%w{../src . tests}
 
 $dir = Dir.pwd
 
-at_exit do
-   Dir.chdir($dir)
-   clean()
-end
-
-require 'bdbxml'
-require 'runit_'
-
 def clean
    Dir.foreach('tmp') do |x|
       if FileTest.file?("tmp/#{x}")
@@ -18,6 +10,14 @@ def clean
       end
    end
 end
+
+at_exit do
+   Dir.chdir($dir)
+   clean()
+end
+
+require 'bdbxml'
+require 'runit_'
 
 $glo, $bdb, $env = nil, nil, nil
 $time = Time.now.to_s

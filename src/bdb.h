@@ -138,6 +138,7 @@ typedef struct  {
 struct txn_rslbl {
     DB_TXN *txn;
     void *txn_cxx;
+    VALUE man;
 };
 
 #endif
@@ -152,6 +153,7 @@ typedef struct {
     DB_TXN *parent;
 #if BDB_VERSION >= 40000
     void *txn_cxx;
+    VALUE man;
 #endif
 } bdb_TXN;
 

@@ -1,0 +1,27 @@
+# directories for cpp
+
+$base = "#{ENV['HOME']}/local/dbxml"
+
+$include = {
+   'db' => "#{$base}/include",
+   'dbxml' => "#{$base}/include",
+   'xercesc' => "#{$base}/include/xercesc",
+   'xquery' => "#{$base}/include/xquery"
+}
+
+# [directory, library] for ld
+
+# it's important to have xercesc compiled with -rnone 
+# (i.e. *without* threads)
+
+$library = {
+   'db' => ["#{$base}/lib/", ["db-4.3", "db_cxx-4.3"]],
+   'dbxml' => ["#{$base}/lib", "dbxml-2.0"],
+   'pathan' => ["#{$base}/lib", "pathan"],
+   'xercesc' => ["#{$base}/lib", "xerces-c"],
+   'xquery' => ["#{$base}/lib", "xquery-1.0"],
+}
+
+# order for ld (don't change it)
+
+$order = ['dbxml', 'db', 'pathan', 'xercesc', 'xquery']

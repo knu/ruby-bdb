@@ -1,0 +1,167 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/modify.rd</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::Modify</a></h2><!-- RDLabel: "BDB::XML::Modify" -->
+<p>The XML::Modify class encapsulates the context within which a set of one
+or more documents specified by an XML::Query query can be modified in
+place. The modification is performed using an XML::Modify object, and a
+series of methods off that object that identify how the document is to
+be modified. Using these methods, the modification steps are
+identified. When the object is executed, these steps are performed in
+the order that they were specified. </p>
+<p>The modification steps are executed against one or more documents
+using XML::Modify::execute. This method can operate on a single document
+stored in an XML::Value, or against multiple documents stored in an
+XML::Results set that was created as the result of a container or
+document query. </p>
+<h3><a name="label-1" id="label-1">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>append(<var>query</var>, <var>type</var>, <var>name</var>, <var>content</var>, <var>location</var> = -<var>1</var>)</code></a></dt><!-- RDLabel: "append" -->
+<dd>
+Appends the provided data to the selected node's child nodes.
+<dl>
+<dt><a name="label-3" id="label-3"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dd>
+provides the Query expression used to target the 
+location in the document where the modification is to be performed.
+</dd>
+<dt><a name="label-4" id="label-4"><var>type</var></a></dt><!-- RDLabel: "type" -->
+<dd>
+Identifies the type of information to be inserted.
+It can have the value XML::Modify::Element, XML::Modify::Attribute,
+XML::Modify::Text, XML::Modify::Comment, orXML::Modify::PI
+</dd>
+<dt><a name="label-5" id="label-5"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+the name of the node, attribute, or processing instruction
+to insert
+</dd>
+<dt><a name="label-6" id="label-6"><var>content</var></a></dt><!-- RDLabel: "content" -->
+<dd>
+The content to insert.
+</dd>
+<dt><a name="label-7" id="label-7"><var>location</var></a></dt><!-- RDLabel: "location" -->
+<dd>
+Identifies the position in the child node list
+where the provided content is to be inserted
+</dd>
+</dl></dd>
+<dt><a name="label-8" id="label-8"><code>insert_after(<var>query</var>, <var>type</var>, <var>name</var>, <var>content</var>)</code></a></dt><!-- RDLabel: "insert_after" -->
+<dd>
+Inserts the provided data into the document after the selected node.
+<dl>
+<dt><a name="label-9" id="label-9"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dd>
+provides the Query expression used to target the 
+location in the document where the modification is to be performed.
+</dd>
+<dt><a name="label-10" id="label-10"><var>type</var></a></dt><!-- RDLabel: "type" -->
+<dd>
+Identifies the type of information to be inserted.
+It can have the value XML::Modify::Element, XML::Modify::Attribute,
+XML::Modify::Text, XML::Modify::Comment, orXML::Modify::PI
+</dd>
+<dt><a name="label-11" id="label-11"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+the name of the node, attribute, or processing instruction
+to insert
+</dd>
+<dt><a name="label-12" id="label-12"><var>content</var></a></dt><!-- RDLabel: "content" -->
+<dd>
+The content to insert.
+</dd>
+</dl></dd>
+<dt><a name="label-13" id="label-13"><code>insert_before(<var>query</var>, <var>type</var>, <var>name</var>, <var>content</var>)</code></a></dt><!-- RDLabel: "insert_before" -->
+<dd>
+Inserts the provided data into the document before the selected node.
+<dl>
+<dt><a name="label-14" id="label-14"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dd>
+provides the Query expression used to target the 
+location in the document where the modification is to be performed.
+</dd>
+<dt><a name="label-15" id="label-15"><var>type</var></a></dt><!-- RDLabel: "type" -->
+<dd>
+Identifies the type of information to be inserted.
+It can have the value XML::Modify::Element, XML::Modify::Attribute,
+XML::Modify::Text, XML::Modify::Comment, orXML::Modify::PI
+</dd>
+<dt><a name="label-16" id="label-16"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+the name of the node, attribute, or processing instruction
+to insert
+</dd>
+<dt><a name="label-17" id="label-17"><var>content</var>The content to insert.</a></dt><!-- RDLabel: "contentThe content to insert." -->
+</dl></dd>
+<dt><a name="label-18" id="label-18"><code>remove(<var>query</var>)</code></a></dt><!-- RDLabel: "remove" -->
+<dd>
+Removes the node targeted by the selection expression.
+<dl>
+<dt><a name="label-19" id="label-19"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dd>
+provides the Query expression used to target the 
+location in the document where the modification is to be performed.
+</dd>
+</dl></dd>
+<dt><a name="label-20" id="label-20"><code>rename(<var>query</var>, <var>name</var>)</code></a></dt><!-- RDLabel: "rename" -->
+<dd>
+Renames an element node, attribute node, or processing instruction.
+<dl>
+<dt><a name="label-21" id="label-21"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dd>
+provides the Query expression used to target the 
+location in the document where the modification is to be performed.
+</dd>
+<dt><a name="label-22" id="label-22"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+The new name to give the targeted node.
+</dd>
+</dl></dd>
+<dt><a name="label-23" id="label-23"><code>update(<var>query</var>, <var>content</var>)</code></a></dt><!-- RDLabel: "update" -->
+<dd>
+Replaces the targeted node's content with text.
+<dl>
+<dt><a name="label-24" id="label-24"><var>query</var></a></dt><!-- RDLabel: "query" -->
+<dd>
+provides the Query expression used to target the 
+location in the document where the modification is to be performed.
+</dd>
+<dt><a name="label-25" id="label-25"><var>content</var></a></dt><!-- RDLabel: "content" -->
+<dd>
+The content to use as the targeted node's content.
+</dd>
+</dl></dd>
+<dt><a name="label-26" id="label-26"><code>execute(<var>obj</var>, <var>context</var>, <var>update</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "execute" -->
+<dd>
+Executes one or more document modification operations (or steps) against
+an XML::Results or XML::Value object. Upon completing the modification,
+the modified document is automatically updated in the backing
+XML::Container for you.
+<dl>
+<dt><a name="label-27" id="label-27"><var>obj</var></a></dt><!-- RDLabel: "obj" -->
+<dd>
+The object to modify using this collection of
+modification steps.
+</dd>
+<dt><a name="label-28" id="label-28"><var>context</var></a></dt><!-- RDLabel: "context" -->
+<dd>
+The XML::Context object to use for this modification.
+</dd>
+<dt><a name="label-29" id="label-29"><var>update</var></a></dt><!-- RDLabel: "update" -->
+<dd>
+The XML::Update object to use for this modification.
+</dd>
+</dl></dd>
+<dt><a name="label-30" id="label-30"><code>encoding = <var>string</var></code></a></dt><!-- RDLabel: "encoding = string" -->
+<dd>
+Specify a new character encoding for the modified documents.</dd>
+</dl>
+
+</body>
+</html>

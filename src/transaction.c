@@ -67,8 +67,9 @@ static void
 bdb_txn_mark(txnst)
     bdb_TXN *txnst;
 {
-    if (txnst->marshal) rb_gc_mark(txnst->marshal);
-    if (txnst->mutex) rb_gc_mark(txnst->mutex);
+    rb_gc_mark(txnst->marshal);
+    rb_gc_mark(txnst->mutex);
+    rb_gc_mark(txnst->man);
 }
 
 static VALUE
@@ -373,6 +374,7 @@ bdb_env_rslbl_begin(origin, argc, argv, obj)
 #if BDB_VERSION >= 40000
     if (origin != Qfalse) {
 	txnst->txn_cxx = ((struct txn_rslbl *)origin)->txn_cxx;
+	txnst->man = ((struct txn_rslbl *)origin)->man;
     }
 #endif
     b = bdb_txn_assoc(argc, argv, txnv);

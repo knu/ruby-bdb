@@ -15,7 +15,7 @@ def rule(target, clean = nil)
 end
 
 subdirs = Dir["*"].select do |subdir|
-   subdir != "bdbxml" && File.file?(subdir + "/extconf.rb")
+   /\Abdbxml/ !~ subdir && File.file?(subdir + "/extconf.rb")
 end
 
 begin
