@@ -80,13 +80,12 @@ typedef struct {
 #endif
 
 typedef struct {
-  XmlDocument *doc;
-  VALUE uri, prefix;
+    XmlDocument *doc;
+    VALUE uri, prefix;
 } xdoc;
 
 typedef struct {
     XmlQueryContext *cxt;
-    int returntype, evaltype;
 } xcxt;
 
 typedef struct {

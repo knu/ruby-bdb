@@ -512,6 +512,7 @@ xb_xml_val(XmlValue *val, VALUE cxt_val)
     xdoc *doc;
 #if defined(DBXML_DOM_XERCES2)
     xnol *nol;
+    XCNQ DOMNode *nod;
 #endif
     xcxt *cxt;
     XmlQueryContext *qcxt = 0;
@@ -542,6 +543,9 @@ xb_xml_val(XmlValue *val, VALUE cxt_val)
 	res = Data_Make_Struct(xb_cNol, xnol, (RDF)xb_nol_mark, (RDF)xb_nol_free, nol);
 	nol->nol = val->asNodeList(qcxt);
 	nol->cxt_val = cxt_val;
+	break;
+    case XmlValue::ATTRIBUTE:
+	res = Data_Wrap_Struct(xb_cNod, 0, 0, val->asAttribute(qcxt));
 	break;
 #endif
     case XmlValue::VARIABLE:
@@ -630,8 +634,6 @@ xb_cxt_s_alloc(VALUE obj)
 
     res = Data_Make_Struct(obj, xcxt, 0, (RDF)xb_cxt_free, cxt);
     cxt->cxt = new XmlQueryContext();
-    cxt->returntype = XmlQueryContext::ResultDocuments;
-    cxt->evaltype = XmlQueryContext::Eager;
     return res;
 }
 
@@ -648,13 +650,11 @@ xb_cxt_init(int argc, VALUE *argv, VALUE obj)
     case 2:
 	et = XmlQueryContext::EvaluationType(NUM2INT(b));
 	PROTECT(cxt->cxt->setEvaluationType(et));
-	cxt->evaltype = et;
 	/* ... */
     case 1:
 	if (!NIL_P(a)) {
 	    rt = XmlQueryContext::ReturnType(NUM2INT(a));
 	    PROTECT(cxt->cxt->setReturnType(rt));
-	    cxt->returntype = rt;
 	}
     }
     return obj;
@@ -745,7 +745,7 @@ xb_cxt_return_get(VALUE obj)
 {
     xcxt *cxt;
     Data_Get_Struct(obj, xcxt, cxt);
-    return INT2NUM(cxt->returntype);
+    return INT2NUM(cxt->cxt->getReturnType());
 }
 
 static VALUE
@@ -757,7 +757,6 @@ xb_cxt_return_set(VALUE obj, VALUE a)
     Data_Get_Struct(obj, xcxt, cxt);
     rt = XmlQueryContext::ReturnType(NUM2INT(a));
     PROTECT(cxt->cxt->setReturnType(rt));
-    cxt->returntype = rt;
     return a;
 }
 
@@ -766,7 +765,7 @@ xb_cxt_eval_get(VALUE obj)
 {
     xcxt *cxt;
     Data_Get_Struct(obj, xcxt, cxt);
-    return INT2NUM(cxt->evaltype);
+    return INT2NUM(cxt->cxt->getEvaluationType());
 }
 
 static VALUE
@@ -778,7 +777,6 @@ xb_cxt_eval_set(VALUE obj, VALUE a)
     Data_Get_Struct(obj, xcxt, cxt);
     et = XmlQueryContext::EvaluationType(NUM2INT(a));
     PROTECT(cxt->cxt->setEvaluationType(et));
-    cxt->evaltype = et;
     return a;
 }
 
@@ -801,8 +799,12 @@ xb_res_search(VALUE obj)
 {
     xres *xes;
     XmlValue val;
+    XmlDocument document;
+    xdoc *doc;
+    bool result;
     DbTxn *txn = 0;
-    VALUE res = Qnil;
+    VALUE res = Qnil, tmp;
+    XmlQueryContext::ReturnType rt;
 
     Data_Get_Struct(obj, xres, xes);
     if (xes->txn_val) {
@@ -813,17 +815,50 @@ xb_res_search(VALUE obj)
     if (!rb_block_given_p()) {
 	res = rb_ary_new();
     }
+    rt = XmlQueryContext::ResultValues;
+
+    if (xes->cxt_val) {
+	xcxt *cxt;
+
+	Data_Get_Struct(xes->cxt_val, xcxt, cxt);
+	rt = cxt->cxt->getReturnType();
+    }
     try {xes->res->reset(); } catch (...) {}
     while (true) {
-	PROTECT(xes->res->next(txn, val));
-	if (val.isNull()) {
+	tmp = Qnil;
+	switch (rt) {
+	case XmlQueryContext::ResultValues:
+	    PROTECT(result = xes->res->next(txn, val));
+	    if (result) {
+		tmp = xb_xml_val(&val, xes->cxt_val);
+	    }
+	    break;
+	case XmlQueryContext::ResultDocuments:
+	    PROTECT(result = xes->res->next(txn, document));
+	    if (result) {
+		tmp = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark,
+				       (RDF)xb_doc_free, doc);
+		doc->doc = new XmlDocument(document);
+	    }
+	    break;
+	case XmlQueryContext::ResultDocumentsAndValues:
+	    PROTECT(result = xes->res->next(txn, document, val));
+	    if (result) {
+		tmp = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark,
+				       (RDF)xb_doc_free, doc);
+		doc->doc = new XmlDocument(document);
+		tmp = rb_assoc_new(tmp, xb_xml_val(&val, xes->cxt_val));
+	    }
+	    break;
+	}
+	if (NIL_P(tmp)) {
 	    break;
 	}
 	if (NIL_P(res)) {
-	    rb_yield(xb_xml_val(&val, xes->cxt_val));
+	    rb_yield(tmp);
 	}
 	else {
-	    rb_ary_push(res, xb_xml_val(&val, xes->cxt_val));
+	    rb_ary_push(res, tmp);
 	}
     }
     if (NIL_P(res)) {
@@ -1652,11 +1687,9 @@ xb_con_search(int argc, VALUE *argv, VALUE obj)
 
 	res = Data_Make_Struct(xb_cCxt, xcxt, 0, (RDF)xb_cxt_free, cxt);
 	cxt->cxt = new XmlQueryContext();
-	cxt->evaltype = XmlQueryContext::Lazy;
 	cxt->cxt->setEvaluationType(XmlQueryContext::Lazy);
 	if (argc == 2) {
 	    cxt->cxt->setReturnType(XmlQueryContext::ReturnType(NUM2INT(argv[1])));
-	    cxt->returntype = NUM2INT(argv[1]);
 	    nargv = argv;
 	}
 	else {
@@ -2268,6 +2301,7 @@ extern "C" {
 	rb_define_const(xb_cCxt, "Documents", INT2FIX(XmlQueryContext::ResultDocuments));
 	rb_define_const(xb_cCxt, "Values", INT2FIX(XmlQueryContext::ResultValues));
 	rb_define_const(xb_cCxt, "Candidates", INT2FIX(XmlQueryContext::CandidateDocuments));
+	rb_define_const(xb_cCxt, "DocumentsAndValues", INT2FIX(XmlQueryContext::ResultDocumentsAndValues));
 	rb_define_const(xb_cCxt, "Eager", INT2FIX(XmlQueryContext::Eager));
 	rb_define_const(xb_cCxt, "Lazy", INT2FIX(XmlQueryContext::Lazy));
 #if RUBY_VERSION_CODE >= 180
