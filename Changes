@@ -44,6 +44,16 @@
 
 * corrected (thanks Phillipe Lucas <philippe.lucas@technologies-gid.com>)
   - db_get_both()
-  - flag --with-no-thread to compile on some "stupid" system
+  - flag --disable-thread to compile on some "stupid" system
+
+* add #invert, #clear, #update, #replace
+
+-- 0.1.6
+
+* support for 3.2.9 : Thanks Rick Ohnemus <rjohnemus@systemware-inc.com>
+* corrected flags for DUP_SORT
+* add BDB::Env.set_flags for 3.2.9
+* corrected internal functions bt_compare, bt_prefix, dup_compare, h_hash
+  take now 3 args for 3.2.9
 
 

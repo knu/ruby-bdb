@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <HTML>
 <HEAD>
-<TITLE>docs/access.rd</TITLE>
+<TITLE>access.rd</TITLE>
 </HEAD>
 <BODY>
 <H2><A NAME="label:0">Acces Methods
@@ -11,15 +11,9 @@ These are the common methods for <VAR>BDB::Btree</VAR>, <VAR>BDB::Hash</VAR>,
 <VAR>BDB::Recno</VAR> and <VAR>BDB::Queue</VAR>
 </P>
 <UL>
-<LI><P>
-<A HREF="#label:1">Class Methods</A>
-</P>
-<LI><P>
-<A HREF="#label:2">Methods</A>
-</P>
-<LI><P>
-<A HREF="#label:3">Methods specific to BDB::Recno and BDB::Queue</A>
-</P>
+<LI><A HREF="#label:1">Class Methods</A>
+<LI><A HREF="#label:2">Methods</A>
+<LI><A HREF="#label:3">Methods specific to BDB::Recno and BDB::Queue</A>
 </UL>
 <H3><A NAME="label:1">Class Methods
 </A></H3><!-- RDLabel: "Class Methods" -->
@@ -145,9 +139,12 @@ base index for BDB::Recno, BDB::Queue or BDB::Btree
 </A><!-- RDLabel: "set_bt_compare" -->
 <DD>
 <P>
-specify a Btree comparison function
+specify a Btree comparison function 
 </P>
 </DD>
+</DL>
+
+<DL>
 <DT><A NAME="label:15"><VAR>set_bt_minkey</VAR>
 </A><!-- RDLabel: "set_bt_minkey" -->
 <DD>
@@ -155,11 +152,14 @@ specify a Btree comparison function
 set the minimum number of keys per Btree page
 </P>
 </DD>
+</DL>
+
+<DL>
 <DT><A NAME="label:16"><VAR>set_bt_prefix</VAR>
 </A><!-- RDLabel: "set_bt_prefix" -->
 <DD>
 <P>
-specify a Btree prefix comparison function
+specify a Btree prefix comparison function 
 </P>
 </DD>
 <DT><A NAME="label:17"><VAR>set_cachesize</VAR>
@@ -173,7 +173,7 @@ set the database cache size
 </A><!-- RDLabel: "set_dup_compare" -->
 <DD>
 <P>
-specify a duplicate comparison function
+specify a duplicate comparison function 
 </P>
 </DD>
 <DT><A NAME="label:19"><VAR>set_flags</VAR>
@@ -194,7 +194,7 @@ set the Hash table density
 </A><!-- RDLabel: "set_h_hash" -->
 <DD>
 <P>
-specify a hashing function
+specify a hashing function 
 </P>
 </DD>
 <DT><A NAME="label:22"><VAR>set_h_nelem</VAR>
@@ -269,7 +269,7 @@ a method (replace the prefix <VAR>set_</VAR> with <VAR>bdb_</VAR>
 </P>
 
 <P>
-For example :
+For example 
 </P>
 
 <PRE>

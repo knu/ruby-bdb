@@ -152,6 +152,11 @@ test_error(comm)
     case DB_KEYEMPTY:
     case DB_KEYEXIST:
         break;
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+    case DB_INCOMPLETE:
+	comm = 0;
+        break;
+#endif
     default:
         error = (comm == DB_LOCK_DEADLOCK || comm == EAGAIN)?bdb_eLock:bdb_eFatal;
         if (bdb_errcall) {
@@ -210,14 +215,14 @@ bdb_env_i_options(obj, db_stobj)
     }
 #if DB_VERSION_MAJOR == 3
     else if (strcmp(options, "set_region_init") == 0) {
-#if DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14
+#if (DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14) || DB_VERSION_MINOR >= 2
         test_error(db_env_set_region_init(NUM2INT(value)));
 #else
         test_error(dbenvp->set_region_init(dbenvp, NUM2INT(value)));
 #endif
     }
     else if (strcmp(options, "set_tas_spins") == 0) {
-#if DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14
+#if  (DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14) || DB_VERSION_MINOR >= 2
         test_error(db_env_set_tas_spins(NUM2INT(value)));
 #else
         test_error(dbenvp->set_tas_spins(dbenvp, NUM2INT(value)));
@@ -367,6 +372,11 @@ bdb_env_i_options(obj, db_stobj)
     }
 #endif
 
+#endif
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+    else if (strcmp(options, "set_flags") == 0) {
+        test_error(dbenvp->set_flags(dbenvp, NUM2UINT(value), 1));
+    }
 #endif
     else if (strcmp(options, "marshal") == 0) {
         switch (value) {
@@ -525,7 +535,7 @@ bdb_set_func(dbenvst)
     bdb_ENV *dbenvst;
 {
 #if DB_VERSION_MAJOR == 3
-#if DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14
+#if (DB_VERSION_MINOR >=1 && DB_VERSION_PATCH >= 14) || DB_VERSION_MINOR >= 2
     test_error(db_env_set_func_sleep(bdb_func_sleep));
     test_error(db_env_set_func_yield(bdb_func_yield));
 #else
@@ -691,6 +701,37 @@ bdb_env_remove(obj)
     return Qtrue;
 }
 
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+static VALUE
+bdb_env_set_flags(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    bdb_ENV *dbenvst;
+    VALUE opt, flag;
+    int state = 1;
+
+    GetEnvDB(obj, dbenvst);
+    if (rb_scan_args(argc, argv, "11", &flag, &opt)) {
+	switch (TYPE(opt)) {
+	case T_TRUE:
+	    state = 1;
+	    break;
+	case T_FALSE:
+	    state = 0;
+	    break;
+	case T_FIXNUM:
+	    state = NUM2INT(opt);
+	    break;
+	default:
+	    rb_raise(bdb_eFatal, "invalid value for onoff");
+	}
+    }
+    test_error(dbenvst->dbenvp->set_flags(dbenvst->dbenvp, NUM2INT(flag), state));
+    return Qnil;
+}
+#endif
+	
 /* DATABASE */
 #define test_dump(dbst, key, a)					\
 {								\
@@ -743,8 +784,14 @@ test_load(dbst, a)
 }
 
 static int
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+bdb_bt_compare(dbbd, a, b)
+    DB *dbbd;
+    DBT *a, *b;
+#else
 bdb_bt_compare(a, b)
     DBT *a, *b;
+#endif
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
@@ -764,8 +811,14 @@ bdb_bt_compare(a, b)
 } 
 
 static size_t
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+bdb_bt_prefix(dbbd, a, b)
+    DB *dbbd;
+    DBT *a, *b;
+#else
 bdb_bt_prefix(a, b)
     DBT *a, *b;
+#endif
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
@@ -785,8 +838,14 @@ bdb_bt_prefix(a, b)
 } 
 
 static int
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+bdb_dup_compare(dbbd, a, b)
+    DB * dbbd;
+    DBT *a, *b;
+#else
 bdb_dup_compare(a, b)
     DBT *a, *b;
+#endif
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
@@ -806,9 +865,16 @@ bdb_dup_compare(a, b)
 }
 
 static u_int32_t
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
+bdb_h_hash(dbbd, bytes, length)
+    DB *dbbd;
+    void *bytes;
+    u_int32_t length;
+#else
 bdb_h_hash(bytes, length)
     void *bytes;
     u_int32_t length;
+#endif
 {
     VALUE obj, st, res;
     bdb_DB *dbst;
@@ -1129,6 +1195,8 @@ bdb_open_common(argc, argv, obj)
 		rb_raise(bdb_eFatal, "flags must be r, r+, w, w+ a or a+");
 	    }
 	}
+	else if (d == Qnil)
+	    flags = 0;
 	else
 	    flags = NUM2INT(d);
     }
@@ -1239,6 +1307,15 @@ bdb_open_common(argc, argv, obj)
     if (rb_safe_level() >= 4) {
 	flags |= DB_RDONLY;
     }
+#ifdef DB_DUPSORT
+    if (dbst->options & BDB_DUP_COMPARE) {
+#if DB_VERSION_MAJOR < 3
+	dbst->dbinfo->flags = DB_DUP | DB_DUPSORT;
+#else
+        test_error(dbp->set_flags(dbp, DB_DUP | DB_DUPSORT));
+#endif
+    }
+#endif
 #ifndef BDB_NO_THREAD
     if (!(dbst->options & BDB_RE_SOURCE))
 	flags |= DB_THREAD;
@@ -2411,9 +2488,83 @@ bdb_to_a(obj)
     return ary;
 }
 
+
 static VALUE
-bdb_to_hash(obj)
+each_pair(obj)
     VALUE obj;
+{
+    return rb_funcall(obj, rb_intern("each_pair"), 0, 0);
+}
+
+static VALUE
+bdb_update_i(pair, obj)
+    VALUE pair, obj;
+{
+    VALUE argv[2];
+
+    Check_Type(pair, T_ARRAY);
+    if (RARRAY(pair)->len < 2) {
+	rb_raise(rb_eArgError, "pair must be [key, value]");
+    }
+    bdb_put(2, pair, obj);
+    return Qnil;
+}
+
+static VALUE
+bdb_update(obj, other)
+    VALUE obj, other;
+{
+    rb_iterate(each_pair, other, bdb_update_i, obj);
+    return obj;
+}
+
+static VALUE
+bdb_clear(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+    DB_TXN *txnid;
+    DBC *dbcp;
+    DBT key, data;
+    int ret, flags;
+    db_recno_t recno;
+    VALUE ary;
+
+    rb_secure(4);
+    init_txn(txnid, obj, dbst);
+    memset(&key, 0, sizeof(key));
+    init_recno(dbst, key, recno);
+    memset(&data, 0, sizeof(data));
+    data.flags = DB_DBT_MALLOC;
+#if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
+    test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
+#else
+    test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
+#endif
+    set_partial(dbst, data);
+    flags = DB_NEXT | test_init_lock(dbst);
+    do {
+        ret = test_error(dbcp->c_get(dbcp, &key, &data, flags));
+        if (ret == DB_NOTFOUND) {
+            test_error(dbcp->c_close(dbcp));
+            return obj;
+        }
+	test_error(dbcp->c_del(dbcp, 0));
+    } while (1);
+    return obj;
+}
+
+static VALUE
+bdb_replace(obj, other)
+{
+    bdb_clear(obj);
+    rb_iterate(each_pair, other, bdb_update_i, obj);
+    return obj;
+}
+
+static VALUE
+bdb_to_hash_intern(obj, tes)
+    VALUE obj, tes;
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2442,9 +2593,28 @@ bdb_to_hash(obj)
             test_error(dbcp->c_close(dbcp));
             return hash;
         }
-        rb_hash_aset(hash, test_load_key(dbst, key), test_load(dbst, data));
+	if (tes == Qtrue) {
+	    rb_hash_aset(hash, test_load_key(dbst, key), test_load(dbst, data));
+	}
+	else {
+	    rb_hash_aset(hash, test_load(dbst, data), test_load_key(dbst, key));
+	}
     } while (1);
     return hash;
+}
+
+static VALUE
+bdb_invert(obj)
+    VALUE obj;
+{
+    return bdb_to_hash_intern(obj, Qfalse);
+}
+
+static VALUE
+bdb_to_hash(obj)
+    VALUE obj;
+{
+    return bdb_to_hash_intern(obj, Qtrue);
 }
 
 static VALUE
@@ -2629,7 +2799,7 @@ bdb_hash_stat(obj)
     rb_hash_aset(hash, rb_tainted_str_new2("hash_magic"), INT2NUM(stat->hash_magic));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_version"), INT2NUM(stat->hash_version));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_pagesize"), INT2NUM(stat->hash_pagesize));
-#if DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14
+#if (DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14) || DB_VERSION_MINOR >= 2
     rb_hash_aset(hash, rb_tainted_str_new2("hash_nkeys"), INT2NUM(stat->hash_nkeys));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_nrecs"), INT2NUM(stat->hash_nkeys));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_ndata"), INT2NUM(stat->hash_ndata));
@@ -2726,7 +2896,7 @@ bdb_queue_stat(obj)
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("qs_magic"), INT2NUM(stat->qs_magic));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_version"), INT2NUM(stat->qs_version));
-#if DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14
+#if (DB_VERSION_MINOR >= 1 && DB_VERSION_PATCH >= 14) || DB_VERSION_MINOR >= 2
     rb_hash_aset(hash, rb_tainted_str_new2("qs_nrecs"), INT2NUM(stat->qs_nkeys));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_nkeys"), INT2NUM(stat->qs_nkeys));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_ndata"), INT2NUM(stat->qs_ndata));
@@ -2739,7 +2909,9 @@ bdb_queue_stat(obj)
     rb_hash_aset(hash, rb_tainted_str_new2("qs_re_len"), INT2NUM(stat->qs_re_len));
     pad = (char)stat->qs_re_pad;
     rb_hash_aset(hash, rb_tainted_str_new2("qs_re_pad"), rb_tainted_str_new(&pad, 1));
+#if DB_VERSION_MINOR < 2
     rb_hash_aset(hash, rb_tainted_str_new2("qs_start"), INT2NUM(stat->qs_start));
+#endif
     rb_hash_aset(hash, rb_tainted_str_new2("qs_first_recno"), INT2NUM(stat->qs_first_recno));
     rb_hash_aset(hash, rb_tainted_str_new2("qs_cur_recno"), INT2NUM(stat->qs_cur_recno));
     free(stat);
@@ -3977,6 +4149,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "CONSUME", INT2FIX(0));
 #else
     rb_define_const(bdb_mDb, "CONSUME", INT2FIX(DB_CONSUME));
+#ifdef DB_CDB_ALLDB
+    rb_define_const(bdb_mDb, "CDB_ALLDB", INT2FIX(DB_CDB_ALLDB));
+#endif
 #endif
     rb_define_const(bdb_mDb, "CREATE", INT2FIX(DB_CREATE));
     rb_define_const(bdb_mDb, "CURLSN", INT2FIX(DB_CURLSN));
@@ -3990,7 +4165,7 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "DBT_USERMEM", INT2FIX(DB_DBT_USERMEM));
     rb_define_const(bdb_mDb, "DUP", INT2FIX(DB_DUP));
-#if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
+#ifdef DB_DUPSORT
     rb_define_const(bdb_mDb, "DUPSORT", INT2FIX(DB_DUPSORT));
 #endif
     rb_define_const(bdb_mDb, "FIRST", INT2FIX(DB_FIRST));
@@ -4006,7 +4181,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "GET_BOTH", INT2FIX(DB_GET_BOTH));
 #endif
     rb_define_const(bdb_mDb, "GET_RECNO", INT2FIX(DB_GET_RECNO));
-#if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
+#ifdef DB_INIT_CDB
     rb_define_const(bdb_mDb, "INIT_CDB", INT2FIX(DB_INIT_CDB));
 #endif
     rb_define_const(bdb_mDb, "INIT_LOCK", INT2FIX(DB_INIT_LOCK));
@@ -4014,7 +4189,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "INIT_MPOOL", INT2FIX(DB_INIT_MPOOL));
     rb_define_const(bdb_mDb, "INIT_TXN", INT2FIX(DB_INIT_TXN));
     rb_define_const(bdb_mDb, "INIT_TRANSACTION", INT2FIX(DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG));
-#if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
+#ifdef DB_JOIN_ITEM
     rb_define_const(bdb_mDb, "JOIN_ITEM", INT2FIX(DB_JOIN_ITEM));
 #endif
     rb_define_const(bdb_mDb, "KEYFIRST", INT2FIX(DB_KEYFIRST));
@@ -4042,7 +4217,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "MPOOL_LAST", INT2FIX(DB_MPOOL_LAST));
     rb_define_const(bdb_mDb, "MPOOL_NEW", INT2FIX(DB_MPOOL_NEW));
     rb_define_const(bdb_mDb, "NEXT", INT2FIX(DB_NEXT));
-#if DB_VERSION_MAJOR > 2 || (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR >= 6)
+#if DB_NEXT_DUP
     rb_define_const(bdb_mDb, "NEXT_DUP", INT2FIX(DB_NEXT_DUP));
 #endif
     rb_define_const(bdb_mDb, "NOMMAP", INT2FIX(DB_NOMMAP));
@@ -4111,6 +4286,7 @@ Init_bdb()
     rb_define_method(bdb_cEnv, "txn_checkpoint", bdb_env_check, -1);
     rb_define_method(bdb_cEnv, "stat", bdb_env_stat, 0);
     rb_define_method(bdb_cEnv, "txn_stat", bdb_env_stat, 0);
+    rb_define_method(bdb_cEnv, "set_flags", bdb_env_set_flags, -1);
 /* DATABASE */
     bdb_cCommon = rb_define_class_under(bdb_mDb, "Common", rb_cObject);
     rb_define_private_method(bdb_cCommon, "initialize", bdb_obj_init, -1);
@@ -4162,6 +4338,9 @@ Init_bdb()
     rb_define_method(bdb_cCommon, "delete_if", bdb_delete_if, 0);
     rb_define_method(bdb_cCommon, "reject!", bdb_delete_if, 0);
     rb_define_method(bdb_cCommon, "reject", bdb_reject, 0);
+    rb_define_method(bdb_cCommon, "clear", bdb_clear, 0);
+    rb_define_method(bdb_cCommon, "replace", bdb_replace, 1);
+    rb_define_method(bdb_cCommon, "update", bdb_update, 1);
     rb_define_method(bdb_cCommon, "include?", bdb_has_key, 1);
     rb_define_method(bdb_cCommon, "has_key?", bdb_has_key, 1);
     rb_define_method(bdb_cCommon, "key?", bdb_has_key, 1);
@@ -4172,11 +4351,13 @@ Init_bdb()
     rb_define_method(bdb_cCommon, "both?", bdb_has_both, 2);
     rb_define_method(bdb_cCommon, "to_a", bdb_to_a, 0);
     rb_define_method(bdb_cCommon, "to_hash", bdb_to_hash, 0);
+    rb_define_method(bdb_cCommon, "invert", bdb_to_hash, 0);
     rb_define_method(bdb_cCommon, "empty?", bdb_empty, 0);
     rb_define_method(bdb_cCommon, "length", bdb_length, 0);
     rb_define_alias(bdb_cCommon,  "size", "length");
     rb_define_method(bdb_cCommon, "index", bdb_index, 1);
     rb_define_method(bdb_cCommon, "indexes", bdb_indexes, -1);
+    rb_define_method(bdb_cCommon, "indices", bdb_indexes, -1);
     rb_define_method(bdb_cCommon, "set_partial", bdb_set_partial, 2);
     rb_define_method(bdb_cCommon, "clear_partial", bdb_clear_partial, 0);
     rb_define_method(bdb_cCommon, "partial_clear", bdb_clear_partial, 0);

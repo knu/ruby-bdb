@@ -75,21 +75,21 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
                 base index for BDB::Recno, BDB::Queue or BDB::Btree 
                 (with BDB::RECNUM). Must be 0 or 1
            : ((|set_bt_compare|))
-                specify a Btree comparison function
-           : ((|set_bt_minkey|))
+                specify a Btree comparison function 
+          : ((|set_bt_minkey|))
                 set the minimum number of keys per Btree page
            : ((|set_bt_prefix|))
-                specify a Btree prefix comparison function
+                specify a Btree prefix comparison function 
            : ((|set_cachesize|))
                 set the database cache size
            : ((|set_dup_compare|))
-                specify a duplicate comparison function
+                specify a duplicate comparison function 
            : ((|set_flags|))
                 general database configuration
            : ((|set_h_ffactor|))
                 set the Hash table density
            : ((|set_h_hash|))
-                specify a hashing function
+                specify a hashing function 
            : ((|set_h_nelem|))
                 set the Hash table size
            : ((|set_lorder|))
@@ -113,7 +113,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
           ((|set_dup_compare|)) and ((|set_h_hash|)) can be also specified as
           a method (replace the prefix ((|set_|)) with ((|bdb_|))
 
-          For example :
+          For example 
 
             module BDB
                class Btreesort < Btree
@@ -122,8 +122,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
                   end
                end
             end
-
-
+ 
 --- db_remove(name [, subname]) 
 --- remove(name [, subname]) 
 --- unlink(name [,subname]) 

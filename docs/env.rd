@@ -105,6 +105,10 @@ environment can then be identified by the name of that directory.
                 be maintained but it is possible that some number of the
                 most recently committed transactions may be undone
                 during recovery instead of being redone. 
+
+            : ((|BDB::CDB_ALLDB|))
+                For Berkeley DB Concurrent Data Store applications, perform
+                locking on an environment-wide basis rather than per-database.
       
       :  ((|options|))
           hash. See the documentation of Berkeley DB for possible values.
@@ -148,6 +152,15 @@ environment can then be identified by the name of that directory.
 --- unlink()
      remove the environnement
 
+--- set_flags(flags [, onoff]) 
+      only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 2
+
+      ((|flags|)) can have the value ((|BDB::CDB_ALLDB|)), ((|BDB::NOMMAP|))
+      ((|BDB::TXN_NOSYNC|))
+
+      if ((|onoff|)) is zero, the specified flags are cleared
+
+      
 --- txn_begin([flags])
 --- begin([flags])
 --- begin([flags, db, ...]) { |txn, db, ...| ...}

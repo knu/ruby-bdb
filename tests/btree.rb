@@ -79,7 +79,7 @@ class TestBtree < RUNIT::TestCase
       assert_equal(nil, $bdb.close, "<close>")
       assert_kind_of(BDB::Btree, $bdb = BDB::Btree.open("tmp/aa", nil, "w", 
 	"set_flags" => BDB::DUP,
-	"set_dup_compare" => lambda {|a, b| b <=> a }), 
+	"set_dup_compare" => lambda {|a, b| a <=> b}),
         "<reopen with DB_DUP>")
       assert_equal(0, $bdb.size, "<must be 0 after reopen>")
    end
