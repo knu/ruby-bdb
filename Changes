@@ -201,3 +201,10 @@
 * complete support for AUTO_COMMIT
 * added "flags" for #each, #cursor. new #write_cursor 
         (Thanks Darrin Thompson <darrint@progeny.com>)
+
+--- 0.3.5
+
+* INT2NUM(DB_RMW) rather than INT2FIX()
+       (Thanks Darrin Thompson <darrint@progeny.com>)
+
+* adapted for 4.1.24 (DB_CURLSN is removed)

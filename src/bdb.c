@@ -215,7 +215,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "CONSUME_WAIT", INT2FIX(DB_CONSUME_WAIT));
 #endif
     rb_define_const(bdb_mDb, "CREATE", INT2FIX(DB_CREATE));
+#ifdef DB_CURLSN
     rb_define_const(bdb_mDb, "CURLSN", INT2FIX(DB_CURLSN));
+#endif
     rb_define_const(bdb_mDb, "CURRENT", INT2FIX(DB_CURRENT));
 #ifdef DB_DIRTY_READ
     rb_define_const(bdb_mDb, "DIRTY_READ", INT2FIX(DB_DIRTY_READ));
@@ -394,7 +396,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "RECOVER", INT2FIX(DB_RECOVER));
     rb_define_const(bdb_mDb, "RECOVER_FATAL", INT2FIX(DB_RECOVER_FATAL));
     rb_define_const(bdb_mDb, "RENUMBER", INT2FIX(DB_RENUMBER));
-    rb_define_const(bdb_mDb, "RMW", INT2FIX(DB_RMW));
+    rb_define_const(bdb_mDb, "RMW", INT2NUM(DB_RMW));
 #ifdef DB_SALVAGE
     rb_define_const(bdb_mDb, "SALVAGE", INT2FIX(DB_SALVAGE));
 #endif
@@ -445,7 +447,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "VERB_DEADLOCK", INT2FIX(1));
     rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(1));
     rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(1));
-    rb_define_const(bdb_mDb, "WRITECURSOR", INT2FIX(DB_RMW));
+    rb_define_const(bdb_mDb, "WRITECURSOR", INT2NUM(DB_RMW));
 #else
     rb_define_const(bdb_mDb, "TXN_NOWAIT", INT2FIX(DB_TXN_NOWAIT));
     rb_define_const(bdb_mDb, "TXN_SYNC", INT2FIX(DB_TXN_SYNC));

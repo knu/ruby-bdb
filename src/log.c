@@ -139,7 +139,12 @@ static VALUE
 bdb_s_log_curlsn(obj, a)
     VALUE obj, a;
 {
+#ifdef DB_CURSLN
     return bdb_s_log_put_internal(obj, a, DB_CURLSN);
+#else
+    rb_warning("BDB::CURLSN is obsolete");
+    return bdb_s_log_put_internal(obj, a, 0);
+#endif
 }
   
 

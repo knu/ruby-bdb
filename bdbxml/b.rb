@@ -1,11 +1,6 @@
 #!/usr/bin/ruby -I../src
 $LOAD_PATH.unshift "../src"
 require 'bdbxml'
-require 'find'
-
-Find::find('env') do |f|
-   File::unlink(f) if FileTest::file? f
-end
 
 env = BDB::Env.new("env", BDB::CREATE | BDB::INIT_TRANSACTION)
 doc = env.open_xml("toto", "a")
@@ -20,9 +15,10 @@ env.begin(doc, bdb) do |txn, doc1, bdb1|
       doc1.push("<bk><ttl id='#{i+2}'>title nb #{i+2}</ttl></bk>")
    end
    puts "========================================="
-   doc1.each("//ttl[@id < 12]", BDB::XML::Context::Values) {|x| p x }
+   doc1.each("//*") {|x| p x }
    bdb1.each {|k,v| p "#{k} -- #{v}" }
+   # implicit txn.abort
 end
 puts "========================================="
-doc.each("//ttl[@id < 12]") {|x| p x }
+doc.each("//*") {|x| p x }
 bdb.each {|k,v| p "#{k} -- #{v}" }

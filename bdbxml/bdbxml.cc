@@ -612,9 +612,9 @@ xb_con_init(int argc, VALUE *argv, VALUE obj)
   if (!txn && con->env_val) {
     bdb_ENV *dbenvst = NULL;
     GetEnvDBErr(con->env_val, dbenvst, id_current_env, xb_eFatal);
-    if (dbenvst->flags27 & DB_INIT_TXN) {
+    if (dbenvst->options & BDB_AUTO_COMMIT) {
       flags |= DB_AUTO_COMMIT;
-      con->flag |= BDB_AUTOCOMMIT;
+      con->flag |= BDB_AUTO_COMMIT;
     }
   }
   if (con->flag & DB_THREAD) {
@@ -736,7 +736,7 @@ xb_con_push(int argc, VALUE *argv, VALUE obj)
     a = xb_s_new(1, &a, xb_cDoc);
   }
   Data_Get_Struct(a, XmlDocument, doc);
-  if (txn == NULL && (con->flag & BDB_AUTOCOMMIT)) {
+  if (txn == NULL && (con->flag & BDB_AUTO_COMMIT)) {
     xb_test_txn(con->env_val, &txn);
     temporary = true;
   }
@@ -870,7 +870,7 @@ xb_con_delete(int argc, VALUE *argv, VALUE obj)
   if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
     flags = NUM2INT(b);
   }
-  if (txn == NULL && (con->flag & BDB_AUTOCOMMIT)) {
+  if (txn == NULL && (con->flag & BDB_AUTO_COMMIT)) {
     xb_test_txn(con->env_val, &txn);
     temporary = true;
   }

@@ -56,9 +56,9 @@ bdb_write_cursor(obj)
 {
     VALUE f;
 #if DB_VERSION_MAJOR == 2
-    f = INT2FIX(DB_RMW);
+    f = INT2NUM(DB_RMW);
 #else
-    f = INT2FIX(DB_WRITECURSOR);
+    f = INT2NUM(DB_WRITECURSOR);
 #endif
     return bdb_cursor(1, &f, obj);
 }
