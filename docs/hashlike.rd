@@ -344,6 +344,9 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
     ((<set>)) ((<bulk>))
 
+--- each_by_prefix(prefix) {|key, value| ... }
+    Iterate over associations, where the key begin with ((|prefix|))
+
 --- each_dup(key, bulk = 0) { |key, value| ... }
     Iterates over each duplicate associations for ((|key|))
 
@@ -421,6 +424,11 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
     Iterates over associations in reverse order 
 
     ((<set>))
+
+--- reverse_each_by_prefix(prefix) {|key, value| ... }
+    Iterate over associations in reverse order, where the key begin
+    with ((|prefix|))
+
 
 --- reverse_each_key(set = nil) { |key| ... }
     Iterates over keys in reverse order 

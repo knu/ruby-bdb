@@ -352,6 +352,12 @@ class BDB::Common
    def  each_pair(set = nil, bulk = 0) 
       yield key, value
    end
+
+   #iterate over associations, where the key begin with
+   #<em>prefix</em>
+   def each_by_prefix(prefix = nil)
+      yield key, value
+   end
    
    #Iterates over each duplicate associations for <em>key</em>
    #
@@ -496,6 +502,12 @@ class BDB::Common
    
    #same than <em> reverse_each</em>
    def  reverse_each_pair(set = nil) 
+      yield key, value
+   end
+
+   #iterate over associations in reverse order, where the key begin with
+   #<em>prefix</em>
+   def reverse_each_by_prefix(prefix = nil)
       yield key, value
    end
    

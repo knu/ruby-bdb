@@ -3,6 +3,8 @@ $LOAD_PATH.unshift *%w{../src src tests}
 require 'bdb'
 require 'runit_'
 
+$VERBOSE = nil
+
 module BDB
    class BTCompare < Btree
       def bdb_bt_compare(a, b)

@@ -241,3 +241,10 @@
 * added Common#conf, Env#conf (4.2.50)
 * corrected Common#select
 * corrected Log#log_get
+
+--- 0.5.2
+
+* corrected #duplicates and added Btree#{reverse_}each_by_prefix
+  (Thanks Satoru Takabayashi <satoru@namazu.org>)
+
+* corrected #begin (flatten!) for 1.9

@@ -1674,7 +1674,7 @@ bdb_put(argc, argv, obj)
     else {
 	if (dbst->partial) {
 	    if (flags & DB_APPEND) {
-		a = INT2NUM((int)key.data);
+		a = INT2NUM((long)key.data);
 	    }
 	    return bdb_get(1, &a, obj);
 	}
@@ -2367,15 +2367,18 @@ bdb_i_each_kv(st)
 {
     bdb_DB *dbst;
     DBC *dbcp;
-    DBT pkey, key, data;
-    int ret;
+    DBT pkey, key, data, orig;
+    int ret, init = Qfalse, prefix = Qfalse;
     db_recno_t recno;
     volatile VALUE res = Qnil;
     
+    prefix = st->type & BDB_ST_PREFIX;
+    st->type &= ~BDB_ST_PREFIX;
     GetDB(st->db, dbst);
     dbcp = st->dbcp;
     MEMZERO(&key, DBT, 1);
     INIT_RECNO(dbst, key, recno);
+    MEMZERO(&orig, DBT, 1);
     MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
     SET_PARTIAL(dbst, data);
@@ -2383,9 +2386,17 @@ bdb_i_each_kv(st)
     pkey.flags = DB_DBT_MALLOC;
     if (!NIL_P(st->set)) {
 	res = bdb_test_recno(st->db, &key, &recno, st->set);
+        if (prefix) {
+            init = Qtrue;
+            orig.size = key.size;
+            orig.data = ALLOCA_N(char, key.size);
+            MEMCPY(orig.data, key.data, char, key.size);
+        }
 #if BDB_VERSION >= 30300
 	if (st->type == BDB_ST_KV && st->primary) {
-	    ret = bdb_test_error(dbcp->c_pget(dbcp, &key, &pkey, &data, DB_SET_RANGE));
+	    ret = bdb_test_error(dbcp->c_pget(dbcp, &key, &pkey, &data, 
+                                              (st->type & BDB_ST_DUP)?DB_SET:
+                                              DB_SET_RANGE));
 	}
 	else
 #endif
@@ -2393,7 +2404,9 @@ bdb_i_each_kv(st)
 #if BDB_VERSION < 20600
 	    key.flags |= DB_DBT_MALLOC;
 #endif
-	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_SET_RANGE));
+	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, 
+                                             (st->type & BDB_ST_DUP)?DB_SET:
+                                             DB_SET_RANGE));
 #if BDB_VERSION < 20600
 	    key.flags &= ~DB_DBT_MALLOC;
 #endif
@@ -2401,7 +2414,7 @@ bdb_i_each_kv(st)
 	if (ret == DB_NOTFOUND) {
 	    return Qfalse;
 	}
-	bdb_treat(st, &pkey, &key, &data);
+        bdb_treat(st, &pkey, &key, &data);
     }
     do {
 #if BDB_VERSION >= 30300
@@ -2423,7 +2436,21 @@ bdb_i_each_kv(st)
             return Qnil;
         }
 	if (ret == DB_KEYEMPTY) continue;
-	bdb_treat(st, &pkey, &key, &data);
+        if (prefix) {
+            if (!init) {
+                init = Qtrue;
+                orig.size = key.size;
+                orig.data = ALLOCA_N(char, key.size);
+                MEMCPY(orig.data, key.data, char, key.size);
+            }
+            if (key.size >= orig.size &&
+                !memcmp(key.data, orig.data, orig.size)) {
+                bdb_treat(st, &pkey, &key, &data);
+            }
+        }
+        else {
+            bdb_treat(st, &pkey, &key, &data);
+        }
     } while (1);
     return Qnil;
 }
@@ -2461,7 +2488,9 @@ bdb_i_each_kv_bulk(st)
     do {
 	if (init && !NIL_P(st->set)) {
 	    res = bdb_test_recno(st->db, &key, &recno, st->set);
-	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_SET_RANGE | DB_MULTIPLE_KEY));
+	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, 
+                                             ((st->type & BDB_ST_DUP)?DB_SET:
+                                              DB_SET_RANGE)|DB_MULTIPLE_KEY));
 	    init = 0;
 	}
 	else {
@@ -2553,7 +2582,7 @@ bdb_each_kvc(argc, argv, obj, sens, replace, type)
     }
 #endif
     type &= ~BDB_ST_ONE;
-    if (type == BDB_ST_DELETE) {
+    if ((type & ~BDB_ST_PREFIX) == BDB_ST_DELETE) {
 	rb_secure(4);
     }
     INIT_TXN(txnid, obj, dbst);
@@ -2688,11 +2717,28 @@ bdb_each_pair(argc, argv, obj)
 }
 
 static VALUE
+bdb_each_prefix(argc, argv, obj) 
+    int argc;
+    VALUE obj, *argv;
+{
+    return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KV | BDB_ST_PREFIX);
+}
+
+static VALUE
 bdb_each_riap(argc, argv, obj) 
     int argc;
     VALUE obj, *argv;
 {
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_KV | BDB_ST_ONE);
+}
+
+static VALUE
+bdb_each_xiferp(argc, argv, obj) 
+    int argc;
+    VALUE obj, *argv;
+{
+    return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, 
+                        BDB_ST_KV | BDB_ST_ONE | BDB_ST_PREFIX);
 }
 
 static VALUE
@@ -4067,6 +4113,8 @@ void bdb_init_common()
 #endif
     bdb_cBtree = rb_define_class_under(bdb_mDb, "Btree", bdb_cCommon);
     rb_define_method(bdb_cBtree, "stat", bdb_tree_stat, -1);
+    rb_define_method(bdb_cBtree, "each_by_prefix", bdb_each_prefix, -1);
+    rb_define_method(bdb_cBtree, "reverse_each_by_prefix", bdb_each_xiferp, -1);
 #if BDB_VERSION >= 30100
     bdb_sKeyrange = rb_struct_define("Keyrange", "less", "equal", "greater", 0);
     rb_global_variable(&bdb_sKeyrange);

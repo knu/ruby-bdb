@@ -389,8 +389,18 @@ bdb_env_rslbl_begin(origin, argc, argv, obj)
 	    tmp = txnv;
 	}
 	else {
-	    tmp = rb_assoc_new(txnv, b);
-	    rb_funcall2(tmp, rb_intern("flatten!"), 0, 0);
+            tmp = rb_ary_new();
+            rb_ary_push(tmp, txnv);
+            if (TYPE(b) == T_ARRAY) {
+                long i;
+
+                for (i = 0; i < RARRAY(b)->len; i++) {
+                    rb_ary_push(tmp, RARRAY(b)->ptr[i]);
+                }
+            }
+            else {
+                rb_ary_push(tmp, b);
+            }
 	}
 	if (rb_block_given_p()) {
 	    int state = 0;
@@ -400,6 +410,7 @@ bdb_env_rslbl_begin(origin, argc, argv, obj)
 		bdb_txn_unlock(txnv);
 	    }
 	    if (state) {
+                txnst->status = ROLLBACK;
 		bdb_txn_abort(txnv);
 		rb_jump_tag(state);
 	    }

@@ -358,6 +358,7 @@ struct dblsnst {
 #define BDB_ST_DUP    32
 #define BDB_ST_ONE    64
 #define BDB_ST_SELECT 128
+#define BDB_ST_PREFIX 256
 
 extern VALUE bdb_errstr;
 extern int bdb_errcall;
