@@ -22,20 +22,20 @@ rescue LoadError
 end
 
 
-if RUBY_VERSION > "1.7"
+if RUBY_VERSION >= "1.8"
    class Array
-      alias indices select
+      alias indices values_at
    end
    class Hash
-      alias indexes select
+      alias indexes values_at
    end
    module BDB
       class Common
-	 alias indexes select
+	 alias indexes values_at
       end
 
       class Recnum
-	 alias indices select
+	 alias indices values_at
       end
    end
 end

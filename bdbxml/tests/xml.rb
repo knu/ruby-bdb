@@ -37,9 +37,8 @@ class TestXML < Inh::TestCase
       assert_kind_of(BDB::Env, $env = BDB::Env.new("tmp", 
 						   BDB::CREATE | @flag))
       assert_kind_of(BDB::XML::Container, $glo = $env.open_xml("glossary", "a"))
-      assert_equal($glo, 
-		   $glo.index("http://moulon.inra.fr/", "reference", 
-			      "node-attribute-equality-string"))
+      assert_kind_of(BDB::XML::Index, index = $glo.index)
+      $glo.index = [["http://moulon.inra.fr/", "reference", "node-attribute-equality-string"]]
       assert_equal("glossary", $glo.name)
       $base = "."
    end

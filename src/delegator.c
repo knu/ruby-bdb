@@ -154,11 +154,11 @@ void bdb_init_delegator()
     id_send = rb_intern("send");
     bdb_cDelegate = rb_define_class_under(bdb_mDb, "Delegate", rb_cObject);
     {
-	VALUE ary;
+	VALUE ary = Qfalse;
 	char *method;
 	int i;
 
-	ary = rb_class_instance_methods(0, 0, rb_mKernel);
+	ary = rb_class_instance_methods(1, &ary, rb_mKernel);
 	for (i = 0; i < RARRAY(ary)->len; i++) {
 	    method = StringValuePtr(RARRAY(ary)->ptr[i]);
 	    if (!strcmp(method, "==") ||

@@ -4,10 +4,10 @@
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>bdbxml.rd</title>
+<title>Untitled</title>
 </head>
 <body>
-<h1><a name="label:0" id="label:0">BDB::XML</a></h1><!-- RDLabel: "BDB::XML" -->
+<h1><a name="label-0" id="label-0">BDB::XML</a></h1><!-- RDLabel: "BDB::XML" -->
 <p>Berkeley DB XML is an embedded native XML datastore that provides for
 the efficient storage and retrieval of XML encoded information.</p>
 <p>Retrieval is supported by an XPath query engine that derives its efficiency
@@ -18,12 +18,15 @@ files used to store the container content. The directory within which
 the files are opened is taken from the environment passed through the
 Container constructor.  If no environment was provided, then the
 directory used will be the current working directory.</p>
+<p><a href="docs/index.html">BDB::XML::Index</a></p>
+<p>Define the indexing strategy for a Container</p>
+<p>Indexing is specified by providing the name of a node and a list of indexing
+strategies for that node.</p>
 <p><a href="docs/document.html">BDB::XML::Document</a></p>
 <p>A Document is the unit of storage within a Container. </p>
-<p>A Document contains a stream of bytes that may be of type XML
-or BYTES. The Container only indexes the content of Documents
-that contain XML. The BYTES type is supported to allow the storage
-of arbitrary content along with XML content.</p>
+<p>A Document contains a stream of bytes that may be of type XML.
+The Container only indexes the content of Documents
+that contain XML.</p>
 <p>Document supports annotation attributes.</p>
 <p><a href="docs/context.html">BDB::XML::Context</a></p>
 <p>The context within which a query is performed against a Container. </p>

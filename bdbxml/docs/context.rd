@@ -44,25 +44,33 @@ that the caller may manage the variable to value bindings.
 --- del_namespace(name)
     Delete the namespace URI for a particular prefix
 
+--- evaltype
+    Return the evaluation type
+
 --- evaltype=(type)
     Set the evaluation type
 
 --- get_namespace(name)
---- namespace(name)
+--- namespace[name]
     Get the namespace URI that a namespace prefix maps onto
 
---- initialize(, returntype = nil, evaluation = nil)
+--- initialize(returntype = nil, evaluation = nil)
     Initialize the object with the optional evaluation type
     ((|BDB::XML::Context::Lazy|)) or ((|BDB::XML::Context::Eager|))
     and return type ((|BDB::XML::Context::Documents|)),
     ((|BDB::XML::Context::Values|)) or ((|BDB::XML::Context::Candidates|))
 
+--- returntype
+    Return the return type
+
 --- returntype=(type)
     Set the return type
 
+--- namespace[name]=(uri)
 --- set_namespace(name, uri)
     Define a namespace prefix, providing the URI that it maps onto
 
+    If ((|uri|)) is ((|nil|)) delete the namespace
 # end
 # end
 # end

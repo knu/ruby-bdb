@@ -5,7 +5,9 @@
 #include <errno.h>
 
 #if RUBY_VERSION_CODE < 180
-#define StringValue(x,y) rb_str2cstr(x,y)
+#define StringValue(x) do { 				\
+    if (TYPE(x) != T_STRING) x = rb_str_to_str(x); 	\
+} while (0)
 #define StringValuePtr(x) STR2CSTR(x)
 #define SafeStringValue(x) Check_SafeStr(x)
 #endif
@@ -135,13 +137,12 @@ typedef struct {
     int options;
     VALUE marshal;
     DBTYPE type;
-    VALUE env, orig, secondary;
+    VALUE env, orig, secondary, txn;
     VALUE filename, database;
     VALUE bt_compare, bt_prefix, dup_compare, h_hash;
     VALUE filter[4];
     VALUE ori_val;
     DB *dbp;
-    bdb_TXN *txn;
     long len;
     u_int32_t flags;
     u_int32_t partial;
@@ -290,10 +291,12 @@ struct dblsnst {
 #define INIT_TXN(txnid, obj, dbst) {					  \
   txnid = NULL;								  \
   GetDB(obj, dbst);							  \
-  if (dbst->txn != NULL) {						  \
-  if (dbst->txn->txnid == 0)						  \
+  if (RTEST(dbst->txn)) {						  \
+      bdb_TXN *txnst;							  \
+      Data_Get_Struct(dbst->txn, bdb_TXN, txnst);			  \
+  if (txnst->txnid == 0)						  \
     rb_warning("using a db handle associated with a closed transaction"); \
-    txnid = dbst->txn->txnid;						  \
+    txnid = txnst->txnid;						  \
   }									  \
 }
 

@@ -670,8 +670,10 @@ bdb_i_close(dbst, flags)
 
     if (dbst->dbp && !(dbst->options & BDB_NOT_OPEN)) {
 	db_ary = 0;
-	if (dbst->txn) {
-	    db_ary = dbst->txn->db_ary;
+	if (RTEST(dbst->txn)) {
+	    bdb_TXN *txnst;
+	    Data_Get_Struct(dbst->txn, bdb_TXN, txnst);
+	    db_ary = txnst->db_ary;
 	}
 	else if (dbst->env) {
 	    Data_Get_Struct(dbst->env, bdb_ENV, envst);
@@ -727,6 +729,7 @@ bdb_mark(dbst)
     int i;
     rb_gc_mark(dbst->marshal);
     rb_gc_mark(dbst->env);
+    rb_gc_mark(dbst->txn);
     rb_gc_mark(dbst->orig);
     rb_gc_mark(dbst->secondary);
     rb_gc_mark(dbst->bt_compare);
@@ -753,17 +756,43 @@ bdb_env(obj)
     bdb_DB *dbst;
 
     GetDB(obj, dbst);
-    return dbst->env;
+    if (RTEST(dbst->env)) {
+	return dbst->env;
+    }
+    return Qnil;
 }
 
 VALUE
-bdb_has_env(obj)
+bdb_env_p(obj)
     VALUE obj;
 {
     bdb_DB *dbst;
 
     GetDB(obj, dbst);
-    return (dbst->env == 0)?Qfalse:Qtrue;
+    return RTEST(dbst->env);
+}
+
+static VALUE
+bdb_txn(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+
+    GetDB(obj, dbst);
+    if (RTEST(dbst->txn)) {
+	return dbst->txn;
+    }
+    return Qnil;
+}
+
+VALUE
+bdb_txn_p(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+
+    GetDB(obj, dbst);
+    return RTEST(dbst->txn);
 }
 
 static VALUE
@@ -913,7 +942,7 @@ bdb_s_new(argc, argv, obj)
 	    }
 	    Data_Get_Struct(v, bdb_TXN, txnst);
 	    rb_ary_push(txnst->db_ary, res);
-	    dbst->txn = txnst;
+	    dbst->txn = v;
 	    dbst->env = txnst->env;
 	    Data_Get_Struct(txnst->env, bdb_ENV, envst);
 	    /* #ts:
@@ -1180,10 +1209,13 @@ bdb_init(argc, argv, obj)
 	    flags &= ~DB_RDONLY;
 	}
 #if BDB_VERSION >= 40100
-	if (dbst->txn) {
-	    txnid = dbst->txn->txnid;
+	if (RTEST(dbst->txn)) {
+	    bdb_TXN *txnst;
+
+	    GetTxnDB(dbst->txn, txnst);
+	    txnid = txnst->txnid;
 	}
-	else if (dbst->env) {
+	else if (RTEST(dbst->env)) {
 	    bdb_ENV *envst;
 
 	    GetEnvDB(dbst->env, envst);
@@ -2888,7 +2920,7 @@ bdb_indexes(argc, argv, obj)
     int i;
 
 #if RUBY_VERSION_CODE >= 172
-    rb_warn("Common#%s is deprecated; use Common#select",
+    rb_warn("Common#%s is deprecated; use Common#values_at",
 	    rb_id2name(rb_frame_last_func()));
 #endif
     indexes = rb_ary_new2(argc);
@@ -2900,6 +2932,23 @@ bdb_indexes(argc, argv, obj)
 }
 
 #if RUBY_VERSION_CODE >= 172
+
+static VALUE
+bdb_values_at(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    VALUE result = rb_ary_new2(argc);
+    bdb_DB *dbst;
+    long i;
+
+    for (i = 0; i < argc; i++) {
+	rb_ary_push(result, bdb_get(1, &argv[i], obj));
+    }
+    return result;
+}
+
 static VALUE
 bdb_select(argc, argv, obj)
     int argc;
@@ -2907,8 +2956,6 @@ bdb_select(argc, argv, obj)
     VALUE obj;
 {
     VALUE result = rb_ary_new();
-    bdb_DB *dbst;
-    long i;
 
     if (rb_block_given_p()) {
 	if (argc > 0) {
@@ -2916,15 +2963,11 @@ bdb_select(argc, argv, obj)
 	}
 	return bdb_each_kvc(argc, argv, obj, DB_NEXT, result, BDB_ST_SELECT);
     }
-    else {
-	for (i = 0; i < argc; i++) {
-	    rb_ary_push(result, bdb_get(1, &argv[i], obj));
-	}
-    }
-    return result;
+    rb_warn("Common#select(index..) is deprecated; use Common#values_at");
+    return bdb_values_at(argc, argv, obj);
 }
-#endif
 
+#endif
 
 VALUE
 bdb_has_value(obj, a)
@@ -3483,8 +3526,11 @@ bdb_associate(argc, argv, obj)
 #if BDB_VERSION >= 40100
     {
 	DB_TXN *txnid = NULL;
-	if (dbst->txn) {
-	    txnid = dbst->txn->txnid;
+	if (RTEST(dbst->txn)) {
+	    bdb_TXN *txnst;
+
+	    GetTxnDB(dbst->txn, txnst);
+	    txnid = txnst->txnid;
 	}
 	else if (dbst->options & BDB_AUTO_COMMIT) {
 	  flags |= DB_AUTO_COMMIT;
@@ -3577,7 +3623,7 @@ bdb__txn__dup(VALUE obj, VALUE a)
     GetTxnDB(a, txnst);
     res = Data_Make_Struct(CLASS_OF(obj), bdb_DB, bdb_mark, free, dbh);
     MEMCPY(dbh, dbp, bdb_DB, 1);
-    dbh->txn = txnst;
+    dbh->txn = a;
     dbh->orig = obj;
     dbh->options |= txnst->options & BDB_INIT_LOCK;
     return res;
@@ -3714,8 +3760,17 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "[]=", bdb_aset, 2);
     rb_define_method(bdb_cCommon, "store", bdb_put, -1);
     rb_define_method(bdb_cCommon, "env", bdb_env, 0);
-    rb_define_method(bdb_cCommon, "has_env?", bdb_has_env, 0);
-    rb_define_method(bdb_cCommon, "env?", bdb_has_env, 0);
+    rb_define_method(bdb_cCommon, "environment", bdb_env, 0);
+    rb_define_method(bdb_cCommon, "has_env?", bdb_env_p, 0);
+    rb_define_method(bdb_cCommon, "has_environment?", bdb_env_p, 0);
+    rb_define_method(bdb_cCommon, "env?", bdb_env_p, 0);
+    rb_define_method(bdb_cCommon, "environment?", bdb_env_p, 0);
+    rb_define_method(bdb_cCommon, "txn", bdb_txn, 0);
+    rb_define_method(bdb_cCommon, "transaction", bdb_txn, 0);
+    rb_define_method(bdb_cCommon, "txn?", bdb_txn_p, 0);
+    rb_define_method(bdb_cCommon, "transaction?", bdb_txn_p, 0);
+    rb_define_method(bdb_cCommon, "in_txn?", bdb_txn_p, 0);
+    rb_define_method(bdb_cCommon, "in_transaction?", bdb_txn_p, 0);
 #if BDB_VERSION >= 20600
     rb_define_method(bdb_cCommon, "count", bdb_count, 1);
     rb_define_method(bdb_cCommon, "dup_count", bdb_count, 1);
@@ -3778,6 +3833,7 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "indices", bdb_indexes, -1);
 #if RUBY_VERSION_CODE >= 172
     rb_define_method(bdb_cCommon, "select", bdb_select, -1);
+    rb_define_method(bdb_cCommon, "values_at", bdb_values_at, -1);
 #endif
     rb_define_method(bdb_cCommon, "set_partial", bdb_set_partial, 2);
     rb_define_method(bdb_cCommon, "clear_partial", bdb_clear_partial, 0);

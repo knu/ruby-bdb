@@ -599,6 +599,24 @@ bdb_sary_select(argc, argv, obj)
 	}
 	return bdb_each_kvc(argc, argv, obj, DB_NEXT, rb_ary_new(), BDB_ST_SELECT);
     }
+#if RUBY_VERSION_CODE >= 180
+	rb_warn("Recnum#select(index..) is deprecated; use Recnum#values_at");
+#endif
+    result = rb_ary_new();
+    for (i = 0; i < argc; i++) {
+	rb_ary_push(result, bdb_sary_fetch(1, argv + i, obj));
+    }
+    return result;
+}
+
+static VALUE
+bdb_sary_values_at(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    VALUE result;
+    long i;
+
     result = rb_ary_new();
     for (i = 0; i < argc; i++) {
 	rb_ary_push(result, bdb_sary_fetch(1, argv + i, obj));
@@ -615,10 +633,10 @@ bdb_sary_indexes(argc, argv, obj)
     int i;
 
 #if RUBY_VERSION_CODE >= 172
-    rb_warn("Recnum#%s is deprecated; use Recnum#select",
+    rb_warn("Recnum#%s is deprecated; use Recnum#values_at",
 	    rb_id2name(rb_frame_last_func()));
 #endif
-    return bdb_sary_select(argc, argv, obj);
+    return bdb_sary_values_at(argc, argv, obj);
 }
 
 static VALUE
@@ -1000,6 +1018,7 @@ void bdb_init_recnum()
 #if RUBY_VERSION_CODE >= 172
     rb_define_method(bdb_cRecnum, "map", bdb_sary_collect, 0);
     rb_define_method(bdb_cRecnum, "select", bdb_sary_select, -1);
+    rb_define_method(bdb_cRecnum, "values_at", bdb_sary_values_at, -1);
 #endif
     rb_define_method(bdb_cRecnum, "map!", bdb_sary_collect_bang, -1);
     rb_define_method(bdb_cRecnum, "filter", bdb_sary_filter, -1);

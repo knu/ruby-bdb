@@ -1,6 +1,6 @@
 
 * ::rename, ::remove : added flags
-* new Con::set_name, Con#index[]
+* new Con::set_name
 
 --- adapted for 1.0.11
 
@@ -8,3 +8,14 @@
 * added Document#query
 * adapted for 1.8
 
+* corrected #index, #get_index
+* added #indexes, #declare_index
+* #to_a, #each for Nodes
+
+--- adapted for 1.0.14
+
+* XML::Index
+* changed XML::Container#index
+* constant XML::Name[], XML::Namespace[]
+* XML::Container#context, XML::UpdateContext
+* XML::Container#open?

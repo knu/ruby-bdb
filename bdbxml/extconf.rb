@@ -1,7 +1,7 @@
 require 'mkmf'
 load './myconfig'
 
-def addld(path, lib)
+def addld(key, path, lib)
    libs = if lib.kind_of?(Array)
 	     "-l" + lib.join(" -l")
 	  else
@@ -10,19 +10,20 @@ def addld(path, lib)
    if path
       case Config::CONFIG["arch"]
       when /solaris2/
-	 $LDFLAGS += " -L#{path} -R#{path} #{libs}"
+	 libs = " -L#{path} -R#{path} #{libs}"
       when /linux/
-	 $LDFLAGS += " -Wl,-rpath,#{path} -L#{path} #{libs}"
+	 libs = " -Wl,-rpath,#{path} -L#{path} #{libs}"
       else
-	 $LDFLAGS += " -L#{path} #{libs}"
+	 libs = " -L#{path} #{libs}"
       end
-   else
-      $LDFLAGS += " #{libs}"
    end
+   $stderr.puts "\t#{key}\tusing ... #{libs}"
+   $LDFLAGS += " #{libs}"
 end
 
 $CFLAGS += " -I. -I../src"
 
+$stderr.puts "INCLUDE"
 $order.each do |key|
    val = $include[key]
    unless val.nil?
@@ -39,10 +40,11 @@ end
 
 $CFLAGS += " -DBDB_NO_THREAD" if enable_config("thread") == false
 
+$stderr.puts "\nLIBRARY"
 $order.each do |key|
    val = $library[key]
    if val.kind_of?(Array) && val.size == 2
-      addld(*val)
+      addld(key, *val)
    end
 end
 

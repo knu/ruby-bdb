@@ -4,6 +4,10 @@ require 'bdbxml'
 
 env = BDB::Env.new("tmp", BDB::CREATE | BDB::INIT_TRANSACTION)
 doc = env.open_xml("toto", "a")
+index = doc.index
+index.push("http://moulon.inra.fr/", "reference", 
+	   "node-attribute-equality-string")
+doc.index = index
 bdb = env.open_db(BDB::Btree, "tutu", nil, "a")
 2.times do |i|
    doc.push("<bk><ttl id='#{i}'>title nb #{i}</ttl></bk>")

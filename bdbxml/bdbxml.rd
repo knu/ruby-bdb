@@ -12,6 +12,7 @@ from indices generated from the stored XML data.
 #^
 # module XML
 #
+
 ((<BDB::XML::Container|URL:docs/container.html>))
 
 #^
@@ -24,14 +25,25 @@ directory used will be the current working directory.
 # class Container
 # end
 
+((<BDB::XML::Index|URL:docs/index.html>))
+
+#^
+Define the indexing strategy for a Container
+
+Indexing is specified by providing the name of a node and a list of indexing
+strategies for that node.
+#^
+# class Index
+# end
+
 ((<BDB::XML::Document|URL:docs/document.html>))
+
 #^
 A Document is the unit of storage within a Container. 
 
-A Document contains a stream of bytes that may be of type XML
-or BYTES. The Container only indexes the content of Documents
-that contain XML. The BYTES type is supported to allow the storage
-of arbitrary content along with XML content.
+A Document contains a stream of bytes that may be of type XML.
+The Container only indexes the content of Documents
+that contain XML.
 
 Document supports annotation attributes.
 
@@ -40,6 +52,7 @@ Document supports annotation attributes.
 # end
 
 ((<BDB::XML::Context|URL:docs/context.html>))
+
 #^
 The context within which a query is performed against a Container. 
 
@@ -60,6 +73,7 @@ that the caller may manage the variable to value bindings.
 #^
 # class Context
 # end
+
 ((<BDB::XML::Results|URL:docs/results.html>))
 #^
 

@@ -1,0 +1,80 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Untitled</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::Index</a></h2><!-- RDLabel: "BDB::XML::Index" -->
+<p>The index specification</p>
+<h3><a name="label-1" id="label-1">Class Methods</a></h3><!-- RDLabel: "Class Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>allocate</code></a></dt><!-- RDLabel: "allocate" -->
+<dd>
+Allocate a new Index object</dd>
+</dl>
+<h3><a name="label-3" id="label-3">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-4" id="label-4"><code>add(<var>uri</var> = "", <var>name</var>, <var>index</var>)</code></a></dt><!-- RDLabel: "add" -->
+<dd>
+add a new index
+<dl>
+<dt><a name="label-5" id="label-5"><var>uri</var></a></dt><!-- RDLabel: "uri" -->
+<dd>
+The namespace for the element (optional)
+</dd>
+<dt><a name="label-6" id="label-6"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+The name parameter provides the fully qualified element type
+to be indexed.
+</dd>
+<dt><a name="label-7" id="label-7"><var>index</var></a></dt><!-- RDLabel: "index" -->
+<dd>
+The index string is a comma separated list of the following indexing
+strategy names
+<dl>
+<dt><a name="label-8" id="label-8">none-none-none-none</a></dt><!-- RDLabel: "none-none-none-none" -->
+<dt><a name="label-9" id="label-9">node-element-presence</a></dt><!-- RDLabel: "node-element-presence" -->
+<dt><a name="label-10" id="label-10">node-attribute-presence</a></dt><!-- RDLabel: "node-attribute-presence" -->
+<dt><a name="label-11" id="label-11">node-element-equality-string</a></dt><!-- RDLabel: "node-element-equality-string" -->
+<dt><a name="label-12" id="label-12">node-element-equality-number</a></dt><!-- RDLabel: "node-element-equality-number" -->
+<dt><a name="label-13" id="label-13">node-element-substring-string</a></dt><!-- RDLabel: "node-element-substring-string" -->
+<dt><a name="label-14" id="label-14">node-attribute-equality-string</a></dt><!-- RDLabel: "node-attribute-equality-string" -->
+<dt><a name="label-15" id="label-15">node-attribute-equality-number</a></dt><!-- RDLabel: "node-attribute-equality-number" -->
+<dt><a name="label-16" id="label-16">node-attribute-substring-string</a></dt><!-- RDLabel: "node-attribute-substring-string" -->
+<dt><a name="label-17" id="label-17">edge-element-presence</a></dt><!-- RDLabel: "edge-element-presence" -->
+<dt><a name="label-18" id="label-18">edge-attribute-presence</a></dt><!-- RDLabel: "edge-attribute-presence" -->
+<dt><a name="label-19" id="label-19">edge-element-equality-string</a></dt><!-- RDLabel: "edge-element-equality-string" -->
+<dt><a name="label-20" id="label-20">edge-element-equality-number</a></dt><!-- RDLabel: "edge-element-equality-number" -->
+<dt><a name="label-21" id="label-21">edge-element-substring-string</a></dt><!-- RDLabel: "edge-element-substring-string" -->
+<dt><a name="label-22" id="label-22">edge-attribute-equality-string</a></dt><!-- RDLabel: "edge-attribute-equality-string" -->
+<dt><a name="label-23" id="label-23">edge-attribute-equality-number</a></dt><!-- RDLabel: "edge-attribute-equality-number" -->
+<dt><a name="label-24" id="label-24">edge-attribute-substring-string</a></dt><!-- RDLabel: "edge-attribute-substring-string" -->
+</dl>
+</dd>
+</dl></dd>
+<dt><a name="label-25" id="label-25"><code>delete(<var>uri</var> = "", <var>name</var>, <var>index</var>)</code></a></dt><!-- RDLabel: "delete" -->
+<dd>
+Delete the specified index</dd>
+<dt><a name="label-26" id="label-26"><code>each {|<var>uri</var>, <var>name</var>, <var>index</var>| ... }</code></a></dt><!-- RDLabel: "each" -->
+<dd>
+Iterate over all indexes</dd>
+<dt><a name="label-27" id="label-27"><code>initialize([[<var>uri0</var>, <var>name0</var>, <var>index0</var>] [, [<var>uri1</var>, <var>name1</var>, <var>index1</var>], ... ]])</code></a></dt><!-- RDLabel: "initialize" -->
+<dd>
+Initialize the index with the optional values [uri, name, value]</dd>
+<dt><a name="label-28" id="label-28"><code>find(<var>uri</var> = "", <var>name</var>)</code></a></dt><!-- RDLabel: "find" -->
+<dd>
+<p>Find the indexing startegy associated with <var>uri</var>, and <var>name</var></p>
+<p>Return <var>nil</var> is no indexing strategy was defined</p></dd>
+<dt><a name="label-29" id="label-29"><code>replace(<var>uri</var> = "", <var>name</var>, <var>index</var>)</code></a></dt><!-- RDLabel: "replace" -->
+<dd>
+Replace the specified index</dd>
+<dt><a name="label-30" id="label-30"><code>to_a</code></a></dt><!-- RDLabel: "to_a" -->
+<dd>
+Return an Array of all indexes</dd>
+</dl>
+
+</body>
+</html>

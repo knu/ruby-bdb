@@ -170,7 +170,7 @@ bdb_txn_lock(obj)
 	txnv = obj;
     }
     Data_Get_Struct(txnv, bdb_TXN, txnst);
-    if (txnst->mutex != Qnil) {
+    if (!NIL_P(txnst->mutex)) {
 	rb_funcall2(txnst->mutex, rb_intern("lock"), 0, 0);
     }
     txnst->status = 1;

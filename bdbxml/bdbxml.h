@@ -1,4 +1,3 @@
-#include <ruby.h>
 #include "bdb.h"
 
 #include <fstream>
@@ -9,6 +8,14 @@ using namespace DbXml;
 #define RMF(func) RUBY_METHOD_FUNC(func)
 #define RDF RUBY_DATA_FUNC
 
+#if RUBY_VERSION_CODE >= 180
+#define RMFS(func) ((VALUE (*)(VALUE))func)
+#define RMFF(func) ((void (*)(VALUE))func)
+#else
+#define RMFS(func) RMF(func)
+#define RMFF(func) ((void (*)())func)
+#endif
+
 #define PROTECT2(comm, libr)				\
   try {							\
     comm;						\
@@ -16,9 +23,9 @@ using namespace DbXml;
   catch (XmlException &e) {				\
     VALUE xb_err = Qnil;				\
     libr;						\
-    if ((xb_err = bdb_return_err()) != Qnil) {		\
-      rb_raise(xb_eFatal, StringValuePtr(xb_err));	\
-    }							\
+    if ((xb_err = bdb_return_err()) != Qnil) {          \
+      rb_raise(xb_eFatal, StringValuePtr(xb_err));      \
+    }                                                   \
     rb_raise(xb_eFatal, e.what());			\
   }							\
   catch (std::exception &e) {				\
@@ -35,6 +42,9 @@ using namespace DbXml;
 #define GetConTxn(obj, con, txn)			\
   {							\
     Data_Get_Struct(obj, xcon, con);			\
+    if (con->closed || !con->con) {			\
+	rb_raise(xb_eFatal, "closed container");	\
+    }							\
     txn = 0;						\
     if (con->txn_val) {					\
       bdb_TXN *txnst;					\
@@ -59,10 +69,14 @@ typedef struct {
 } xres;
 
 #if defined(DBXML_DOM_XERCES2)
+
+extern "C" void Init_bdbxml_dom();
+
 typedef struct {
   XERCES_CPP_NAMESPACE_QUALIFIER DOMNodeList *nol;
   VALUE cxt_val;
 } xnol;
+
 #endif
 
 typedef struct {
@@ -70,3 +84,12 @@ typedef struct {
   VALUE uri, prefix;
 } xdoc;
 
+typedef struct {
+    XmlQueryContext *cxt;
+    int returntype, evaltype;
+} xcxt;
+
+typedef struct {
+    VALUE con;
+    XmlUpdateContext *upd;
+} xupd;

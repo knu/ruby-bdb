@@ -55,6 +55,10 @@ directory used will be the current working directory.
     : ((|flags|))
       flags can has the value ((|BDB::AGGRESSIVE|))
 
+--- set_name(name, str)
+    Set the name for the container ((|name|)). The underlying files for the
+    container are not renamed - for that, see ((|Container::rename|))
+
 --- verify(name)
     Verify the container ((|name|))
 
@@ -73,10 +77,18 @@ directory used will be the current working directory.
     Remove the document from the container
 
     : ((|document|))
-      document can be an ID or an ((|BDB::XML::Document|)) previuosly stored
+      document can be an ID or an ((|BDB::XML::Document|)) previously stored
 
     : ((|flags|))
       flags can has the value 0 or ((|BDB::AUTO_COMMIT|))
+
+--- environment
+--- env
+    return the current environment for the container, or ((|nil|))
+
+--- environment?
+--- env?
+    return ((|true|)) if the container was opend in an environment
 
 --- each {|doc| ... }
     Iterate over all documents
@@ -91,37 +103,16 @@ directory used will be the current working directory.
     : ((|flags|))
       flags can has the value 0 or ((|BDB::DIRTY_READ|)), ((|BDB::RMW|))
 
---- index(uri, element, index)
-    Declare the indexing required for a particular element type.   
+--- self[id] = document
+    Replace the document (see also #update)
 
-    : ((|uri|))
-      The namespace for the element
+--- index=(index)
+    set the indexing : ((|index|)) must be an ((|BDB::XML::Index|)) object
 
-    : ((|element|))
-      The element parameter provides the fully qualified element type
-      to be indexed.
+--- index
+    Retrieve the ((|BDB::XML::Index|))
 
-    : ((|index|))
-      The index string is a comma separated list of the following indexing
-      strategy names
-
-         : none-none-none-none 
-         : node-element-presence 
-         : node-attribute-presence 
-         : node-element-equality-string 
-         : node-element-equality-number 
-         : node-element-substring-string 
-         : node-attribute-equality-string 
-         : node-attribute-equality-number 
-         : node-attribute-substring-string 
-         : edge-element-presence 
-         : edge-attribute-presence 
-         : edge-element-equality-string 
-         : edge-element-equality-number 
-         : edge-element-substring-string 
-         : edge-attribute-equality-string 
-         : edge-attribute-equality-number 
-         : edge-attribute-substring-string 
+    Return ((|nil|)) if no indexing was specified
 
 --- initialize(name, flags = 0, mode = 0)
     open the container
@@ -138,6 +129,13 @@ directory used will be the current working directory.
 
 --- name
     return the name of the container
+
+--- name=(str)
+    Set the name of the container. Can be called only on a closed container
+    See also ((|Container::set_name|))
+
+--- open?
+    return ((|true|)) if the container is open
 
 --- parse(query, context = nil)
     Pre-parse an XPath query and return an ((|BDB::XML::XPath|)) object
@@ -178,6 +176,24 @@ directory used will be the current working directory.
     or ((|BDB::XML::Context::Values|))
 
     the query is evaluated lazily
+
+--- transaction
+    return the transaction associated with the container, or ((|nil|))
+
+--- in_transaction?
+--- transaction?
+    return ((|true|)) if the container is associated with a transaction
+
+--- update(document)
+    Update a document within the container
+
+--- update_context {|cxt| ... }
+--- context {|cxt| ... }
+    return an ((|BDB::XML::UpdateContext|)) which can be used to perform
+    ((|[]|)), ((|[]=|)), ((|push|)), ((|delete|)), ((|update|)) operation
+    
+    This can be used for a performance improvement
+ 
 # end
 # end
 # end
