@@ -1,6 +1,8 @@
 =begin
 = BDB
 
+((<Download|URL:ftp://moulon.inra.fr/pub/ruby/>))
+
 Berkeley DB is an embedded database system that supports keyed access
 to data.
 
@@ -66,7 +68,15 @@ the Berkeley DB access methods and transaction system, it may also be
 used as a stand-alone subsystem to provide concurrency control to any
 set of designated resources.
 
+((<Logging subsystem|URL:docs/log.html>))
 
+The logging subsystem is the logging facility used by Berkeley DB. It
+is largely Berkeley DB specific, although it is potentially useful
+outside of the Berkeley DB package for applications wanting
+write-ahead logging support. Applications wanting to use the log for
+purposes other than logging file modifications based on a set of open
+file descriptors will almost certainly need to make source code
+modifications to the Berkeley DB code base.
 
 =end
       

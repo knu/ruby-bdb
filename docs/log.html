@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>log.rd</TITLE>
+</HEAD>
+<BODY>
+<H2><A NAME="label:0">Logging subsystem
+</A></H2><!-- RDLabel: "Logging subsystem" -->
+<P>
+This subsystem is used when recovery from application or system
+failure is necessary.
+</P>
+<P>
+The log is stored in one or more files in the environment
+directory. Each file is named using the format log.NNNNNNNNNN, where
+NNNNNNNNNN is the sequence number of the file within the log.
+</P>
+<P>
+If the log region is being created and log files are already present,
+the log files are reviewed and subsequent log writes are appended to
+the end of the log, rather than overwriting current log entries.
+</P>
+<P>
+The lock subsystem is created, initialized, and opened by calls to
+<CODE>BDB::Env#open</CODE> with the <VAR>BDB::INIT_LOG</VAR> flag specified. 
+</P>
+<P>
+The following options can be given when the environnement is created
+</P>
+<DL>
+<DT><A NAME="label:5"><VAR>"set_lg_bsize"</VAR>
+</A><!-- RDLabel: ""set_lg_bsize"" -->
+<DD>
+<P>
+Set log buffer size
+</P>
+</DD>
+<DT><A NAME="label:6"><VAR>"set_lg_dir"</VAR>
+</A><!-- RDLabel: ""set_lg_dir"" -->
+<DD>
+<P>
+Set the environment logging directory
+</P>
+</DD>
+<DT><A NAME="label:7"><VAR>"set_lg_max"</VAR>
+</A><!-- RDLabel: ""set_lg_max"" -->
+<DD>
+<P>
+Set log file size
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:1">BDB::Env
+</A></H3><!-- RDLabel: "BDB::Env" -->
+<H4><A NAME="label:2">Methods
+</A></H4><!-- RDLabel: "Methods" -->
+<DL>
+<DT><A NAME="lock_archive"><CODE>lock_archive([<var>flags</var>])</CODE></A><!-- RDLabel: "lock_archive" -->
+<DD>
+<P>
+The log_archive function return an array of log or database file names.
+</P>
+
+<P>
+<VAR>flags</VAR> value must be set to 0 or the value <VAR>BDB::ARCH_DATA</VAR>
+</P>
+
+<PRE>
+((|BDB::ARCH_DATA|)), ((|BDB::ARCH_LOG|))
+</PRE>
+</DD>
+<DT><A NAME="log_checkpoint"><CODE>log_checkpoint(<var>string</var>)</CODE></A><!-- RDLabel: "log_checkpoint" -->
+<DD>
+<P>
+same as <VAR>log_put(string, BDB::CHECKPOINT)</VAR>
+</P>
+</DD>
+<DT><A NAME="log_curlsn"><CODE>log_curlsn(<var>string</var>)</CODE></A><!-- RDLabel: "log_curlsn" -->
+<DD>
+<P>
+same as <VAR>log_put(string, BDB::CURLSN)</VAR>
+</P>
+</DD>
+<DT><A NAME="log_each"><CODE>log_each { |<var>string</var>, <var>lsn</var>| ... }</CODE></A><!-- RDLabel: "log_each" -->
+<DD>
+<P>
+Implement an iterator inside of the log
+</P>
+</DD>
+<DT><A NAME="log_flush"><CODE>log_flush([<var>string</var>])</CODE></A><!-- RDLabel: "log_flush" -->
+<DD>
+<P>
+same as <VAR>log_put(string, BDB::FLUSH)</VAR>
+</P>
+
+<P>
+Without argument, garantee that all records are written to the disk
+</P>
+</DD>
+<DT><A NAME="log_get"><CODE>log_get(<var>flag</var>)</CODE></A><!-- RDLabel: "log_get" -->
+<DD>
+<P>
+The <VAR>log_get</VAR> return an array <VAR>[String, BDB::Lsn]</VAR> according to
+the <VAR>flag</VAR> value.
+</P>
+
+<P>
+<VAR>flag</VAR> can has the value <VAR>BDB::CHECKPOINT</VAR>, <VAR>BDB::FIRST</VAR>, 
+<VAR>BDB::LAST</VAR>, <VAR>BDB::NEXT</VAR>, <VAR>BDB::PREV</VAR>, <VAR>BDB::CURRENT</VAR>
+</P>
+</DD>
+<DT><A NAME="log_put"><CODE>log_put(<var>string</var> [, <var>flag</var>])</CODE></A><!-- RDLabel: "log_put" -->
+<DD>
+<P>
+The <VAR>log_put</VAR> function appends records to the log. It return
+an object <VAR>BDB::Lsn</VAR>
+</P>
+
+<P>
+<VAR>flag</VAR> can have the value <VAR>BDB::CHECKPOINT</VAR>, <VAR>BDB::CURLSN</VAR>,
+<VAR>BDB::FLUSH</VAR>
+</P>
+</DD>
+<DT><A NAME="log_reverse_each"><CODE>log_reverse_each { |<var>string</var>, <var>lsn</var>| ... }</CODE></A><!-- RDLabel: "log_reverse_each" -->
+<DD>
+<P>
+Implement an iterator inside of the log
+</P>
+</DD>
+<DT><A NAME="log_stat"><CODE>log_stat</CODE></A><!-- RDLabel: "log_stat" -->
+<DD>
+<P>
+return log statistics
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:3">BDB::Common
+</A></H3><!-- RDLabel: "BDB::Common" -->
+<H4><A NAME="label:2">Methods
+</A></H4><!-- RDLabel: "Methods" -->
+<DL>
+<DT><A NAME="log_register"><CODE>log_register(<var>name</var>)</CODE></A><!-- RDLabel: "log_register" -->
+<DD>
+<P>
+The <VAR>log_register</VAR> function registers a file <VAR>name</VAR>.
+</P>
+</DD>
+<DT><A NAME="log_unregister"><CODE>log_unregister()</CODE></A><!-- RDLabel: "log_unregister" -->
+<DD>
+<P>
+The <VAR>log_unregister</VAR> function unregisters a file name.
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:4">BDB::Lsn
+</A></H3><!-- RDLabel: "BDB::Lsn" -->
+<P>
+include Comparable
+</P>
+<DL>
+<DT><A NAME="<=>"><CODE>&lt;=&gt;</CODE></A><!-- RDLabel: "<=>" -->
+<DD>
+<P>
+compare 2 <VAR>BDB::Lsn</VAR>
+</P>
+</DD>
+<DT><A NAME="log_file"><CODE>log_file(<var>name</var>)</CODE></A><!-- RDLabel: "log_file" -->
+<DT><A NAME="file"><CODE>file(<var>name</var>)</CODE></A><!-- RDLabel: "file" -->
+<DD>
+<P>
+The <VAR>log_file</VAR> function maps <VAR>BDB::Lsn</VAR> structures to file 
+<VAR>name</VAR>s
+</P>
+</DD>
+<DT><A NAME="log_flush"><CODE>log_flush</CODE></A><!-- RDLabel: "log_flush" -->
+<DT><A NAME="flush"><CODE>flush</CODE></A><!-- RDLabel: "flush" -->
+<DD>
+<P>
+The <VAR>log_flush</VAR> function guarantees that all log records whose
+<VAR>DBB:Lsn</VAR> are less than or equal to the current lsn have been written
+to disk.
+</P>
+</DD>
+<DT><A NAME="log_get"><CODE>log_get</CODE></A><!-- RDLabel: "log_get" -->
+<DT><A NAME="get"><CODE>get</CODE></A><!-- RDLabel: "get" -->
+<DD>
+<P>
+return the <VAR>String</VAR> associated with this <VAR>BDB::Lsn</VAR>
+</P>
+</DD>
+</DL>
+
+</BODY>
+</HTML>

@@ -245,12 +245,20 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- size 
        Returns the number of association in the database.
 
+--- log_register(name)
+  
+    The ((|log_register|)) function registers a file ((|name|)).
+
+--- log_unregister()
+  
+    The ((|log_unregister|)) function unregisters a file name.
+
 --- reject { |key, value| ... }
       Create an hash without the associations if the evaluation of the
       block returns true. 
 
---- reverse_each { |key, value} ... }
---- reverse_each_pair { |key, value} ... }
+--- reverse_each { |key, value| ... }
+--- reverse_each_pair { |key, value| ... }
       Iterates over associations in reverse order 
 
 --- reverse_each_key { |key| ... }

@@ -31,7 +31,7 @@
   examples/cursor.rb       direct cursor access
   examples/txn.rb          transaction
   examples/join.rb         join (need db >= 2.6)
-
+  examples/log.rb          log file
 
 * Documentation : see bdb.rd and bdb.html
 

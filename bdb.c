@@ -10,6 +10,7 @@
 #define BDB_DUP_COMPARE 32
 #define BDB_H_HASH 64
 
+#define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
 #define BDB_NEED_CURRENT (BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH)
 
 
@@ -18,7 +19,8 @@
 #endif
 
 static VALUE bdb_cEnv;
-static VALUE bdb_eFatal, bdb_eLock;
+static VALUE bdb_eFatal;
+static VALUE bdb_eLock, bdb_eLockDead, bdb_eLockHeld, bdb_eLockGranted;
 static VALUE bdb_mDb;
 static VALUE bdb_cCommon, bdb_cBtree, bdb_cHash, bdb_cRecno, bdb_cUnknown;
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1
@@ -32,6 +34,7 @@ static VALUE bdb_cQueue;
 static VALUE bdb_cTxn, bdb_cTxnCatch;
 static VALUE bdb_cCursor;
 static VALUE bdb_cLock, bdb_cLockid;
+static VALUE bdb_cLsn;
 
 static VALUE bdb_mMarshal;
 static ID id_dump, id_load, id_current_db;
@@ -45,6 +48,10 @@ typedef struct  {
     int flags27;
     VALUE db_ary;
     DB_ENV *dbenvp;
+#if DB_VERSION_MAJOR < 3 || DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
+
+    u_int32_t fidp;
+#endif
 } bdb_ENV;
 
 typedef struct {
@@ -85,7 +92,7 @@ typedef struct {
 
 typedef struct {
     unsigned int lock;
-    DB_ENV *dbenvp;
+    bdb_ENV *dbenvst;
 } bdb_LOCKID;
 
 typedef struct {
@@ -94,7 +101,7 @@ typedef struct {
 #else
     DB_LOCK *lock;
 #endif
-    DB_ENV *dbenvp;
+    bdb_ENV *dbenvst;
 } bdb_LOCK;
 
 typedef struct {
@@ -151,23 +158,38 @@ test_error(comm)
     case DB_NOTFOUND:
     case DB_KEYEMPTY:
     case DB_KEYEXIST:
+	return comm;
         break;
 #if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
     case DB_INCOMPLETE:
 	comm = 0;
+	return comm;
         break;
 #endif
+    case DB_LOCK_DEADLOCK:
+    case EAGAIN:
+	error = bdb_eLockDead;
+	break;
+    case DB_LOCK_NOTGRANTED:
+	error = bdb_eLockGranted;
+	break;
+#if DB_VERSION_MAJOR < 3
+    case DB_LOCK_NOTHELD:
+	error = bdb_eLockHeld;
+	break;
+#endif
     default:
-        error = (comm == DB_LOCK_DEADLOCK || comm == EAGAIN)?bdb_eLock:bdb_eFatal;
-        if (bdb_errcall) {
-            bdb_errcall = 0;
-            rb_raise(error, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(comm));
-        }
-        else
-            rb_raise(error, "%s", db_strerror(comm));
+	error = bdb_eFatal;
+	break;
     }
-    return comm;
+    if (bdb_errcall) {
+	bdb_errcall = 0;
+	rb_raise(error, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(comm));
+    }
+    else
+	rb_raise(error, "%s", db_strerror(comm));
 }
+
 
 static VALUE
 bdb_obj_init(argc, argv, obj)
@@ -234,7 +256,7 @@ bdb_env_i_options(obj, db_stobj)
 #endif
 #if DB_VERSION_MAJOR < 3
     else if  (strcmp(options, "set_verbose") == 0) {
-        test_error(db_verbose(dbenvp, NUM2INT(value)));
+        dbenvp->db_verbose = NUM2INT(value);
     }
 #else
     else if (strcmp(options, "set_verb_chkpoint") == 0) {
@@ -297,7 +319,17 @@ bdb_env_i_options(obj, db_stobj)
         test_error(dbenvp->set_lk_conflicts(dbenvp, conflits, l));
 #endif
     }
+    else if (strcmp(options, "set_lg_max") == 0) {
+#if DB_VERSION_MAJOR < 3
+	dbenvp->lg_max = NUM2INT(value);
+#else
+        test_error(dbenvp->set_lg_max(dbenvp, NUM2INT(value)));
+#endif
+    }
 #if DB_VERSION_MAJOR == 3
+    else if (strcmp(options, "set_lg_bsize") == 0) {
+        test_error(dbenvp->set_lg_bsize(dbenvp, NUM2INT(value)));
+    }
     else if (strcmp(options, "set_data_dir") == 0) {
 	char *tmp;
 
@@ -396,28 +428,14 @@ bdb_env_i_options(obj, db_stobj)
 }
 
 #if DB_VERSION_MAJOR < 3
-#if 0
-#define env_close(envp)				\
-    if (envp->tx_info) {			\
-	test_error(txn_close(envp->tx_info));	\
-    }						\
-    if (envp->mp_info) {			\
-	test_error(memp_close(envp->mp_info));	\
-    }						\
-    if (envp->lg_info) {			\
-	test_error(log_close(envp->lg_info));	\
-    }						\
-    if (envp->lk_info) {			\
-	test_error(lock_close(envp->lk_info));	\
-    }						\
-    free(envp);
-#endif
-#define env_close(envp) free(envp); envp = NULL;
-
+#define env_close(envst)			\
+    test_error(db_appexit(envst->dbenvp));	\
+    free(envst->dbenvp);			\
+    envst->dbenvp = NULL;
 #else
-#define env_close(envp)				\
-    test_error(envp->close(envp, 0));		\
-    envp = NULL;
+#define env_close(envst)				\
+    test_error(envst->dbenvp->close(envst->dbenvp, 0));	\
+    envst->dbenvp = NULL;
 #endif
 
 static VALUE bdb_close(int, VALUE *, VALUE);
@@ -434,7 +452,7 @@ bdb_env_free(dbenvst)
 		bdb_close(0, 0, db);
 	    }
 	}
-	env_close(dbenvst->dbenvp);
+	env_close(dbenvst);
     }
     free(dbenvst);
 }
@@ -468,7 +486,7 @@ bdb_env_close(obj)
 	    bdb_close(0, 0, db);
 	}
     }
-    env_close(dbenvst->dbenvp);
+    env_close(dbenvst);
     return Qtrue;
 }
 
@@ -622,8 +640,8 @@ bdb_env_s_new(argc, argv, obj)
 #ifndef BDB_NO_THREAD
     if (!dbenvst->no_thread) {
 	rb_rescue(bdb_set_func, (VALUE)dbenvst, bdb_env_each_failed, (VALUE)dbenvst);
+	flags |= DB_THREAD;
     }
-    flags |= DB_THREAD;
 #endif
 #if DB_VERSION_MAJOR < 3
     if ((ret = db_appinit(db_home, db_config, dbenvp, flags)) != 0) {
@@ -670,43 +688,56 @@ bdb_env_s_new(argc, argv, obj)
 }
 
 static VALUE
-bdb_env_remove(obj)
-    VALUE obj;
+bdb_env_s_remove(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
-    bdb_ENV *dbenvst;
+    DB_ENV *dbenvp;
+    VALUE a, b;
+    char *db_home;
+    int flag = 0;
 
     rb_secure(2);
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR == 3
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	flag = NUM2INT(b);
+    }
+    db_home = STR2CSTR(a);
+#if DB_VERSION_MAJOR < 3
+    dbenvp = ALLOC(DB_ENV);
+    MEMZERO(dbenvp, DB_ENV, 1);
+    dbenvp->db_errpfx = "BDB::";
+    dbenvp->db_errcall = bdb_env_errcall;
+    if (lock_unlink(db_home, flag, dbenvp) == EBUSY) {
+	rb_raise(bdb_eFatal, "The shared memory region was in use");
+    }
+    if (log_unlink(db_home, flag, dbenvp) == EBUSY) {
+	rb_raise(bdb_eFatal, "The shared memory region was in use");
+    }
+    if (memp_unlink(db_home, flag, dbenvp) == EBUSY) {
+	rb_raise(bdb_eFatal, "The shared memory region was in use");
+    }
+    if (txn_unlink(db_home, flag, dbenvp) == EBUSY) {
+	rb_raise(bdb_eFatal, "The shared memory region was in use");
+    }
+#else
+    test_error(db_env_create(&dbenvp, 0));
+    dbenvp->set_errpfx(dbenvp, "BDB::");
+    dbenvp->set_errcall(dbenvp, bdb_env_errcall);
 #if DB_VERSION_MINOR >=1
-    test_error(dbenvst->dbenvp->remove(dbenvst->dbenvp, NULL, DB_FORCE));
+    test_error(dbenvp->remove(dbenvp, db_home, flag));
 #else
-    test_error(dbenvst->dbenvp->remove(dbenvst->dbenvp, NULL, NULL, DB_FORCE));
+    test_error(dbenvp->remove(dbenvp, db_home, NULL, flag));
 #endif
-#else
-    if (dbenvst->dbenvp->tx_info) {
-	test_error(txn_unlink(NULL, 1, dbenvst->dbenvp));
-    }
-    if (dbenvst->dbenvp->mp_info) {
-	test_error(memp_unlink(NULL, 1, dbenvst->dbenvp));
-    }
-    if (dbenvst->dbenvp->lg_info) {
-	test_error(log_unlink(NULL, 1, dbenvst->dbenvp));
-    }
-    if (dbenvst->dbenvp->lk_info) {
-	test_error(lock_unlink(NULL, 1, dbenvst->dbenvp));
-    }
 #endif
-    dbenvst->dbenvp = NULL;
     return Qtrue;
 }
 
-#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
 static VALUE
 bdb_env_set_flags(argc, argv, obj)
     int argc;
     VALUE *argv, obj;
 {
+#if DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2
     bdb_ENV *dbenvst;
     VALUE opt, flag;
     int state = 1;
@@ -728,9 +759,9 @@ bdb_env_set_flags(argc, argv, obj)
 	}
     }
     test_error(dbenvst->dbenvp->set_flags(dbenvst->dbenvp, NUM2INT(flag), state));
+#endif
     return Qnil;
 }
-#endif
 	
 /* DATABASE */
 #define test_dump(dbst, key, a)					\
@@ -3731,306 +3762,6 @@ bdb_txn_prepare(obj)
     test_error(txn_prepare(txnst->txnid));
     return Qtrue;
 }
-        
-/* LOCK */
-
-static VALUE
-bdb_env_lockid(obj)
-    VALUE obj;
-{
-    unsigned int idp;
-    bdb_ENV *dbenvst;
-    bdb_LOCKID *dblockid;
-    VALUE a;
-
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    test_error(lock_id(dbenvst->dbenvp->lk_info, &idp));
-#else
-    test_error(lock_id(dbenvst->dbenvp, &idp));
-#endif
-    a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, 0, free, dblockid);
-    dblockid->lock = idp;
-    dblockid->dbenvp = dbenvst->dbenvp;
-    return a;
-}
-
-static VALUE
-bdb_env_lockdetect(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
-{
-    VALUE a, b;
-    bdb_ENV *dbenvst;
-    int flags, atype, aborted;
-
-    flags = atype = aborted = 0;
-    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
-	flags = NUM2INT(b);
-    }
-    atype = NUM2INT(a);
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    test_error(lock_detect(dbenvst->dbenvp->lk_info, flags, atype));
-#else
-    test_error(lock_detect(dbenvst->dbenvp, flags, atype, &aborted));
-#endif
-    return INT2NUM(aborted);
-}
-
-static VALUE
-bdb_env_lockstat(obj)
-    VALUE obj;
-{
-    bdb_ENV *dbenvst;
-    DB_LOCK_STAT *statp;
-    VALUE a;
-
-    GetEnvDB(obj, dbenvst);
-#if DB_VERSION_MAJOR < 3
-    test_error(lock_stat(dbenvst->dbenvp->lk_info, &statp, 0));
-    a = rb_hash_new();
-    rb_hash_aset(a, rb_tainted_str_new2("st_magic"), INT2NUM(statp->st_magic));
-    rb_hash_aset(a, rb_tainted_str_new2("st_version"), INT2NUM(statp->st_version));
-    rb_hash_aset(a, rb_tainted_str_new2("st_refcnt"), INT2NUM(statp->st_refcnt));
-    rb_hash_aset(a, rb_tainted_str_new2("st_numobjs"), INT2NUM(statp->st_numobjs));
-    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
-    rb_hash_aset(a, rb_tainted_str_new2("st_maxlocks"), INT2NUM(statp->st_maxlocks));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nlockers"), INT2NUM(statp->st_nlockers));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
-    rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
-    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
-#else
-    test_error(lock_stat(dbenvst->dbenvp, &statp, 0));
-    a = rb_hash_new();
-    rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
-    rb_hash_aset(a, rb_tainted_str_new2("st_maxlocks"), INT2NUM(statp->st_maxlocks));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nlockers"), INT2NUM(statp->st_nlockers));
-    rb_hash_aset(a, rb_tainted_str_new2("st_maxnlockers"), INT2NUM(statp->st_maxnlockers));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
-    rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
-    rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
-    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
-    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
-#endif
-    free(statp);
-    return a;
-}
-
-#define GetLockid(obj, lockid)				\
-{							\
-    Data_Get_Struct(obj, bdb_LOCKID, lockid);		\
-    if (lockid->dbenvp == 0)				\
-        rb_raise(bdb_eFatal, "closed environment");	\
-}
-
-static void
-lock_free(lock)
-    bdb_LOCK *lock;
-{
-    if (lock->dbenvp) {
-#if DB_VERSION_MAJOR < 3
-	lock_put(lock->dbenvp->lk_info, lock->lock);
-#else
-	lock_put(lock->dbenvp, lock->lock);
-	free(lock->lock);
-#endif
-    }
-    free(lock);
-}
-
-static VALUE
-bdb_lockid_get(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
-{
-    bdb_LOCKID *lockid;
-    DB_LOCK lock;
-    bdb_LOCK *lockst;
-    DBT objet;
-    unsigned int flags;
-    int lock_mode;
-    VALUE a, b, c, res;
-
-    rb_secure(2);
-    flags = 0;
-    if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
-	flags = NUM2UINT(c);
-    }
-    Check_SafeStr(a);
-    memset(&objet, 0, sizeof(objet));
-    objet.data = RSTRING(a)->ptr;
-    objet.size = RSTRING(a)->len;
-    lock_mode = NUM2INT(b);
-    GetLockid(obj, lockid);
-#if DB_VERSION_MAJOR < 3
-    test_error(lock_get(lockid->dbenvp->lk_info, lockid->lock, flags,
-			&objet, lock_mode, &lock));
-#else
-    test_error(lock_get(lockid->dbenvp, lockid->lock, flags,
-			&objet, lock_mode, &lock));
-#endif
-    res = Data_Make_Struct(bdb_cLock, bdb_LOCK, 0, lock_free, lockst);
-#if DB_VERSION_MAJOR < 3
-    lockst->lock = lock;
-#else
-    lockst->lock = ALLOC(DB_LOCK);
-    MEMCPY(lockst->lock, &lock, sizeof(lock), 1);
-#endif
-    lockst->dbenvp = lockid->dbenvp;
-    return res;
-} 
-
-#define GetLock(obj, lock)				\
-{							\
-    Data_Get_Struct(obj, bdb_LOCK, lock);		\
-    if (lock->dbenvp == 0)				\
-        rb_raise(bdb_eFatal, "closed environment");	\
-}
-
-struct lockreq {
-    DB_LOCKREQ *list;
-};
-
-static VALUE
-bdb_lockid_each(obj, listobj)
-    VALUE obj, listobj;
-{
-    VALUE key, value;
-    DB_LOCKREQ *list;
-    struct lockreq *listst;
-    char *options;
-
-    Data_Get_Struct(listobj, struct lockreq, listst);
-    list = listst->list;
-    key = rb_ary_entry(obj, 0);
-    value = rb_ary_entry(obj, 1);
-    key = rb_obj_as_string(key);
-    options = RSTRING(key)->ptr;
-    if (strcmp(options, "op") == 0) {
-	list->op = NUM2INT(value);
-    }
-    else if (strcmp(options, "obj") == 0) {
-	Check_Type(value, T_STRING);
-	list->obj = ALLOC(DBT);
-	MEMZERO(list->obj, DBT, 1);
-	list->obj->data = RSTRING(value)->ptr;
-	list->obj->size = RSTRING(value)->len;
-    }
-    else if (strcmp(options, "mode") == 0) {
-	list->mode = NUM2INT(value);
-    }
-    else if (strcmp(options, "lock") == 0) {
-	bdb_LOCK *lockst;
-
-	if (!rb_obj_is_kind_of(value, bdb_cLock)) {
-	    rb_raise(bdb_eFatal, "BDB::Lock expected");
-	}
-	GetLock(obj, lockst);
-#if DB_VERSION_MAJOR < 3
-	list->lock = lockst->lock;
-#else
-	MEMCPY(&list->lock, lockst->lock, sizeof(list->lock), 1);
-#endif
-    }
-    return Qnil;
-}
-
-static VALUE
-bdb_lockid_vec(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
-{
-    DB_LOCKREQ *list;
-    bdb_LOCKID *lockid;
-    bdb_LOCK *lockst;
-    unsigned int flags;
-    VALUE a, b, c, res;
-    int i, n, err;
-    VALUE listobj;
-    struct lockreq *listst;
-
-    flags = 0;
-    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
-	flags = NUM2UINT(b);
-    }
-    Check_Type(a, T_ARRAY);
-    list = ALLOCA_N(DB_LOCKREQ, RARRAY(a)->len);
-    MEMZERO(list, DB_LOCKREQ, RARRAY(a)->len);
-    listobj = Data_Make_Struct(obj, struct lockreq, 0, free, listst);
-    for (i = 0; i < RARRAY(a)->len; i++) {
-	b = RARRAY(a)->ptr[i];
-	Check_Type(b, T_HASH);
-	listst->list = &list[i];
-	rb_iterate(rb_each, b, bdb_lockid_each, listobj);
-    }
-    GetLockid(obj, lockid);
-#if DB_VERSION_MAJOR < 3
-    err = lock_vec(lockid->dbenvp->lk_info, lockid->lock, flags,
-		   list, RARRAY(a)->len, NULL);
-#else
-    err = lock_vec(lockid->dbenvp, lockid->lock, flags,
-		   list, RARRAY(a)->len, NULL);
-#endif
-    if (err != 0) {
-	for (i = 0; i < RARRAY(a)->len; i++) {
-	    if (list[i].obj)
-		free(list[i].obj);
-	}
-	res = (err == DB_LOCK_DEADLOCK)?bdb_eLock:bdb_eFatal;
-        if (bdb_errcall) {
-            bdb_errcall = 0;
-            rb_raise(res, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(err));
-        }
-        else
-            rb_raise(res, "%s", db_strerror(err));
-    }			
-    res = rb_ary_new();
-    n = 0;
-    for (i = 0; i < RARRAY(a)->len; i++) {
-	if (list[i].op == DB_LOCK_GET) {
-	    c = Data_Make_Struct(bdb_cLock, bdb_LOCK, 0, lock_free, lockst);
-#if DB_VERSION_MAJOR < 3
-	    lockst->lock = list[i].lock;
-#else
-	    lockst->lock = ALLOC(DB_LOCK);
-	    MEMCPY(lockst->lock, &list[i].lock, sizeof(DB_LOCK), 1);
-#endif
-	    lockst->dbenvp = lockid->dbenvp;
-	    rb_ary_push(res, c);
-	    n++;
-	}
-    }
-    if (!n)
-	return Qnil;
-    else
-	return res;
-}
-
-static VALUE
-bdb_lock_put(obj)
-    VALUE obj;
-{
-    bdb_LOCK *lockst;
-
-    GetLock(obj, lockst);
-#if DB_VERSION_MAJOR < 3
-    test_error(lock_put(lockst->dbenvp->lk_info, lockst->lock));
-#else
-    test_error(lock_put(lockst->dbenvp, lockst->lock));
-#endif
-    return Qnil;
-} 
-
-
 
 static VALUE
 bdb_env_check(argc, argv, obj)
@@ -4100,6 +3831,778 @@ bdb_env_stat(obj)
     return a;
 }
 
+/* LOCK */
+
+static VALUE
+bdb_env_lockid(obj)
+    VALUE obj;
+{
+    unsigned int idp;
+    bdb_ENV *dbenvst;
+    bdb_LOCKID *dblockid;
+    VALUE a;
+
+    GetEnvDB(obj, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lk_info) {
+	rb_raise(bdb_eLock, "lock region not open");
+    }
+    test_error(lock_id(dbenvst->dbenvp->lk_info, &idp));
+#else
+    test_error(lock_id(dbenvst->dbenvp, &idp));
+#endif
+    a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, 0, free, dblockid);
+    dblockid->lock = idp;
+    dblockid->dbenvst = dbenvst;
+    return a;
+}
+
+static VALUE
+bdb_env_lockdetect(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    VALUE a, b;
+    bdb_ENV *dbenvst;
+    int flags, atype, aborted;
+
+    flags = atype = aborted = 0;
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	flags = NUM2INT(b);
+    }
+    atype = NUM2INT(a);
+    GetEnvDB(obj, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lk_info) {
+	rb_raise(bdb_eLock, "lock region not open");
+    }
+    test_error(lock_detect(dbenvst->dbenvp->lk_info, flags, atype));
+#else
+    test_error(lock_detect(dbenvst->dbenvp, flags, atype, &aborted));
+#endif
+    return INT2NUM(aborted);
+}
+
+static VALUE
+bdb_env_lockstat(obj)
+    VALUE obj;
+{
+    bdb_ENV *dbenvst;
+    DB_LOCK_STAT *statp;
+    VALUE a;
+
+    GetEnvDB(obj, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lk_info) {
+	rb_raise(bdb_eLock, "lock region not open");
+    }
+    test_error(lock_stat(dbenvst->dbenvp->lk_info, &statp, 0));
+    a = rb_hash_new();
+    rb_hash_aset(a, rb_tainted_str_new2("st_magic"), INT2NUM(statp->st_magic));
+    rb_hash_aset(a, rb_tainted_str_new2("st_version"), INT2NUM(statp->st_version));
+    rb_hash_aset(a, rb_tainted_str_new2("st_refcnt"), INT2NUM(statp->st_refcnt));
+    rb_hash_aset(a, rb_tainted_str_new2("st_numobjs"), INT2NUM(statp->st_numobjs));
+    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxlocks"), INT2NUM(statp->st_maxlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nlockers"), INT2NUM(statp->st_nlockers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
+    rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
+#else
+    test_error(lock_stat(dbenvst->dbenvp, &statp, 0));
+    a = rb_hash_new();
+    rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxlocks"), INT2NUM(statp->st_maxlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nlockers"), INT2NUM(statp->st_nlockers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_maxnlockers"), INT2NUM(statp->st_maxnlockers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
+    rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
+    rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
+#endif
+    free(statp);
+    return a;
+}
+
+#if DB_VERSION_MAJOR < 3
+#define GetLockid(obj, lockid)				\
+{							\
+    Data_Get_Struct(obj, bdb_LOCKID, lockid);		\
+    if (lockid->dbenvst->dbenvp == 0) {			\
+        rb_raise(bdb_eFatal, "closed environment");	\
+    }							\
+     if (lockid->dbenvst->dbenvp->lk_info == 0) {	\
+         rb_raise(bdb_eLock, "closed lockid");		\
+     }							\
+}
+#else
+#define GetLockid(obj, lockid)				\
+{							\
+    Data_Get_Struct(obj, bdb_LOCKID, lockid);		\
+    if (lockid->dbenvst->dbenvp == 0) {			\
+        rb_raise(bdb_eFatal, "closed environment");	\
+    }							\
+}
+#endif
+
+static void
+lock_free(lock)
+    bdb_LOCK *lock;
+{
+#if DB_VERSION_MAJOR < 3
+    if (lock->dbenvst->dbenvp && lock->dbenvst->dbenvp->lk_info) {
+	lock_close(lock->dbenvst->dbenvp->lk_info);
+	lock->dbenvst->dbenvp->lk_info = NULL;
+    }
+#endif
+    free(lock);
+}
+
+static VALUE
+bdb_lockid_get(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    bdb_LOCKID *lockid;
+    DB_LOCK lock;
+    bdb_LOCK *lockst;
+    DBT objet;
+    unsigned int flags;
+    int lock_mode;
+    VALUE a, b, c, res;
+
+    rb_secure(2);
+    flags = 0;
+    if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
+	if (c == Qtrue) {
+	    flags = DB_LOCK_NOWAIT;
+	}
+	else {
+	    flags = NUM2UINT(c);
+	}
+    }
+    Check_SafeStr(a);
+    memset(&objet, 0, sizeof(objet));
+    objet.data = RSTRING(a)->ptr;
+    objet.size = RSTRING(a)->len;
+    lock_mode = NUM2INT(b);
+    GetLockid(obj, lockid);
+#if DB_VERSION_MAJOR < 3
+    if (!lockid->dbenvst->dbenvp->lk_info) {
+	rb_raise(bdb_eLock, "lock region not open");
+    }
+    test_error(lock_get(lockid->dbenvst->dbenvp->lk_info, lockid->lock, flags,
+			&objet, lock_mode, &lock));
+#else
+    test_error(lock_get(lockid->dbenvst->dbenvp, lockid->lock, flags,
+			&objet, lock_mode, &lock));
+#endif
+    res = Data_Make_Struct(bdb_cLock, bdb_LOCK, 0, lock_free, lockst);
+#if DB_VERSION_MAJOR < 3
+    lockst->lock = lock;
+#else
+    lockst->lock = ALLOC(DB_LOCK);
+    MEMCPY(lockst->lock, &lock, sizeof(lock), 1);
+#endif
+    lockst->dbenvst = lockid->dbenvst;
+    return res;
+} 
+
+#if DB_VERSION_MAJOR < 3
+#define GetLock(obj, lock)				\
+{							\
+    Data_Get_Struct(obj, bdb_LOCK, lock);		\
+    if (lock->dbenvst->dbenvp == 0) {			\
+        rb_raise(bdb_eFatal, "closed environment");	\
+    }							\
+    if (lock->dbenvst->dbenvp->lk_info == 0)		\
+        rb_raise(bdb_eLock, "closed lock");		\
+}
+#else
+#define GetLock(obj, lock)				\
+{							\
+    Data_Get_Struct(obj, bdb_LOCK, lock);		\
+    if (lock->dbenvst->dbenvp == 0)			\
+        rb_raise(bdb_eFatal, "closed environment");	\
+}
+#endif
+struct lockreq {
+    DB_LOCKREQ *list;
+};
+
+static VALUE
+bdb_lockid_each(obj, listobj)
+    VALUE obj, listobj;
+{
+    VALUE key, value;
+    DB_LOCKREQ *list;
+    struct lockreq *listst;
+    char *options;
+
+    Data_Get_Struct(listobj, struct lockreq, listst);
+    list = listst->list;
+    key = rb_ary_entry(obj, 0);
+    value = rb_ary_entry(obj, 1);
+    key = rb_obj_as_string(key);
+    options = RSTRING(key)->ptr;
+    if (strcmp(options, "op") == 0) {
+	list->op = NUM2INT(value);
+    }
+    else if (strcmp(options, "obj") == 0) {
+	Check_Type(value, T_STRING);
+	list->obj = ALLOC(DBT);
+	MEMZERO(list->obj, DBT, 1);
+	list->obj->data = RSTRING(value)->ptr;
+	list->obj->size = RSTRING(value)->len;
+    }
+    else if (strcmp(options, "mode") == 0) {
+	list->mode = NUM2INT(value);
+    }
+    else if (strcmp(options, "lock") == 0) {
+	bdb_LOCK *lockst;
+
+	if (!rb_obj_is_kind_of(value, bdb_cLock)) {
+	    rb_raise(bdb_eFatal, "BDB::Lock expected");
+	}
+	GetLock(obj, lockst);
+#if DB_VERSION_MAJOR < 3
+	list->lock = lockst->lock;
+#else
+	MEMCPY(&list->lock, lockst->lock, sizeof(list->lock), 1);
+#endif
+    }
+    return Qnil;
+}
+
+static VALUE
+bdb_lockid_vec(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    DB_LOCKREQ *list;
+    bdb_LOCKID *lockid;
+    bdb_LOCK *lockst;
+    unsigned int flags;
+    VALUE a, b, c, res;
+    int i, n, err;
+    VALUE listobj;
+    struct lockreq *listst;
+
+    flags = 0;
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	if (b == Qtrue) {
+	    flags = DB_LOCK_NOWAIT;
+	}
+	else {
+	    flags = NUM2UINT(b);
+	}
+    }
+    Check_Type(a, T_ARRAY);
+    list = ALLOCA_N(DB_LOCKREQ, RARRAY(a)->len);
+    MEMZERO(list, DB_LOCKREQ, RARRAY(a)->len);
+    listobj = Data_Make_Struct(obj, struct lockreq, 0, free, listst);
+    for (i = 0; i < RARRAY(a)->len; i++) {
+	b = RARRAY(a)->ptr[i];
+	Check_Type(b, T_HASH);
+	listst->list = &list[i];
+	rb_iterate(rb_each, b, bdb_lockid_each, listobj);
+    }
+    GetLockid(obj, lockid);
+#if DB_VERSION_MAJOR < 3
+    if (!lockid->dbenvst->dbenvp->lk_info) {
+	rb_raise(bdb_eLock, "lock region not open");
+    }
+    err = lock_vec(lockid->dbenvst->dbenvp->lk_info, lockid->lock, flags,
+		   list, RARRAY(a)->len, NULL);
+#else
+    err = lock_vec(lockid->dbenvst->dbenvp, lockid->lock, flags,
+		   list, RARRAY(a)->len, NULL);
+#endif
+    if (err != 0) {
+	for (i = 0; i < RARRAY(a)->len; i++) {
+	    if (list[i].obj)
+		free(list[i].obj);
+	}
+	res = (err == DB_LOCK_DEADLOCK)?bdb_eLock:bdb_eFatal;
+        if (bdb_errcall) {
+            bdb_errcall = 0;
+            rb_raise(res, "%s -- %s", RSTRING(bdb_errstr)->ptr, db_strerror(err));
+        }
+        else
+            rb_raise(res, "%s", db_strerror(err));
+    }			
+    res = rb_ary_new();
+    n = 0;
+    for (i = 0; i < RARRAY(a)->len; i++) {
+	if (list[i].op == DB_LOCK_GET) {
+	    c = Data_Make_Struct(bdb_cLock, bdb_LOCK, 0, lock_free, lockst);
+#if DB_VERSION_MAJOR < 3
+	    lockst->lock = list[i].lock;
+#else
+	    lockst->lock = ALLOC(DB_LOCK);
+	    MEMCPY(lockst->lock, &list[i].lock, sizeof(DB_LOCK), 1);
+#endif
+	    lockst->dbenvst = lockid->dbenvst;
+	    rb_ary_push(res, c);
+	    n++;
+	}
+    }
+    if (!n)
+	return Qnil;
+    else
+	return res;
+}
+
+static VALUE
+bdb_lock_put(obj)
+    VALUE obj;
+{
+    bdb_LOCK *lockst;
+
+    GetLock(obj, lockst);
+#if DB_VERSION_MAJOR < 3
+    if (!lockst->dbenvst->dbenvp->lk_info) {
+	rb_raise(bdb_eLock, "lock region not open");
+    }
+    test_error(lock_put(lockst->dbenvst->dbenvp->lk_info, lockst->lock));
+#else
+    test_error(lock_put(lockst->dbenvst->dbenvp, lockst->lock));
+#endif
+    return Qnil;
+} 
+
+/*
+  LOG
+*/
+
+struct dblsnst {
+    bdb_ENV *dbenvst;
+    DB_LSN *lsn;
+};
+
+static void
+free_lsn(lsnst)
+    struct dblsnst *lsnst;
+{
+    if (lsnst->lsn) free(lsnst->lsn);
+    free(lsnst);
+}
+
+static VALUE
+MakeLsn(dbenvst)
+    bdb_ENV *dbenvst;
+{
+    struct dblsnst *lsnst;
+    VALUE res;
+
+    res = Data_Make_Struct(bdb_cLsn, struct dblsnst, 0, free_lsn, lsnst);
+    lsnst->dbenvst = dbenvst;
+    lsnst->lsn = ALLOC(DB_LSN);
+    return res;
+}
+
+static VALUE
+bdb_s_log_put_internal(obj, a, flag)
+    VALUE obj, a;
+    int flag;
+{
+    bdb_ENV *dbenvst;
+    VALUE ret;
+    DBT data;
+    struct dblsnst *lsnst;
+
+    GetEnvDB(obj, dbenvst);
+    if (TYPE(a) != T_STRING) a = rb_str_to_str(a);
+    ret = MakeLsn(dbenvst);
+    Data_Get_Struct(ret, struct dblsnst, lsnst);
+    data.data = RSTRING(a)->ptr;
+    data.size = RSTRING(a)->len;
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_put(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flag));
+#else
+    test_error(log_put(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+#endif
+    return ret;
+}
+
+static VALUE
+bdb_s_log_put(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    VALUE a, b;
+    int flag;
+    
+    if (argc == 0 || argc > 2) {
+	rb_raise(bdb_eFatal, "Invalid number of arguments");
+    }
+    flag = DB_CHECKPOINT;
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	flag = NUM2INT(b);
+    }
+    return bdb_s_log_put_internal(obj, a, flag);
+}
+
+static VALUE
+bdb_s_log_checkpoint(obj, a)
+    VALUE obj, a;
+{
+    return bdb_s_log_put_internal(obj, a, DB_CHECKPOINT);
+}
+
+static VALUE
+bdb_s_log_flush(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
+{
+    bdb_ENV *dbenvst;
+
+    if (argc == 0) {
+	GetEnvDB(obj, dbenvst);
+#if DB_VERSION_MAJOR < 3
+	if (!dbenvst->dbenvp->lg_info) {
+	    rb_raise(bdb_eFatal, "log region not open");
+	}
+	test_error(log_flush(dbenvst->dbenvp->lg_info, NULL));
+#else
+	test_error(log_flush(dbenvst->dbenvp, NULL));
+#endif
+	return obj;
+    }
+    else if (argc == 1) {
+	return bdb_s_log_put_internal(obj, argv[0], DB_FLUSH);
+    }
+    else {
+	rb_raise(bdb_eFatal, "Invalid number of arguments");
+    }
+}
+
+static VALUE
+bdb_s_log_curlsn(obj, a)
+    VALUE obj, a;
+{
+    return bdb_s_log_put_internal(obj, a, DB_CURLSN);
+}
+  
+
+static VALUE
+bdb_env_log_stat(obj)
+    VALUE obj;
+{
+    DB_LOG_STAT *stat;
+    bdb_ENV *dbenvst;
+    VALUE res;
+
+    GetEnvDB(obj, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_stat(dbenvst->dbenvp->lg_info, &stat, 0));
+#else
+    test_error(log_stat(dbenvst->dbenvp, &stat, 0));
+#endif
+    res = rb_hash_new();
+    rb_hash_aset(res, rb_tainted_str_new2("st_magic"), INT2NUM(stat->st_magic));
+    rb_hash_aset(res, rb_tainted_str_new2("st_version"), INT2NUM(stat->st_version));
+    rb_hash_aset(res, rb_tainted_str_new2("st_regsize"), INT2NUM(stat->st_regsize));
+    rb_hash_aset(res, rb_tainted_str_new2("st_mode"), INT2NUM(stat->st_mode));
+#if DB_VERSION_MAJOR < 3
+    rb_hash_aset(res, rb_tainted_str_new2("st_refcnt"), INT2NUM(stat->st_refcnt));
+#else
+    rb_hash_aset(res, rb_tainted_str_new2("st_lg_bsize"), INT2NUM(stat->st_lg_bsize));
+#endif
+    rb_hash_aset(res, rb_tainted_str_new2("st_lg_max"), INT2NUM(stat->st_lg_max));
+    rb_hash_aset(res, rb_tainted_str_new2("st_w_mbytes"), INT2NUM(stat->st_w_mbytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_w_bytes"), INT2NUM(stat->st_w_bytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wc_mbytes"), INT2NUM(stat->st_wc_mbytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wc_bytes"), INT2NUM(stat->st_wc_bytes));
+    rb_hash_aset(res, rb_tainted_str_new2("st_wcount"), INT2NUM(stat->st_wcount));
+#if DB_VERSION_MAJOR == 3
+    rb_hash_aset(res, rb_tainted_str_new2("st_wcount_fill"), INT2NUM(stat->st_wcount_fill));
+#endif
+    rb_hash_aset(res, rb_tainted_str_new2("st_scount"), INT2NUM(stat->st_scount));
+    rb_hash_aset(res, rb_tainted_str_new2("st_cur_file"), INT2NUM(stat->st_cur_file));
+    rb_hash_aset(res, rb_tainted_str_new2("st_cur_offset"), INT2NUM(stat->st_cur_offset));
+    rb_hash_aset(res, rb_tainted_str_new2("st_region_wait"), INT2NUM(stat->st_region_wait));
+    rb_hash_aset(res, rb_tainted_str_new2("st_region_nowait"), INT2NUM(stat->st_region_nowait));
+    free(stat);
+    return res;
+}
+
+static VALUE
+bdb_env_log_get(obj, a)
+    VALUE obj, a;
+{
+    bdb_ENV *dbenvst;
+    DBT data;
+    struct dblsnst *lsnst;
+    VALUE res, lsn;
+    int ret, flag;
+
+    GetEnvDB(obj, dbenvst);
+    flag = NUM2INT(a);
+    memset(&data, 0, sizeof(data));
+    data.flags |= DB_DBT_MALLOC;
+    lsn = MakeLsn(dbenvst);
+    Data_Get_Struct(ret, struct dblsnst, lsnst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    ret = test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flag));
+#else
+    ret = test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flag));
+#endif
+    if (ret == DB_NOTFOUND) {
+	return Qnil;
+    }
+    res = rb_tainted_str_new(data.data, data.size);
+    free(data.data);
+    return rb_assoc_new(res, lsn);
+}
+
+static VALUE
+bdb_i_each_log_get(obj, flag)
+    VALUE obj;
+    int flag;
+{
+    bdb_ENV *dbenvst;
+    struct dblsnst *lsnst;
+    DBT data;
+    VALUE lsn, res;
+    int ret, init, flags;
+
+    GetEnvDB(obj, dbenvst);
+    init = 0; /* strange ??? */
+    do {
+	lsn = MakeLsn(dbenvst);
+	Data_Get_Struct(lsn, struct dblsnst, lsnst);
+	memset(&data, 0, sizeof(data));
+	data.flags |= DB_DBT_MALLOC;
+	if (!init) {
+	    flags = (flag == DB_NEXT)?DB_FIRST:DB_LAST;
+	    init = 1;
+	}
+	else
+	    flags = flag;
+#if DB_VERSION_MAJOR < 3
+	if (!dbenvst->dbenvp->lg_info) {
+	    rb_raise(bdb_eFatal, "log region not open");
+	}
+	ret = test_error(log_get(dbenvst->dbenvp->lg_info, lsnst->lsn, &data, flags));
+#else
+	ret = test_error(log_get(dbenvst->dbenvp, lsnst->lsn, &data, flags));
+#endif
+	if (ret == DB_NOTFOUND) {
+	    return Qnil;
+	}
+	res = rb_tainted_str_new(data.data, data.size);
+	free(data.data);
+	rb_yield(rb_assoc_new(res, lsn));
+    } while (1);
+    return Qnil;
+}
+
+static VALUE
+bdb_env_log_each(obj) 
+    VALUE obj;
+{ 
+    return bdb_i_each_log_get(obj, DB_NEXT);
+}
+
+static VALUE
+bdb_env_log_hcae(obj)
+    VALUE obj;
+{ 
+    return bdb_i_each_log_get(obj, DB_PREV);
+}
+ 
+static VALUE
+bdb_env_log_archive(argc, argv, obj)
+    int argc;
+    VALUE *argv, obj;
+{
+    char **list, **file;
+    bdb_ENV *dbenvst;
+    int flag;
+    VALUE res;
+
+    GetEnvDB(obj, dbenvst);
+    flag = 0;
+    list = NULL;
+    if (rb_scan_args(argc, argv, "01", &res)) {
+	flag = NUM2INT(res);
+    }
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_archive(dbenvst->dbenvp->lg_info, &list, flag, NULL));
+#else
+    test_error(log_archive(dbenvst->dbenvp, &list, flag, NULL));
+#endif
+    res = rb_ary_new();
+    for (file = list; file != NULL && *file != NULL; file++) {
+	rb_ary_push(res, rb_tainted_str_new2(*file));
+    }
+    if (list != NULL) free(list);
+    return res;
+}
+
+static VALUE
+bdb_lsn_log_file(obj)
+    VALUE obj;
+{
+    struct dblsnst *lsnst;
+    char name[2048];
+
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+#if DB_VERSION_MAJOR < 3
+    if (!lsnst->dbenvst || !lsnst->dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_file(lsnst->dbenvst->dbenvp->lg_info, lsnst->lsn, name, 2048));
+#else
+    test_error(log_file(lsnst->dbenvst->dbenvp, lsnst->lsn, name, 2048));
+#endif
+    return rb_tainted_str_new2(name);
+}
+
+static VALUE
+bdb_lsn_log_flush(obj)
+    VALUE obj;
+{
+    struct dblsnst *lsnst;
+
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+#if DB_VERSION_MAJOR < 3
+    if (!lsnst->dbenvst || !lsnst->dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_flush(lsnst->dbenvst->dbenvp->lg_info, lsnst->lsn));
+#else
+    test_error(log_flush(lsnst->dbenvst->dbenvp, lsnst->lsn));
+#endif
+    return obj;
+}
+
+static VALUE
+bdb_lsn_log_compare(obj, a)
+    VALUE obj, a;
+{
+    struct dblsnst *lsnst1, *lsnst2;
+    
+    if (!rb_obj_is_kind_of(a, bdb_cLsn)) {
+	rb_raise(bdb_eFatal, "invalid argument for <=>");
+    }
+    Data_Get_Struct(obj, struct dblsnst, lsnst1);
+    Data_Get_Struct(a, struct dblsnst, lsnst2);
+    return INT2NUM(log_compare(lsnst1->lsn, lsnst2->lsn));
+}
+
+static VALUE
+bdb_lsn_log_get(obj)
+    VALUE obj;
+{
+    struct dblsnst *lsnst;
+    DBT data;
+    VALUE res;
+    int ret;
+
+    Data_Get_Struct(obj, struct dblsnst, lsnst);
+    memset(&data, 0, sizeof(data));
+    data.flags |= DB_DBT_MALLOC;
+#if DB_VERSION_MAJOR < 3
+    if (!lsnst->dbenvst || !lsnst->dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    ret = test_error(log_get(lsnst->dbenvst->dbenvp->lg_info, lsnst->lsn, &data, DB_SET));
+#else
+    ret = test_error(log_get(lsnst->dbenvst->dbenvp, lsnst->lsn, &data, DB_SET));
+#endif
+    if (ret == DB_NOTFOUND) {
+	return Qnil;
+    }
+    res = rb_tainted_str_new(data.data, data.size);
+    free(data.data);
+    return res;
+}
+
+static VALUE
+bdb_log_register(obj, a)
+    VALUE obj, a;
+{
+    bdb_DB *dbst;
+    bdb_ENV *dbenvst;
+
+    if (TYPE(a) != T_STRING) {
+	rb_raise(bdb_eFatal, "Need a filename");
+    }
+    if (bdb_has_env(obj) == Qfalse) {
+	rb_raise(bdb_eFatal, "Database must be open in an Env");
+    }
+    Data_Get_Struct(obj, bdb_DB, dbst);
+    Data_Get_Struct(dbst->env, bdb_ENV, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_register(dbenvst->dbenvp->lg_info, dbst->dbp, RSTRING(a)->ptr, dbst->type, &dbenvst->fidp));
+#else
+#if DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
+    test_error(log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr, &dbenvst->fidp));
+#else
+    test_error(log_register(dbenvst->dbenvp, dbst->dbp, RSTRING(a)->ptr));
+#endif
+#endif
+    return obj;
+}
+
+static VALUE
+bdb_log_unregister(obj)
+    VALUE obj;
+{
+    bdb_DB *dbst;
+    bdb_ENV *dbenvst;
+
+    if (bdb_has_env(obj) == Qfalse) {
+	rb_raise(bdb_eFatal, "Database must be open in an Env");
+    }
+    Data_Get_Struct(obj, bdb_DB, dbst);
+    Data_Get_Struct(dbst->env, bdb_ENV, dbenvst);
+#if DB_VERSION_MAJOR < 3
+    if (!dbenvst->dbenvp->lg_info) {
+	rb_raise(bdb_eFatal, "log region not open");
+    }
+    test_error(log_unregister(dbenvst->dbenvp->lg_info, dbenvst->fidp));
+#else
+#if DB_VERSION_MINOR < 1 || (DB_VERSION_MINOR == 1 && DB_VERSION_PATCH <= 5)
+    test_error(log_unregister(dbenvst->dbenvp, dbenvst->fidp));
+#else
+    test_error(log_unregister(dbenvst->dbenvp, dbst->dbp));
+#endif
+#endif
+    return obj;
+}
+
+/*
+  END
+*/
+
 void
 Init_bdb()
 {
@@ -4123,7 +4626,10 @@ Init_bdb()
     id_proc_call = rb_intern("call");
     bdb_mDb = rb_define_module("BDB");
     bdb_eFatal = rb_define_class_under(bdb_mDb, "Fatal", rb_eStandardError);
-    bdb_eLock = rb_define_class_under(bdb_mDb, "DeadLock", bdb_eFatal);
+    bdb_eLock = rb_define_class_under(bdb_mDb, "LockError", bdb_eFatal);
+    bdb_eLockDead = rb_define_class_under(bdb_mDb, "LockDead", bdb_eLock);
+    bdb_eLockHeld = rb_define_class_under(bdb_mDb, "LockHeld", bdb_eLock);
+    bdb_eLockGranted = rb_define_class_under(bdb_mDb, "LockGranted",  bdb_eLock);
 /* CONSTANT */
     rb_define_const(bdb_mDb, "VERSION", version);
     rb_define_const(bdb_mDb, "VERSION_MAJOR", INT2FIX(major));
@@ -4156,6 +4662,17 @@ Init_bdb()
     rb_define_const(bdb_mDb, "CREATE", INT2FIX(DB_CREATE));
     rb_define_const(bdb_mDb, "CURLSN", INT2FIX(DB_CURLSN));
     rb_define_const(bdb_mDb, "CURRENT", INT2FIX(DB_CURRENT));
+#if DB_VERSION_MAJOR < 3
+    rb_define_const(bdb_mDb, "DB_VERB_CHKPOINT", INT2FIX(1));
+    rb_define_const(bdb_mDb, "DB_VERB_DEADLOCK", INT2FIX(1));
+    rb_define_const(bdb_mDb, "DB_VERB_RECOVERY", INT2FIX(1));
+    rb_define_const(bdb_mDb, "DB_VERB_WAITSFOR", INT2FIX(1));
+#else
+    rb_define_const(bdb_mDb, "DB_VERB_CHKPOINT", INT2FIX(DB_VERB_CHKPOINT));
+    rb_define_const(bdb_mDb, "DB_VERB_DEADLOCK", INT2FIX(DB_VERB_DEADLOCK));
+    rb_define_const(bdb_mDb, "DB_VERB_RECOVERY", INT2FIX(DB_VERB_RECOVERY));
+    rb_define_const(bdb_mDb, "DB_VERB_WAITSFOR", INT2FIX(DB_VERB_WAITSFOR));
+#endif
     rb_define_const(bdb_mDb, "DBT_MALLOC", INT2FIX(DB_DBT_MALLOC));
     rb_define_const(bdb_mDb, "DBT_PARTIAL", INT2FIX(DB_DBT_PARTIAL));
 #if DB_VERSION_MAJOR < 3
@@ -4188,7 +4705,7 @@ Init_bdb()
     rb_define_const(bdb_mDb, "INIT_LOG", INT2FIX(DB_INIT_LOG));
     rb_define_const(bdb_mDb, "INIT_MPOOL", INT2FIX(DB_INIT_MPOOL));
     rb_define_const(bdb_mDb, "INIT_TXN", INT2FIX(DB_INIT_TXN));
-    rb_define_const(bdb_mDb, "INIT_TRANSACTION", INT2FIX(DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG));
+    rb_define_const(bdb_mDb, "INIT_TRANSACTION", INT2FIX(BDB_INIT_TRANSACTION));
 #ifdef DB_JOIN_ITEM
     rb_define_const(bdb_mDb, "JOIN_ITEM", INT2FIX(DB_JOIN_ITEM));
 #endif
@@ -4271,9 +4788,9 @@ Init_bdb()
     rb_define_singleton_method(bdb_cEnv, "new", bdb_env_s_new, -1);
     rb_define_singleton_method(bdb_cEnv, "create", bdb_env_s_new, -1);
     rb_define_singleton_method(bdb_cEnv, "open", bdb_env_s_new, -1);
+    rb_define_singleton_method(bdb_cEnv, "remove", bdb_env_s_remove, -1);
+    rb_define_singleton_method(bdb_cEnv, "unlink", bdb_env_s_remove, -1);
     rb_define_method(bdb_cEnv, "open_db", bdb_env_open_db, -1);
-    rb_define_method(bdb_cEnv, "remove", bdb_env_remove, 0);
-    rb_define_method(bdb_cEnv, "unlink", bdb_env_remove, 0);
     rb_define_method(bdb_cEnv, "close", bdb_env_close, 0);
     rb_define_method(bdb_cEnv, "begin", bdb_env_begin, -1);
     rb_define_method(bdb_cEnv, "txn_begin", bdb_env_begin, -1);
@@ -4351,7 +4868,7 @@ Init_bdb()
     rb_define_method(bdb_cCommon, "both?", bdb_has_both, 2);
     rb_define_method(bdb_cCommon, "to_a", bdb_to_a, 0);
     rb_define_method(bdb_cCommon, "to_hash", bdb_to_hash, 0);
-    rb_define_method(bdb_cCommon, "invert", bdb_to_hash, 0);
+    rb_define_method(bdb_cCommon, "invert", bdb_invert, 0);
     rb_define_method(bdb_cCommon, "empty?", bdb_empty, 0);
     rb_define_method(bdb_cCommon, "length", bdb_length, 0);
     rb_define_alias(bdb_cCommon,  "size", "length");
@@ -4463,6 +4980,30 @@ Init_bdb()
     rb_define_method(bdb_cLock, "lock_put", bdb_lock_put, 0);
     rb_define_method(bdb_cLock, "release", bdb_lock_put, 0);
     rb_define_method(bdb_cLock, "delete", bdb_lock_put, 0);
+/* LOG */
+    rb_define_method(bdb_cEnv, "log_put", bdb_s_log_put, -1);
+    rb_define_method(bdb_cEnv, "log_curlsn", bdb_s_log_curlsn, 0);
+    rb_define_method(bdb_cEnv, "log_checkpoint", bdb_s_log_checkpoint, 1);
+    rb_define_method(bdb_cEnv, "log_flush", bdb_s_log_flush, -1);
+    rb_define_method(bdb_cEnv, "log_stat", bdb_env_log_stat, 0);
+    rb_define_method(bdb_cEnv, "log_archive", bdb_env_log_archive, -1);
+    rb_define_method(bdb_cEnv, "log_get", bdb_env_log_get, 1);
+    rb_define_method(bdb_cEnv, "log_each", bdb_env_log_each, 0);
+    rb_define_method(bdb_cEnv, "log_reverse_each", bdb_env_log_hcae, 0);
+    rb_define_method(bdb_cCommon, "log_register", bdb_log_register, 1);
+    rb_define_method(bdb_cCommon, "log_unregister", bdb_log_unregister, 0);
+    bdb_cLsn = rb_define_class_under(bdb_mDb, "Lsn", rb_cObject);
+    rb_include_module(bdb_cLsn, rb_mComparable);
+    rb_undef_method(CLASS_OF(bdb_cLsn), "new");
+    rb_define_method(bdb_cLsn, "log_get", bdb_lsn_log_get, 0);
+    rb_define_method(bdb_cLsn, "get", bdb_lsn_log_get, 0);
+    rb_define_method(bdb_cLsn, "log_compare", bdb_lsn_log_compare, 1);
+    rb_define_method(bdb_cLsn, "compare", bdb_lsn_log_compare, 1);
+    rb_define_method(bdb_cLsn, "<=>", bdb_lsn_log_compare, 1);
+    rb_define_method(bdb_cLsn, "log_file", bdb_lsn_log_file, 0);
+    rb_define_method(bdb_cLsn, "file", bdb_lsn_log_file, 0);
+    rb_define_method(bdb_cLsn, "log_flush", bdb_lsn_log_flush, 0);
+    rb_define_method(bdb_cLsn, "flush", bdb_lsn_log_flush, 0);
     bdb_errstr = rb_tainted_str_new(0, 0);
     rb_global_variable(&bdb_errstr);
 }

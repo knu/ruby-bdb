@@ -498,6 +498,18 @@ Returns the array of the keys in the database
 Returns the number of association in the database.
 </P>
 </DD>
+<DT><A NAME="log_register"><CODE>log_register(<var>name</var>)</CODE></A><!-- RDLabel: "log_register" -->
+<DD>
+<P>
+The <VAR>log_register</VAR> function registers a file <VAR>name</VAR>.
+</P>
+</DD>
+<DT><A NAME="log_unregister"><CODE>log_unregister()</CODE></A><!-- RDLabel: "log_unregister" -->
+<DD>
+<P>
+The <VAR>log_unregister</VAR> function unregisters a file name.
+</P>
+</DD>
 <DT><A NAME="reject"><CODE>reject { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reject" -->
 <DD>
 <P>
@@ -505,8 +517,8 @@ Create an hash without the associations if the evaluation of the
 block returns true. 
 </P>
 </DD>
-<DT><A NAME="reverse_each"><CODE>reverse_each { |<var>key</var>, <var>value</var>} ... }</CODE></A><!-- RDLabel: "reverse_each" -->
-<DT><A NAME="reverse_each_pair"><CODE>reverse_each_pair { |<var>key</var>, <var>value</var>} ... }</CODE></A><!-- RDLabel: "reverse_each_pair" -->
+<DT><A NAME="reverse_each"><CODE>reverse_each { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reverse_each" -->
+<DT><A NAME="reverse_each_pair"><CODE>reverse_each_pair { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reverse_each_pair" -->
 <DD>
 <P>
 Iterates over associations in reverse order 

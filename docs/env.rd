@@ -114,6 +114,10 @@ environment can then be identified by the name of that directory.
           hash. See the documentation of Berkeley DB for possible values.
 
 
+--- remove()
+--- unlink()
+     remove the environnement
+
 === Methods
       
 
@@ -143,14 +147,59 @@ environment can then be identified by the name of that directory.
 --- lock_stat()
      Return lock subsystem statistics
 
+
+--- log_archive([flags])
+    The log_archive function return an array of log or database file names.
+
+    ((|flags|)) value must be set to 0 or the value ((|BDB::ARCH_DATA|)),
+    ((|BDB::ARCH_ABS|)), ((|BDB::ARCH_LOG|))
+
+--- log_checkpoint(string)
+
+    same as ((|log_put(string, BDB::CHECKPOINT)|))
+
+--- log_curlsn(string)
+
+    same as ((|log_put(string, BDB::CURLSN)|))
+
+--- log_each { |string, lsn| ... }
+
+    Implement an iterator inside of the log
+
+--- log_flush([string])
+
+    same as ((|log_put(string, BDB::FLUSH)|))
+
+    Without argument, garantee that all records are written to the disk
+
+--- log_get(flag)
+
+    The ((|log_get|)) return an array ((|[String, BDB::Lsn]|)) according to
+    the ((|flag|)) value.
+
+    ((|flag|)) can has the value ((|BDB::CHECKPOINT|)), ((|BDB::FIRST|)), 
+    ((|BDB::LAST|)), ((|BDB::NEXT|)), ((|BDB::PREV|)), ((|BDB::CURRENT|))
+
+--- log_put(string [, flag])
+
+    The ((|log_put|)) function appends records to the log. It return
+    an object ((|BDB::Lsn|))
+
+    ((|flag|)) can have the value ((|BDB::CHECKPOINT|)), ((|BDB::CURLSN|)),
+    ((|BDB::FLUSH|))
+
+--- log_reverse_each { |string, lsn| ... }
+
+    Implement an iterator inside of the log
+
+--- log_stat
+
+    return log statistics
+
 --- open_db(type [, name, subname, flags, mode])
      open the database in the current environment. type must be one of
      the constant ((|BDB::BTREE|)), ((|BDB::HASH|)), ((|BDB::RECNO|)), 
      ((|BDB::QUEUE|)). See ((<open|URL:access.html#open>)) for other arguments
-
---- remove()
---- unlink()
-     remove the environnement
 
 --- set_flags(flags [, onoff]) 
       only with BDB::VERSION_MAJOR == 3 && BDB::VERSION_MINOR >= 2

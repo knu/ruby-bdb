@@ -53,7 +53,14 @@
 * support for 3.2.9 : Thanks Rick Ohnemus <rjohnemus@systemware-inc.com>
 * corrected flags for DUP_SORT
 * add BDB::Env.set_flags for 3.2.9
-* corrected internal functions bt_compare, bt_prefix, dup_compare, h_hash
-  take now 3 args for 3.2.9
+* 3.2.9 : bt_compare, bt_prefix, dup_compare, h_hash take now 3 args
+
+-- 0.1.7
+
+* BDB::Env#remove is now a class method
+* corrected Lock for DB < 3
+* added Log
+* tests for Log
+* error BDB::LockError, BDB::LockHeld, BDB::LockGranted, BDB::LockDead
 
 

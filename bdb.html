@@ -7,6 +7,9 @@
 <H1><A NAME="label:0">BDB
 </A></H1><!-- RDLabel: "BDB" -->
 <P>
+<A HREF="ftp://moulon.inra.fr/pub/ruby/">Download</A>
+</P>
+<P>
 Berkeley DB is an embedded database system that supports keyed access
 to data.
 </P>
@@ -18,24 +21,18 @@ code that operates on them are called access methods. The library
 includes support for the following access methods:
 </P>
 <UL>
-<LI><P>
-B+tree: Stores keys in sorted order, using a default function that does
+<LI>B+tree: Stores keys in sorted order, using a default function that does
      lexicographical ordering of keys.
-</P>
-<LI><P>
-Hashing: Stores records in a hash table for fast searches based
+<LI>Hashing: Stores records in a hash table for fast searches based
      on strict equality, using a default that hashes on the key as a bit
      string. Extended Linear Hashing modifies the hash function used by the
      table as new records are inserted, in order to keep buckets underfull in
      the steady state.
-</P>
-<LI><P>
-Fixed and Variable-Length Records: Stores fixed- or
+<LI>Fixed and Variable-Length Records: Stores fixed- or
      variable-length records in sequential order. Record numbers may be
      immutable, requiring that new records be added only at the end
      of the database, or mutable, permitting new records to be inserted
      between existing records. 
-</P>
 </UL>
 <P>
 <A HREF="docs/env.html">Berkeley DB environnement</A>
@@ -86,6 +83,18 @@ control mechanisms. While the locking system is used extensively by
 the Berkeley DB access methods and transaction system, it may also be
 used as a stand-alone subsystem to provide concurrency control to any
 set of designated resources.
+</P>
+<P>
+<A HREF="docs/log.html">Logging subsystem</A>
+</P>
+<P>
+The logging subsystem is the logging facility used by Berkeley DB. It
+is largely Berkeley DB specific, although it is potentially useful
+outside of the Berkeley DB package for applications wanting
+write-ahead logging support. Applications wanting to use the log for
+purposes other than logging file modifications based on a set of open
+file descriptors will almost certainly need to make source code
+modifications to the Berkeley DB code base.
 </P>
 
 </BODY>
