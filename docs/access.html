@@ -17,6 +17,9 @@ These are the common methods for <VAR>BDB::Btree</VAR>, <VAR>BDB::Hash</VAR>,
 <LI><P>
 <A HREF="#label:2">Methods</A>
 </P>
+<LI><P>
+<A HREF="#label:3">Methods specific to BDB::Recno and BDB::Queue</A>
+</P>
 </UL>
 <H3><A NAME="label:1">Class Methods
 </A></H3><!-- RDLabel: "Class Methods" -->
@@ -30,7 +33,7 @@ open the database
 </P>
 
 <DL>
-<DT><A NAME="label:3">         <VAR>name</VAR>
+<DT><A NAME="label:4"><VAR>name</VAR>
 </A><!-- RDLabel: "name" -->
 <DD>
 <P>
@@ -38,7 +41,7 @@ The argument name is used as the name of a single physical
 file on disk that will be used to back the database.
 </P>
 </DD>
-<DT><A NAME="label:4">         <VAR>subname</VAR>
+<DT><A NAME="label:5"><VAR>subname</VAR>
 </A><!-- RDLabel: "subname" -->
 <DD>
 <P>
@@ -51,7 +54,7 @@ subdatabase in a database file that was not initially
 created using a subdatabase name.
 </P>
 </DD>
-<DT><A NAME="label:5">         <VAR>flags</VAR>
+<DT><A NAME="label:6"><VAR>flags</VAR>
 </A><!-- RDLabel: "flags" -->
 <DD>
 <P>
@@ -65,7 +68,7 @@ OR'ing together one or more of the following values
 </P>
 
 <DL>
-<DT><A NAME="label:7">             <VAR>BDB::CREATE</VAR>
+<DT><A NAME="label:8"><VAR>BDB::CREATE</VAR>
 </A><!-- RDLabel: "BDB::CREATE" -->
 <DD>
 <P>
@@ -74,7 +77,7 @@ do not already exist and the DB_CREATE flag is not
 specified, the call will fail. 
 </P>
 </DD>
-<DT><A NAME="label:8">             <VAR>BD::EXCL</VAR>
+<DT><A NAME="label:9"><VAR>BD::EXCL</VAR>
 </A><!-- RDLabel: "BD::EXCL" -->
 <DD>
 <P>
@@ -85,14 +88,14 @@ physical database file and cannot be used to test if a
 subdatabase already exists. 
 </P>
 </DD>
-<DT><A NAME="label:9">             <VAR>BDB::NOMMAP</VAR>
+<DT><A NAME="label:10"><VAR>BDB::NOMMAP</VAR>
 </A><!-- RDLabel: "BDB::NOMMAP" -->
 <DD>
 <P>
 Do not map this database into process memory.
 </P>
 </DD>
-<DT><A NAME="label:10">             <VAR>BDB::RDONLY</VAR>
+<DT><A NAME="label:11"><VAR>BDB::RDONLY</VAR>
 </A><!-- RDLabel: "BDB::RDONLY" -->
 <DD>
 <P>
@@ -101,7 +104,7 @@ modify items in the database will fail regardless of the
 actual permissions of any underlying files. 
 </P>
 </DD>
-<DT><A NAME="label:11">             <VAR>BDB::TRUNCATE</VAR>
+<DT><A NAME="label:12"><VAR>BDB::TRUNCATE</VAR>
 </A><!-- RDLabel: "BDB::TRUNCATE" -->
 <DD>
 <P>
@@ -121,7 +124,7 @@ protected environment.
 </DD>
 </DL>
 </DD>
-<DT><A NAME="label:6">         <VAR>options</VAR>
+<DT><A NAME="label:7"><VAR>options</VAR>
 </A><!-- RDLabel: "options" -->
 <DD>
 <P>
@@ -130,91 +133,127 @@ for more informations)
 </P>
 
 <DL>
-<DT><A NAME="label:12">             <VAR>set_bt_minkey</VAR>
+<DT><A NAME="label:13"><VAR>set_array_base</VAR>
+</A><!-- RDLabel: "set_array_base" -->
+<DD>
+<P>
+base index for BDB::Recno, BDB::Queue or BDB::Btree 
+(with BDB::RECNUM). Must be 0 or 1
+</P>
+</DD>
+<DT><A NAME="label:14"><VAR>set_bt_compare</VAR>
+</A><!-- RDLabel: "set_bt_compare" -->
+<DD>
+<P>
+specify a Btree comparison function
+</P>
+</DD>
+<DT><A NAME="label:15"><VAR>set_bt_minkey</VAR>
 </A><!-- RDLabel: "set_bt_minkey" -->
 <DD>
 <P>
 set the minimum number of keys per Btree page
 </P>
 </DD>
-<DT><A NAME="label:13">             <VAR>set_cachesize</VAR>
+<DT><A NAME="label:16"><VAR>set_bt_prefix</VAR>
+</A><!-- RDLabel: "set_bt_prefix" -->
+<DD>
+<P>
+specify a Btree prefix comparison function
+</P>
+</DD>
+<DT><A NAME="label:17"><VAR>set_cachesize</VAR>
 </A><!-- RDLabel: "set_cachesize" -->
 <DD>
 <P>
 set the database cache size
 </P>
 </DD>
-<DT><A NAME="label:14">             <VAR>set_flags</VAR>
+<DT><A NAME="label:18"><VAR>set_dup_compare</VAR>
+</A><!-- RDLabel: "set_dup_compare" -->
+<DD>
+<P>
+specify a duplicate comparison function
+</P>
+</DD>
+<DT><A NAME="label:19"><VAR>set_flags</VAR>
 </A><!-- RDLabel: "set_flags" -->
 <DD>
 <P>
 general database configuration
 </P>
 </DD>
-<DT><A NAME="label:15">             <VAR>set_h_ffactor</VAR>
+<DT><A NAME="label:20"><VAR>set_h_ffactor</VAR>
 </A><!-- RDLabel: "set_h_ffactor" -->
 <DD>
 <P>
 set the Hash table density
 </P>
 </DD>
-<DT><A NAME="label:16">             <VAR>set_h_nelem</VAR>
+<DT><A NAME="label:21"><VAR>set_h_hash</VAR>
+</A><!-- RDLabel: "set_h_hash" -->
+<DD>
+<P>
+specify a hashing function
+</P>
+</DD>
+<DT><A NAME="label:22"><VAR>set_h_nelem</VAR>
 </A><!-- RDLabel: "set_h_nelem" -->
 <DD>
 <P>
 set the Hash table size
 </P>
 </DD>
-<DT><A NAME="label:17">             <VAR>set_lorder</VAR>
+<DT><A NAME="label:23"><VAR>set_lorder</VAR>
 </A><!-- RDLabel: "set_lorder" -->
 <DD>
 <P>
 set the database byte order
 </P>
 </DD>
-<DT><A NAME="label:18">             <VAR>set_pagesize</VAR>
+<DT><A NAME="label:24"><VAR>set_pagesize</VAR>
 </A><!-- RDLabel: "set_pagesize" -->
 <DD>
 <P>
 set the underlying database page size
 </P>
 </DD>
-<DT><A NAME="label:19">             <VAR>set_re_delim</VAR>
+<DT><A NAME="label:25"><VAR>set_re_delim</VAR>
 </A><!-- RDLabel: "set_re_delim" -->
 <DD>
 <P>
 set the variable-length record delimiter
 </P>
 </DD>
-<DT><A NAME="label:20">             <VAR>set_re_len</VAR>
+<DT><A NAME="label:26"><VAR>set_re_len</VAR>
 </A><!-- RDLabel: "set_re_len" -->
 <DD>
 <P>
 set the fixed-length record length
 </P>
 </DD>
-<DT><A NAME="label:21">             <VAR>set_re_pad</VAR>
+<DT><A NAME="label:27"><VAR>set_re_pad</VAR>
 </A><!-- RDLabel: "set_re_pad" -->
 <DD>
 <P>
 set the fixed-length record pad byte
 </P>
 </DD>
-<DT><A NAME="label:22">             <VAR>set_re_source</VAR>
+<DT><A NAME="label:28"><VAR>set_re_source</VAR>
 </A><!-- RDLabel: "set_re_source" -->
 <DD>
 <P>
 set the backing Recno text file
 </P>
 </DD>
-<DT><A NAME="label:23">             <VAR>env</VAR>
+<DT><A NAME="label:29"><VAR>env</VAR>
 </A><!-- RDLabel: "env" -->
 <DD>
 <P>
 open the database in the environnement given as the value
 </P>
 </DD>
-<DT><A NAME="label:24">             <VAR>txn</VAR>
+<DT><A NAME="label:30"><VAR>txn</VAR>
 </A><!-- RDLabel: "txn" -->
 <DD>
 <P>
@@ -222,6 +261,26 @@ open the database in the transaction given as the value
 </P>
 </DD>
 </DL>
+
+<P>
+Proc given to <VAR>set_bt_compare</VAR>, <VAR>set_bt_prefix</VAR>, 
+<VAR>set_dup_compare</VAR> and <VAR>set_h_hash</VAR> can be also specified as
+a method (replace the prefix <VAR>set_</VAR> with <VAR>bdb_</VAR>
+</P>
+
+<P>
+For example :
+</P>
+
+<PRE>
+module BDB
+   class Btreesort &lt; Btree
+      def bdb_bt_compare(a, b)
+         b.downcase &lt;=&gt; a.downcase
+      end
+   end
+end
+</PRE>
 </DD>
 </DL>
 </DD>
@@ -258,6 +317,7 @@ Returns the value corresponding the <VAR>key</VAR>
 </DD>
 <DT><A NAME="db_get"><CODE>db_get(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "db_get" -->
 <DT><A NAME="get"><CODE>get(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "get" -->
+<DT><A NAME="fetch"><CODE>fetch(<var>key</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "fetch" -->
 <DD>
 <P>
 Returns the value correspondind the <VAR>key</VAR>
@@ -281,6 +341,7 @@ removed.
 </DD>
 <DT><A NAME="db_put"><CODE>db_put(<var>key</var>, <var>value</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "db_put" -->
 <DT><A NAME="put"><CODE>put(<var>key</var>, <var>value</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "put" -->
+<DT><A NAME="store"><CODE>store(<var>key</var>, <var>value</var> [, <var>flags</var>])</CODE></A><!-- RDLabel: "store" -->
 <DD>
 <P>
 Stores the <VAR>value</VAR> associating with <VAR>key</VAR>
@@ -312,6 +373,7 @@ Return if the underlying database is in host order
 </P>
 </DD>
 <DT><A NAME="clear_partial"><CODE>clear_partial</CODE></A><!-- RDLabel: "clear_partial" -->
+<DT><A NAME="partial_clear"><CODE>partial_clear</CODE></A><!-- RDLabel: "partial_clear" -->
 <DD>
 <P>
 Clear partial set.
@@ -325,6 +387,7 @@ Closes the file.
 </P>
 </DD>
 <DT><A NAME="count"><CODE>count(<var>key</var>)</CODE></A><!-- RDLabel: "count" -->
+<DT><A NAME="dup_count"><CODE>dup_count(<var>key</var>)</CODE></A><!-- RDLabel: "dup_count" -->
 <DD>
 <P>
 Return the count of duplicate for <VAR>key</VAR>
@@ -350,6 +413,7 @@ key don't exist.
 </P>
 </DD>
 <DT><A NAME="delete_if"><CODE>delete_if { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "delete_if" -->
+<DT><A NAME="reject!"><CODE>reject! { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reject!" -->
 <DD>
 <P>
 Deletes associations if the evaluation of the block returns true. 
@@ -383,6 +447,7 @@ Returns true if the database is empty.
 <DT><A NAME="has_key?"><CODE>has_key?(<var>key</var>)</CODE></A><!-- RDLabel: "has_key?" -->
 <DT><A NAME="key?"><CODE>key?(<var>key</var>)</CODE></A><!-- RDLabel: "key?" -->
 <DT><A NAME="include?"><CODE>include?(<var>key</var>)</CODE></A><!-- RDLabel: "include?" -->
+<DT><A NAME="member?"><CODE>member?(<var>key</var>)</CODE></A><!-- RDLabel: "member?" -->
 <DD>
 <P>
 Returns true if the association from the <VAR>key</VAR> exists.
@@ -402,6 +467,18 @@ Returns true if the association from <VAR>key</VAR> is <VAR>value</VAR>
 Returns true if the association to the <VAR>value</VAR> exists. 
 </P>
 </DD>
+<DT><A NAME="index"><CODE>index(<var>value</var>)</CODE></A><!-- RDLabel: "index" -->
+<DD>
+<P>
+Returns the first <VAR>key</VAR> associated with <VAR>value</VAR>
+</P>
+</DD>
+<DT><A NAME="indexes"><CODE>indexes(<var>value1</var>, <var>value2</var>, )</CODE></A><!-- RDLabel: "indexes" -->
+<DD>
+<P>
+Returns the <VAR>keys</VAR> associated with <VAR>value1, value2, ...</VAR>
+</P>
+</DD>
 <DT><A NAME="join"><CODE>join(<var>cursor</var> [, <var>flag</var>]) { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "join" -->
 <DD>
 <P>
@@ -419,6 +496,13 @@ Returns the array of the keys in the database
 <DD>
 <P>
 Returns the number of association in the database.
+</P>
+</DD>
+<DT><A NAME="reject"><CODE>reject { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reject" -->
+<DD>
+<P>
+Create an hash without the associations if the evaluation of the
+block returns true. 
 </P>
 </DD>
 <DT><A NAME="reverse_each"><CODE>reverse_each { |<var>key</var>, <var>value</var>} ... }</CODE></A><!-- RDLabel: "reverse_each" -->
@@ -446,12 +530,6 @@ Iterates over values in reverse order.
 Set the partial value <VAR>len</VAR> and <VAR>offset</VAR>
 </P>
 </DD>
-<DT><A NAME="shift"><CODE>shift</CODE></A><!-- RDLabel: "shift" -->
-<DD>
-<P>
-Removes and returns an association from the database. 
-</P>
-</DD>
 <DT><A NAME="stat"><CODE>stat</CODE></A><!-- RDLabel: "stat" -->
 <DD>
 <P>
@@ -464,10 +542,38 @@ Return database statistics.
 Return an array of all associations [key, value]
 </P>
 </DD>
+<DT><A NAME="to_hash"><CODE>to_hash</CODE></A><!-- RDLabel: "to_hash" -->
+<DD>
+<P>
+Return an hash of all associations {key =&gt; value}
+</P>
+</DD>
 <DT><A NAME="values"><CODE>values</CODE></A><!-- RDLabel: "values" -->
 <DD>
 <P>
 Returns the array of the values in the database.
+</P>
+</DD>
+</DL>
+<H3><A NAME="label:3">Methods specific to BDB::Recno and BDB::Queue
+</A></H3><!-- RDLabel: "Methods specific to BDB::Recno and BDB::Queue" -->
+<DL>
+<DT><A NAME="pop"><CODE>pop</CODE></A><!-- RDLabel: "pop" -->
+<DD>
+<P>
+Returns the last couple [key, val] (only for BDB::Recno)
+</P>
+</DD>
+<DT><A NAME="push"><CODE>push <var>value</var>, ...</CODE></A><!-- RDLabel: "push" -->
+<DD>
+<P>
+Push the values
+</P>
+</DD>
+<DT><A NAME="shift"><CODE>shift</CODE></A><!-- RDLabel: "shift" -->
+<DD>
+<P>
+Removes and returns an association from the database.
 </P>
 </DD>
 </DL>

@@ -1,0 +1,25 @@
+
+-- 0.1.1 first alpha release
+
+-- 0.1.2
+
+* error are now BDB::Fatal, BDB::Lock (rather than BDBFatal, ...) 
+* remove BDBKeyExist : it return Qfalse if it fail, or the value inserted
+* #put return the value
+* change rb_eFatal in bdb_eFatal
+* option for array_base (0 or 1)
+* corrected flags27
+* support for bt_compare, bt_prefix, dup_compare, h_hash (see func.rb)
+* can store nil (like 1.6,  a["aa"] = nil don't delete the key)
+* add #dup_count (count), #get_dup (dup) for BDB::Common
+* add #partial_clear (same than #clear_partial)
+* corrected #put for set_partial
+* remove bdb_recno_length (don't do what I want)
+* corrected #close (thread_local_aset)
+* corrected BDB::Unknown (it created object of class BDB::Unknown)
+* remove shift for Common (only for Recno and Queue)
+* corrected #length for bdb < 3 with BDB::TXN
+* add test for RUNIT (only Btree, Hash, Recno)
+* tested with 3.1.17
+* add methods fetch, store, reject!, reject, member?, index, indexes (like 1.5)
+* add initialize

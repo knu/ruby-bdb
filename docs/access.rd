@@ -6,6 +6,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
 * ((<Class Methods>))
 * ((<Methods>))
+* ((<Methods specific to BDB::Recno and BDB::Queue>))
 
 === Class Methods
 
@@ -70,14 +71,25 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
           Hash, Possible options are (see the documentation of Berkeley DB
           for more informations) 
 
+           : ((|set_array_base|))
+                base index for BDB::Recno, BDB::Queue or BDB::Btree 
+                (with BDB::RECNUM). Must be 0 or 1
+           : ((|set_bt_compare|))
+                specify a Btree comparison function
            : ((|set_bt_minkey|))
                 set the minimum number of keys per Btree page
+           : ((|set_bt_prefix|))
+                specify a Btree prefix comparison function
            : ((|set_cachesize|))
                 set the database cache size
+           : ((|set_dup_compare|))
+                specify a duplicate comparison function
            : ((|set_flags|))
                 general database configuration
            : ((|set_h_ffactor|))
                 set the Hash table density
+           : ((|set_h_hash|))
+                specify a hashing function
            : ((|set_h_nelem|))
                 set the Hash table size
            : ((|set_lorder|))
@@ -96,6 +108,21 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
                 open the database in the environnement given as the value
            : ((|txn|))
                 open the database in the transaction given as the value
+
+          Proc given to ((|set_bt_compare|)), ((|set_bt_prefix|)), 
+          ((|set_dup_compare|)) and ((|set_h_hash|)) can be also specified as
+          a method (replace the prefix ((|set_|)) with ((|bdb_|))
+
+          For example :
+
+            module BDB
+               class Btreesort < Btree
+                  def bdb_bt_compare(a, b)
+                     b.downcase <=> a.downcase
+                  end
+               end
+            end
+
 
 --- db_remove(name [, subname]) 
 --- remove(name [, subname]) 
@@ -117,6 +144,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
 --- db_get(key [, flags])
 --- get(key [, flags])
+--- fetch(key [, flags])
      Returns the value correspondind the ((|key|))
 
      ((|flags|)) can have the values ((|BDB::GET_BOTH|)), ((|BDB::SET_RECNO|))
@@ -130,6 +158,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
 --- db_put(key, value [, flags])
 --- put(key, value [, flags])
+--- store(key, value [, flags])
      Stores the ((|value|)) associating with ((|key|))
 
      If ((|nil|)) is given as the value, the association from the ((|key|))
@@ -148,6 +177,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
      Return if the underlying database is in host order
 
 --- clear_partial
+--- partial_clear
      Clear partial set.
 
 --- close([flags])
@@ -155,6 +185,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
     Closes the file.
 
 --- count(key)
+--- dup_count(key)
     Return the count of duplicate for ((|key|))
 
 --- cursor()
@@ -169,6 +200,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
       key don't exist.
 
 --- delete_if { |key, value| ... }
+--- reject! { |key, value| ... }
       Deletes associations if the evaluation of the block returns true. 
 
 --- each { |key, value| ... }
@@ -187,6 +219,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- has_key?(key) 
 --- key?(key) 
 --- include?(key) 
+--- member?(key) 
        Returns true if the association from the ((|key|)) exists.
 
 --- has_both?(key, value)
@@ -197,6 +230,12 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- value?(value) 
        Returns true if the association to the ((|value|)) exists. 
 
+--- index(value)
+       Returns the first ((|key|)) associated with ((|value|))
+
+--- indexes(value1, value2, )
+       Returns the ((|keys|)) associated with ((|value1, value2, ...|))
+
 --- join(cursor [, flag]) { |key, value| ... }
        Perform a join. ((|cursor|)) is an array of ((|BDB::Cursor|))
 
@@ -206,6 +245,10 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- length 
 --- size 
        Returns the number of association in the database.
+
+--- reject { |key, value| ... }
+      Create an hash without the associations if the evaluation of the
+      block returns true. 
 
 --- reverse_each { |key, value} ... }
 --- reverse_each_pair { |key, value} ... }
@@ -220,15 +263,26 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 --- set_partial(len, offset)
        Set the partial value ((|len|)) and ((|offset|))
 
---- shift 
-       Removes and returns an association from the database. 
-
 --- stat
        Return database statistics.
 
 --- to_a
        Return an array of all associations [key, value]
 
+--- to_hash
+       Return an hash of all associations {key => value}
+
 --- values 
        Returns the array of the values in the database.
+
+=== Methods specific to BDB::Recno and BDB::Queue
+
+--- pop
+       Returns the last couple [key, val] (only for BDB::Recno)
+
+--- push value, ...
+       Push the values
+
+--- shift 
+       Removes and returns an association from the database.
 =end

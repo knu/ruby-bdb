@@ -34,6 +34,10 @@
 
 
 * Documentation : see bdb.rd and bdb.html
+
+* Tests : if you have rubyunit
+
+   make test
  
 * Copying
  

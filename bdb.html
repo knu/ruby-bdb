@@ -20,21 +20,21 @@ includes support for the following access methods:
 <UL>
 <LI><P>
 B+tree: Stores keys in sorted order, using a default function that does
-lexicographical ordering of keys.
+     lexicographical ordering of keys.
 </P>
 <LI><P>
 Hashing: Stores records in a hash table for fast searches based
-on strict equality, using a default that hashes on the key as a bit
-string. Extended Linear Hashing modifies the hash function used by the
-table as new records are inserted, in order to keep buckets underfull in
-the steady state.
+     on strict equality, using a default that hashes on the key as a bit
+     string. Extended Linear Hashing modifies the hash function used by the
+     table as new records are inserted, in order to keep buckets underfull in
+     the steady state.
 </P>
 <LI><P>
 Fixed and Variable-Length Records: Stores fixed- or
-variable-length records in sequential order. Record numbers may be
-immutable, requiring that new records be added only at the end
-of the database, or mutable, permitting new records to be inserted
-between existing records. 
+     variable-length records in sequential order. Record numbers may be
+     immutable, requiring that new records be added only at the end
+     of the database, or mutable, permitting new records to be inserted
+     between existing records. 
 </P>
 </UL>
 <P>

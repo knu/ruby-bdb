@@ -10,8 +10,9 @@ if ! have_library("db", "db_version")
     raise "libdb.a not found"
 end
 create_makefile("bdb")
-open("Makefile", "a") do |make|
-    make.print <<-EOF
+begin
+   make = open("Makefile", "a")
+   make.print <<-EOF
 
 %.html: %.rd
 	rd2 $< > ${<:%.rd=%.html}
@@ -21,5 +22,13 @@ HTML = bdb.html docs/access.html  docs/env.html  docs/transaction.html \\
 
 html: $(HTML)
 
-    EOF
+test: $(DLLIB) $(HTML)
+   EOF
+   Dir.foreach('tests') do |x|
+      next if /^\./ =~ x || /(_\.rb|~)$/ =~ x
+      next if FileTest.directory?(x)
+      make.print "	ruby tests/#{x}\n"
+   end
+ensure
+   make.close
 end
