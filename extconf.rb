@@ -18,8 +18,8 @@ begin
 %.html: %.rd
 	rd2 $< > ${<:%.rd=%.html}
 
-HTML = bdb.html docs/access.html  docs/env.html  docs/transaction.html \\
-       docs/cursor.html
+HTML = bdb.html docs/arraylike.html  docs/env.html  docs/transaction.html \\
+       docs/cursor.html docs/hashlike.html
 
 html: $(HTML)
 

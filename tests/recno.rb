@@ -166,11 +166,13 @@ class TestRecno < RUNIT::TestCase
       assert_equal("XYZXYZ", $bdb[12], "<partial get>")
       assert_equal("KLMTU", $bdb[10], "<partial get>")
    end
+=begin
    def test_11_unknown
       $bdb.close
       $bdb = nil
       assert_kind_of(BDB::Recno, BDB::Unknown.open("tmp/aa", nil, "r"), "<unknown>")
    end
+=end
    def test_12_env
       Dir.foreach('tmp') do |x|
 	 if FileTest.file?("tmp/#{x}")

@@ -69,3 +69,9 @@
 * protected env against GC for Log, Lock
 * added BDB::Recnum
 
+-- 0.1.9
+
+* corrected DB_SET_BOTH (Thanks "Peter J. Kernan" <pete@narya.PHYS.cwru.edu>)
+* added warning for BDB::Unknown and Recnum, Recno
+* corrected re-definition of RECNUM
+

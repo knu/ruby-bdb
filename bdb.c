@@ -1483,6 +1483,7 @@ bdb_open_common(argc, argv, obj)
 	{
 	    long count;
 
+	    rb_warning("It's hard to distinguish Recnum with Recno for all versions of Berkeley DB");
 	    if ((count = bdb_is_recnum(dbp)) != -1) {
 		VALUE len;
 		res1 = Data_Make_Struct(bdb_cRecnum, bdb_DB, bdb_mark, bdb_free, dbst1);
@@ -2301,14 +2302,17 @@ bdb_has_both(obj, a, b)
     test_dump(dbst, data, b);
     test_recno(dbst, key, recno, a);
     set_partial(dbst, data);
+    key.flags |= DB_DBT_MALLOC;
     flags = DB_GET_BOTH | test_init_lock(dbst);
     ret = test_error(dbst->dbp->get(dbst->dbp, txnid, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qfalse;
     free(data.data);
+/*
     if (!RECNUM_TYPE(dbst)) {
 	free(key.data);
     }
+*/
     return Qtrue;
 #endif
 }
