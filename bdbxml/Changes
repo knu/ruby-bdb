@@ -26,3 +26,9 @@
 * corrected XML::Document#query
 * added XML::Results#to_a, #size
 * changed XML::NodeList#to_s
+
+--- 0.4.5
+
+* added --with-bdb-objs for Mac OS X 
+   (Thanks Richard Kilmer <rich@infoether.com>)
+* correected b.rb

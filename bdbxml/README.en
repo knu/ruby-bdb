@@ -18,6 +18,18 @@
      make
      make install
 
+.... if you want to make a shared version which use the object files
+     from ../src, specify the flag --with-bdb-objs when you run
+     extconf.rb
+
+     ruby extconf.rb --with-bdb-objs
+     make
+     make install
+
+     Use this option if you work on Mac OS X : read also
+        http://www.opendarwin.org/pipermail/hackers/2003-January/000389.html
+        http://www.opendarwin.org/pipermail/hackers/2003-January/000391.html
+        http://www.mail-archive.com/darwin-gcc3@opensource.apple.com/msg00044.html
 
 * Documentation : 
 

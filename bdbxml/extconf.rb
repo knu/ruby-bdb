@@ -52,6 +52,22 @@ if CONFIG["LDSHARED"] == "gcc -shared"
    CONFIG["LDSHARED"] = "g++ -shared"
 end
 
+if with_config("bdb-objs")
+   bdb_obj = Dir["../src/*.#{$OBJEXT}"]
+   if bdb_obj.size == 0
+      puts <<-EOT
+
+ ****************************************************
+ Build bdb first, if you want to link bdbxml with bdb
+ ****************************************************
+
+      EOT
+      exit
+   end
+   $objs = ["bdbxml.o"] + bdb_obj
+   $CFLAGS += " -DBDB_LINK_OBJ"
+end
+
 create_makefile('bdbxml')
 
 begin

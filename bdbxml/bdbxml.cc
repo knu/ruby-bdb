@@ -2126,6 +2126,9 @@ extern "C" {
     {
 	int major, minor, patch;
 	VALUE version;
+#ifdef BDB_LINK_OBJ
+	extern void Init_bdb();
+#endif
 
 	static VALUE xb_mDb,  xb_mXML;
 #if defined(DBXML_DOM_XERCES2)
@@ -2135,7 +2138,11 @@ extern "C" {
 	if (rb_const_defined_at(rb_cObject, rb_intern("BDB"))) {
 	    rb_raise(rb_eNameError, "module already defined");
 	}
+#ifdef BDB_LINK_OBJ
+	Init_bdb();
+#else
 	rb_require("bdb");
+#endif
 	id_current_env = rb_intern("bdb_current_env");
 	xb_internal_ary = rb_ary_new();
 	rb_set_end_proc(RMFF(xb_finalize), xb_internal_ary);

@@ -3546,7 +3546,11 @@ bdb_associate(argc, argv, obj)
     if (!dbst->secondary) {
 	dbst->secondary = rb_ary_new();
     }
+#if RUBY_VERSION_CODE >= 180
+    rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_block_proc()));
+#else
     rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_f_lambda()));
+#endif
     secondst->secondary = Qnil;
     return obj;
 }

@@ -5,7 +5,7 @@ require 'bdbxml'
 env = BDB::Env.new("tmp", BDB::CREATE | BDB::INIT_TRANSACTION)
 doc = env.open_xml("toto", "a")
 index = doc.index
-index.push("http://moulon.inra.fr/", "reference", 
+index.add("http://moulon.inra.fr/", "reference", 
 	   "node-attribute-equality-string")
 doc.index = index
 bdb = env.open_db(BDB::Btree, "tutu", nil, "a")
