@@ -123,9 +123,8 @@ bdb_intern_shift_pop(obj, depart, len)
 
     rb_secure(4);
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));

@@ -449,10 +449,10 @@ bdb_hard_count(dbp)
     long count = 0;
     int ret;
 
-    memset(&key, 0, sizeof(key));
+    MEMZERO(&key, DBT, 1);
     key.data = &recno;
     key.size = sizeof(db_recno_t);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     key.flags |= DB_DBT_MALLOC;
@@ -957,12 +957,11 @@ bdb_append_internal(argc, argv, obj, flag)
     if (argc < 1)
 	return obj;
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
+    MEMZERO(&key, DBT, 1);
     recno = 1;
     key.data = &recno;
     key.size = sizeof(db_recno_t);
     for (i = 0, a = argv; i < argc; i++, a++) {
-	memset(&data, 0, sizeof(data));
 	test_dump(dbst, data, *a);
 	set_partial(dbst, data);
 #if DB_VERSION_MAJOR == 3
@@ -1026,8 +1025,6 @@ bdb_put(argc, argv, obj)
     init_txn(txnid, obj, dbst);
     flags = 0;
     a = b = c = Qnil;
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
     if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
         flags = NUM2INT(c);
     }
@@ -1128,8 +1125,7 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
 
     init_txn(txnid, obj, dbst);
     flagss = flags = 0;
-    memset(&key, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
+    MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
     switch(rb_scan_args(argc, argv, "12", &a, &b, &c)) {
     case 3:
@@ -1139,6 +1135,7 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
 	    return bdb_has_both_internal(obj, a, b, Qtrue);
 #else
             test_dump(dbst, data, b);
+	    data.flags |= DB_DBT_MALLOC;
 #endif
         }
 	break;
@@ -1201,9 +1198,8 @@ bdb_pget(argc, argv, obj)
 
     init_txn(txnid, obj, dbst);
     flagss = flags = 0;
-    memset(&pkey, 0, sizeof(DBT));
-    memset(&skey, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
+    MEMZERO(&pkey, DBT, 1);
+    MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
     pkey.flags |= DB_DBT_MALLOC;
     switch(rb_scan_args(argc, argv, "12", &a, &b, &c)) {
@@ -1211,6 +1207,7 @@ bdb_pget(argc, argv, obj)
         flags = NUM2INT(c);
         if ((flags & ~DB_RMW) == DB_GET_BOTH) {
             test_dump(dbst, data, b);
+	    data.flags |= DB_DBT_MALLOC;
         }
 	break;
     case 2:
@@ -1241,15 +1238,13 @@ bdb_btree_key_range(obj, a)
     bdb_DB *dbst;
     DB_TXN *txnid;
     DBT key;
-    int ret, flags;
+    int ret;
     db_recno_t recno;
     DB_KEY_RANGE key_range;
 
     init_txn(txnid, obj, dbst);
-    flags = 0;
-    memset(&key, 0, sizeof(DBT));
     test_recno(dbst, key, recno, a);
-    bdb_test_error(dbst->dbp->key_range(dbst->dbp, txnid, &key, &key_range, flags));
+    bdb_test_error(dbst->dbp->key_range(dbst->dbp, txnid, &key, &key_range, 0));
     return rb_struct_new(bdb_sKeyrange, 
 			 rb_float_new(key_range.less),
 			 rb_float_new(key_range.equal), 
@@ -1266,19 +1261,16 @@ bdb_count(obj, a)
     DB_TXN *txnid;
     DBC *dbcp;
     DBT key, data;
-    int ret, flags, flags27;
+    int ret, flags27;
     db_recno_t recno;
     db_recno_t count;
 
     init_txn(txnid, obj, dbst);
-    flags = 0;
-    memset(&key, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-    data.flags |= DB_DBT_MALLOC;
     test_recno(dbst, key, recno, a);
+    MEMZERO(&data, DBT, 1);
+    data.flags |= DB_DBT_MALLOC;
     set_partial(dbst, data);
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
-    set_partial(dbst, data);
     flags27 = test_init_lock(dbst);
     ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_SET | flags27));
     if (ret == DB_NOTFOUND) {
@@ -1323,8 +1315,8 @@ bdb_consume(obj)
 
     rb_secure(4);
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&key, DBT, 1);
+    MEMZERO(&data, DBT, 1);
     recno = 1;
     key.data = &recno;
     key.size = sizeof(db_recno_t);
@@ -1361,11 +1353,9 @@ bdb_has_both_internal(obj, a, b, flag)
 
     init_txn(txnid, obj, dbst);
     flagss = flags = 0;
-    memset(&key, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-    data.flags |= DB_DBT_MALLOC;
-    test_dump(dbst, datas, b);
     test_recno(dbst, key, recno, a);
+    test_dump(dbst, datas, b);
+    data.flags |= DB_DBT_MALLOC;
     set_partial(dbst, data);
     flags |= test_init_lock(dbst);
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
@@ -1407,7 +1397,7 @@ bdb_has_both_internal(obj, a, b, flag)
     while (1) {
 	free_key(dbst, key);
 	free(data.data);
-	memset(&data, 0, sizeof(DBT));
+	MEMZERO(&data, DBT, 1);
 	data.flags |= DB_DBT_MALLOC;
 	ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, DB_NEXT_DUP));
 	if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY) {
@@ -1445,13 +1435,11 @@ bdb_has_both(obj, a, b)
 	return bdb_has_both_internal(obj, a, b, Qfalse);
     }
 #endif
-    memset(&key, 0, sizeof(DBT));
-    memset(&data, 0, sizeof(DBT));
-    data.flags |= DB_DBT_MALLOC;
-    test_dump(dbst, data, b);
     test_recno(dbst, key, recno, a);
-    set_partial(dbst, data);
     key.flags |= DB_DBT_MALLOC;
+    test_dump(dbst, data, b);
+    data.flags |= DB_DBT_MALLOC;
+    set_partial(dbst, data);
     flags = DB_GET_BOTH | test_init_lock(dbst);
     ret = bdb_test_error(dbst->dbp->get(dbst->dbp, txnid, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
@@ -1473,7 +1461,6 @@ bdb_del(obj, a)
 
     rb_secure(4);
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(DBT));
     test_recno(dbst, key, recno, a);
     ret = bdb_test_error(dbst->dbp->del(dbst->dbp, txnid, &key, 0));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
@@ -1494,9 +1481,8 @@ bdb_empty(obj)
     db_recno_t recno;
 
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
@@ -1528,9 +1514,8 @@ bdb_lgth_intern(obj, delete)
     db_recno_t recno;
 
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
     value = 0;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
@@ -1636,7 +1621,6 @@ bdb_treat(st, pkey, key, data)
 	free_key(dbst, *key);
 	res = rb_yield(bdb_test_load(dbst, *data));
 	if (st->replace == Qtrue) {
-	    memset(data, 0, sizeof(*data));
 	    test_dump(dbst, *data, res);
 	    set_partial(dbst, *data);
 	    bdb_test_error(dbcp->c_put(dbcp, key, data, DB_CURRENT));
@@ -1682,12 +1666,11 @@ bdb_i_each_kv(st)
     
     GetDB(st->db, dbst);
     dbcp = st->dbcp;
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
     set_partial(dbst, data);
-    memset(&pkey, 0, sizeof(pkey));
+    MEMZERO(&pkey, DBT, 1);
     pkey.flags = DB_DBT_MALLOC;
     if (!NIL_P(st->set)) {
 	test_recno(dbst, key, recno, st->set);
@@ -1742,12 +1725,11 @@ bdb_i_each_kv_bulk(st)
     
     GetDB(st->db, dbst);
     dbcp = st->dbcp;
-    memset(&key, 0, sizeof(key));
-    memset(&pkey, 0, sizeof(pkey));
-    memset(&rkey, 0, sizeof(rkey));
+    MEMZERO(&pkey, DBT, 1);
+    MEMZERO(&rkey, DBT, 1);
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
-    memset(&rdata, 0, sizeof(rdata));
+    MEMZERO(&data, DBT, 1);
+    MEMZERO(&rdata, DBT, 1);
     st->data = data.data = ALLOC_N(void, st->len);
     data.ulen = st->len;
     data.flags = DB_DBT_USERMEM;
@@ -2013,9 +1995,8 @@ bdb_to_type(obj, result, flag)
     db_recno_t recno;
 
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
@@ -2147,9 +2128,8 @@ bdb_kv(obj, type)
 
     ary = rb_ary_new();
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
@@ -2206,9 +2186,8 @@ bdb_internal_value(obj, a, b, sens)
     db_recno_t recno;
 
     init_txn(txnid, obj, dbst);
-    memset(&key, 0, sizeof(key));
     init_recno(dbst, key, recno);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags = DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
@@ -2623,10 +2602,9 @@ bdb_i_join(st)
     db_recno_t recno;
     bdb_DB *dbst;
 
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
     GetDB(st->db, dbst);
     init_recno(dbst, key, recno);
+    MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
     set_partial(dbst, data);
     do {
@@ -2757,14 +2735,13 @@ bdb_call_secondary(secst, pkey, pdata, skey)
 	    result = rb_protect(bdb_internal_second_call, (VALUE)tmp, &inter);
 	    if (inter) return BDB_ERROR_PRIVATE;
 	    if (result == Qfalse) return DB_DONOTINDEX;
-	    memset(skey, 0, sizeof(DBT));
+	    MEMZERO(skey, DBT, 1);
 	    if (result == Qtrue) {
 		skey->data = pkey->data;
 		skey->size = pkey->size;
 	    }
 	    else {
 		DBT stmp;
-		memset(&stmp, 0, sizeof(DBT));
 		test_dump(secondst, stmp, result);
 		skey->data = stmp.data;
 		skey->size = stmp.size;

@@ -6,6 +6,8 @@
 
   db >= 2 (some functionnality like join are not available with db < 2.6)
 
+  For Berkeley DB 1.85 and 1.86 see bdb1
+
 * Installation
  
    ruby extconf.rb

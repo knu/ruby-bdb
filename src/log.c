@@ -184,7 +184,7 @@ bdb_env_log_get(obj, a)
 
     GetEnvDB(obj, dbenvst);
     flag = NUM2INT(a);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
     lsn = MakeLsn(obj);
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
@@ -220,7 +220,7 @@ bdb_i_each_log_get(obj, flag)
     do {
 	lsn = MakeLsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
-	memset(&data, 0, sizeof(data));
+	MEMZERO(&data, DBT, 1);
 	data.flags |= DB_DBT_MALLOC;
 	if (!init) {
 	    flags = (flag == DB_NEXT)?DB_FIRST:DB_LAST;
@@ -367,7 +367,7 @@ bdb_lsn_log_get(obj)
     int ret;
 
     GetLsn(obj, lsnst, dbenvst);
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
 #if DB_VERSION_MAJOR < 3
     if (!dbenvst->dbenvp->lg_info) {

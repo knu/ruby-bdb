@@ -161,6 +161,7 @@ struct deleg_class {
 {									\
     int _bdb_is_nil = 0;						\
     VALUE _bdb_tmp_;							\
+    MEMZERO(&(key), DBT, 1);						\
     if (dbst->marshal) {						\
         _bdb_tmp_ = rb_funcall(dbst->marshal, id_dump, 1, a);		\
         if (TYPE(_bdb_tmp_) != T_STRING) {				\
@@ -180,6 +181,7 @@ struct deleg_class {
 
 #define test_recno(dbst, key, recno, a)		\
 {						\
+    MEMZERO(&(key), DBT, 1);			\
     if (RECNUM_TYPE(dbst)) {			\
         recno = NUM2INT(a) + dbst->array_base;	\
         key.data = &recno;			\
@@ -194,6 +196,7 @@ struct deleg_class {
 #define init_recno(dbst, key, recno)		\
 {						\
     recno = 1;					\
+    MEMZERO(&(key), DBT, 1);			\
     if (RECNUM_TYPE(dbst)) {			\
         key.data = &recno;			\
         key.size = sizeof(db_recno_t);		\
@@ -216,6 +219,7 @@ struct deleg_class {
 #define init_recno(dbst, key, recno)		\
 {						\
     recno = 1;					\
+    MEMZERO(&(key), DBT, 1);			\
     if (RECNUM_TYPE(dbst)) {			\
         key.data = &recno;			\
         key.size = sizeof(db_recno_t);		\

@@ -174,7 +174,7 @@ bdb_lockid_get(argc, argv, obj)
 	}
     }
     Check_SafeStr(a);
-    memset(&objet, 0, sizeof(objet));
+    MEMZERO(&objet, DBT, 1);
     objet.data = RSTRING(a)->ptr;
     objet.size = RSTRING(a)->len;
     lock_mode = NUM2INT(b);
@@ -194,7 +194,7 @@ bdb_lockid_get(argc, argv, obj)
     lockst->lock = lock;
 #else
     lockst->lock = ALLOC(DB_LOCK);
-    MEMCPY(lockst->lock, &lock, sizeof(lock), 1);
+    MEMCPY(lockst->lock, &lock, DB_LOCK, 1);
 #endif
     lockst->env = lockid->env;
     return res;
@@ -255,11 +255,11 @@ bdb_lockid_each(obj, listobj)
 	if (!rb_obj_is_kind_of(value, bdb_cLock)) {
 	    rb_raise(bdb_eFatal, "BDB::Lock expected");
 	}
-	GetLock(obj, lockst, dbenvst);
+	GetLock(value, lockst, dbenvst);
 #if DB_VERSION_MAJOR < 3
 	list->lock = lockst->lock;
 #else
-	MEMCPY(&list->lock, lockst->lock, sizeof(list->lock), 1);
+	MEMCPY(&list->lock, lockst->lock, DB_LOCK, 1);
 #endif
     }
     return Qnil;
@@ -324,7 +324,7 @@ bdb_lockid_vec(argc, argv, obj)
         else
             rb_raise(res, "%s", db_strerror(err));
     }			
-    res = rb_ary_new();
+    res = rb_ary_new2(RARRAY(a)->len);
     n = 0;
     for (i = 0; i < RARRAY(a)->len; i++) {
 	if (list[i].op == DB_LOCK_GET) {
@@ -333,17 +333,17 @@ bdb_lockid_vec(argc, argv, obj)
 	    lockst->lock = list[i].lock;
 #else
 	    lockst->lock = ALLOC(DB_LOCK);
-	    MEMCPY(lockst->lock, &list[i].lock, sizeof(DB_LOCK), 1);
+	    MEMCPY(lockst->lock, &list[i].lock, DB_LOCK, 1);
 #endif
 	    lockst->env = lockid->env;
 	    rb_ary_push(res, c);
 	    n++;
 	}
+	else {
+	    rb_ary_push(res, Qnil);
+	}
     }
-    if (!n)
-	return Qnil;
-    else
-	return res;
+    return res;
 }
 
 static VALUE

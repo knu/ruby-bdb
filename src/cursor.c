@@ -115,13 +115,13 @@ bdb_cursor_count(obj)
     bdb_test_error(dbcst->dbc->c_count(dbcst->dbc, &count, 0));
     return INT2NUM(count);
 #else
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&key, DBT, 1);
     key.flags |= DB_DBT_MALLOC;
+    MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
-    memset(&key_o, 0, sizeof(key_o));
-    memset(&data_o, 0, sizeof(data_o));
+    MEMZERO(&key_o, DBT, 1);
     key_o.flags |= DB_DBT_MALLOC;
+    MEMZERO(&data_o, DBT, 1);
     data_o.flags |= DB_DBT_MALLOC;
     set_partial(dbst, data);
     ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key_o, &data_o, DB_CURRENT));
@@ -163,10 +163,10 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
 
     cnt = rb_scan_args(argc, argv, "12", &a, &b, &c);
     flags = NUM2INT(a);
-    memset(&key, 0, sizeof(key));
-    memset(&pkey, 0, sizeof(pkey));
+    MEMZERO(&key, DBT, 1);
+    MEMZERO(&pkey, DBT, 1);
     pkey.flags |= DB_DBT_MALLOC;
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&data, DBT, 1);
     GetCursorDB(obj, dbcst, dbst);
     if (flags == DB_SET_RECNO) {
 	if (dbst->type != DB_BTREE || !(dbst->flags & DB_RECNUM)) {
@@ -343,8 +343,8 @@ bdb_cursor_put(argc, argv, obj)
     int ret;
 
     rb_secure(4);
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
+    MEMZERO(&key, DBT, 1);
+    MEMZERO(&data, DBT, 1);
     cnt = rb_scan_args(argc, argv, "21", &a, &b, &c);
     GetCursorDB(obj, dbcst, dbst);
     flags = NUM2INT(c);

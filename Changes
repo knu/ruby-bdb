@@ -113,3 +113,8 @@
 * added Cursor#pget
 * added some tests for secondary indexes
 * corrected constants
+
+-- 0.2.6
+
+* corrected lock_get (Thanks Darrin Thompson <dthompson@characterlink.net>)
+* lock_vec now return always an array with (lockid for GET, nil for PUT)
