@@ -248,3 +248,8 @@
   (Thanks Satoru Takabayashi <satoru@namazu.org>)
 
 * corrected #begin (flatten!) for 1.9
+
+--- 0.5.3
+
+* compile for 4.3
+* BDB::Sequence (not tested)

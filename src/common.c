@@ -939,7 +939,11 @@ bdb_is_recnum(dbp)
 
 #if BDB_VERSION >= 30100
 #if BDB_VERSION >= 30300
+#if BDB_VERSION >= 40300
+    bdb_test_error(dbp->stat(dbp, NULL, &bdb_stat, 0));
+#else
     bdb_test_error(dbp->stat(dbp, &bdb_stat, 0));
+#endif
 #else
     bdb_test_error(dbp->stat(dbp, &bdb_stat, 0, 0));
 #endif
@@ -962,10 +966,23 @@ bdb_recno_length(obj)
     bdb_DB *dbst;
     DB_BTREE_STAT *bdb_stat;
     VALUE hash;
+#if BDB_VERSION >= 40300
+    DB_TXN *txnid = NULL;
+#endif
 
     GetDB(obj, dbst);
 #if BDB_VERSION >= 40000
+#if BDB_VERSION >= 40300
+    if (RTEST(dbst->txn)) {
+        bdb_TXN *txnst;
+
+        GetTxnDB(dbst->txn, txnst);
+        txnid = txnst->txnid;
+    }
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, txnid, &bdb_stat, DB_FAST_STAT));
+#else
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, DB_FAST_STAT));
+#endif
 #else
 #if BDB_VERSION >= 30300
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, DB_RECORDCOUNT));
@@ -1695,8 +1712,8 @@ bdb_aset(obj, a, b)
     return b;
 }
 
-static VALUE
-test_load_key(obj, key)
+VALUE
+bdb_test_load_key(obj, key)
     VALUE obj;
     DBT *key;
 {
@@ -1712,7 +1729,7 @@ bdb_assoc(obj, key, data)
     VALUE obj;
     DBT *key, *data;
 {
-    return rb_assoc_new(test_load_key(obj, key), 
+    return rb_assoc_new(bdb_test_load_key(obj, key), 
 			bdb_test_load(obj, data, FILTER_VALUE));
 }
 
@@ -1722,7 +1739,7 @@ bdb_assoc_dyna(obj, key, data)
     DBT *key, *data;
 {
     VALUE v = test_load_dyna1(obj, key, data);
-    return rb_assoc_new(test_load_key(obj, key), v);
+    return rb_assoc_new(bdb_test_load_key(obj, key), v);
 }
 
 static VALUE
@@ -1731,7 +1748,7 @@ bdb_assoc2(obj, skey, pkey, data)
     DBT *skey, *pkey, *data;
 {
     return rb_assoc_new(
-	rb_assoc_new(test_load_key(obj, skey), test_load_key(obj, pkey)),
+	rb_assoc_new(bdb_test_load_key(obj, skey), bdb_test_load_key(obj, pkey)),
 	bdb_test_load(obj, data, FILTER_VALUE));
 }
 
@@ -1740,8 +1757,8 @@ bdb_assoc3(obj, skey, pkey, data)
     VALUE obj;
     DBT *skey, *pkey, *data;
 {
-    return rb_ary_new3(3, test_load_key(obj, skey), 
-		       test_load_key(obj, pkey),
+    return rb_ary_new3(3, bdb_test_load_key(obj, skey), 
+		       bdb_test_load_key(obj, pkey),
 		       bdb_test_load(obj, data, FILTER_VALUE));
 }
 
@@ -2315,7 +2332,7 @@ bdb_treat(st, pkey, key, data)
 	if (data->flags & DB_DBT_MALLOC) {
 	    free(data->data);
 	}
-	rb_yield(test_load_key(st->db, key));
+	rb_yield(bdb_test_load_key(st->db, key));
 	break;
 
     case BDB_ST_VALUE:
@@ -2803,12 +2820,12 @@ bdb_to_type(obj, result, flag)
 	    break;
 	case T_HASH:
 	    if (flag == Qtrue) {
-		rb_hash_aset(result, test_load_key(obj, &key), 
+		rb_hash_aset(result, bdb_test_load_key(obj, &key), 
 			     bdb_test_load(obj, &data, FILTER_VALUE));
 	    }
 	    else {
 		rb_hash_aset(result, bdb_test_load(obj, &data, FILTER_VALUE), 
-			     test_load_key(obj, &key));
+			     bdb_test_load_key(obj, &key));
 	    }
 	}
 
@@ -2971,7 +2988,7 @@ bdb_kv(obj, type)
 	    break;
 	case BDB_ST_KEY:
 	    free(data.data);
-	    rb_ary_push(ary, test_load_key(obj, &key));
+	    rb_ary_push(ary, bdb_test_load_key(obj, &key));
 	    break;
 	}
     } while (1);
@@ -3033,7 +3050,7 @@ bdb_internal_value(obj, a, b, sens)
 		FREE_KEY(dbst, key);
 	    }
 	    else {
-		d = test_load_key(obj, &key);
+		d = bdb_test_load_key(obj, &key);
 	    }
 	    return  d;
 	}
@@ -3132,6 +3149,9 @@ bdb_hash_stat(argc, argv, obj)
     DB_HASH_STAT *bdb_stat;
     VALUE hash, flagv;
     int flags = 0;
+#if BDB_VERSION >= 4030
+    DB_TXN *txnid = NULL;
+#endif
 
     if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
 	flags = NUM2INT(flagv);
@@ -3140,7 +3160,17 @@ bdb_hash_stat(argc, argv, obj)
 #if BDB_VERSION < 30300
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, flags));
 #else
+#if BDB_VERSION >= 40300
+    if (RTEST(dbst->txn)) {
+        bdb_TXN *txnst;
+
+        GetTxnDB(dbst->txn, txnst);
+        txnid = txnst->txnid;
+    }
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, txnid, &bdb_stat, flags));
+#else
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, flags));
+#endif
 #endif
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("hash_magic"), INT2NUM(bdb_stat->hash_magic));
@@ -3181,13 +3211,26 @@ bdb_tree_stat(argc, argv, obj)
     VALUE hash, flagv;
     char pad;
     int flags = 0;
+#if BDB_VERSION >= 40300
+    DB_TXN *txnid = NULL;
+#endif
 
     if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
 	flags = NUM2INT(flagv);
     }
     GetDB(obj, dbst);
 #if BDB_VERSION >= 30300
+#if BDB_VERSION >= 40300
+    if (RTEST(dbst->txn)) {
+        bdb_TXN *txnst;
+
+        GetTxnDB(dbst->txn, txnst);
+        txnid = txnst->txnid;
+    }
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, txnid, &bdb_stat, flags));
+#else
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, flags));
+#endif
 #else
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, flags));
 #endif
@@ -3231,6 +3274,9 @@ bdb_queue_stat(argc, argv, obj)
     VALUE hash, flagv;
     char pad;
     int flags = 0;
+#if BDB_VERSION >= 40300
+    DB_TXN *txnid = NULL;
+#endif
 
     if (rb_scan_args(argc, argv, "01", &flagv) == 1) {
 	flags = NUM2INT(flagv);
@@ -3239,7 +3285,17 @@ bdb_queue_stat(argc, argv, obj)
 #if BDB_VERSION < 30300
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, flags));
 #else
+#if BDB_VERSION >= 40300
+    if (RTEST(dbst->txn)) {
+        bdb_TXN *txnst;
+
+        GetTxnDB(dbst->txn, txnst);
+        txnid = txnst->txnid;
+    }
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, txnid, &bdb_stat, flags));
+#else
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, flags));
+#endif
 #endif
     hash = rb_hash_new();
     rb_hash_aset(hash, rb_tainted_str_new2("qs_magic"), INT2NUM(bdb_stat->qs_magic));
@@ -3274,12 +3330,25 @@ bdb_queue_padlen(obj)
     DB_QUEUE_STAT *bdb_stat;
     VALUE hash;
     char pad;
+#if BDB_VERSION >= 40300
+    DB_TXN *txnid = NULL;
+#endif
 
     GetDB(obj, dbst);
 #if BDB_VERSION < 30300
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0, 0));
 #else
+#if BDB_VERSION >= 40300
+    if (RTEST(dbst->txn)) {
+        bdb_TXN *txnst;
+
+        GetTxnDB(dbst->txn, txnst);
+        txnid = txnst->txnid;
+    }
+    bdb_test_error(dbst->dbp->stat(dbst->dbp, txnid, &bdb_stat, 0));
+#else
     bdb_test_error(dbst->dbp->stat(dbst->dbp, &bdb_stat, 0));
+#endif
 #endif
     pad = (char)bdb_stat->qs_re_pad;
     hash = rb_assoc_new(rb_tainted_str_new(&pad, 1), INT2NUM(bdb_stat->qs_re_len));
@@ -3600,7 +3669,7 @@ bdb_call_secondary(secst, pkey, pdata, skey)
 
 	    tmp[0] = RARRAY(ary)->ptr[1];
 	    tmp[1] = second;
-	    tmp[2] = test_load_key(obj, pkey);
+	    tmp[2] = bdb_test_load_key(obj, pkey);
 	    tmp[3] = bdb_test_load(obj, pdata, FILTER_VALUE);
 	    inter = 0;
 	    result = rb_protect(bdb_internal_second_call, (VALUE)tmp, &inter);

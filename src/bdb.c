@@ -451,7 +451,9 @@ Init_bdb()
 #else
     rb_define_const(bdb_mDb, "TXN_NOWAIT", INT2FIX(DB_TXN_NOWAIT));
     rb_define_const(bdb_mDb, "TXN_SYNC", INT2FIX(DB_TXN_SYNC));
+#if BDB_VERSION < 40300
     rb_define_const(bdb_mDb, "VERB_CHKPOINT", INT2FIX(DB_VERB_CHKPOINT));
+#endif
     rb_define_const(bdb_mDb, "VERB_DEADLOCK", INT2FIX(DB_VERB_DEADLOCK));
     rb_define_const(bdb_mDb, "VERB_RECOVERY", INT2FIX(DB_VERB_RECOVERY));
     rb_define_const(bdb_mDb, "VERB_WAITSFOR", INT2FIX(DB_VERB_WAITSFOR));
@@ -480,11 +482,13 @@ Init_bdb()
     rb_define_const(bdb_mDb, "REP_CLIENT", INT2FIX(DB_REP_CLIENT));
     rb_define_const(bdb_mDb, "REP_DUPMASTER", INT2FIX(DB_REP_DUPMASTER));
     rb_define_const(bdb_mDb, "REP_HOLDELECTION", INT2FIX(DB_REP_HOLDELECTION));
-    rb_define_const(bdb_mDb, "REP_LOGSONLY", INT2FIX(DB_REP_LOGSONLY));
     rb_define_const(bdb_mDb, "REP_MASTER", INT2FIX(DB_REP_MASTER));
     rb_define_const(bdb_mDb, "REP_NEWMASTER", INT2FIX(DB_REP_NEWMASTER));
     rb_define_const(bdb_mDb, "REP_NEWSITE", INT2FIX(DB_REP_NEWSITE));
+#if BDB_VERSION < 40300
+    rb_define_const(bdb_mDb, "REP_LOGSONLY", INT2FIX(DB_REP_LOGSONLY));
     rb_define_const(bdb_mDb, "REP_OUTDATED", INT2FIX(DB_REP_OUTDATED));
+#endif
     rb_define_const(bdb_mDb, "REP_PERMANENT", INT2FIX(DB_REP_PERMANENT));
     rb_define_const(bdb_mDb, "REP_UNAVAIL", INT2FIX(DB_REP_UNAVAIL));
     rb_define_const(bdb_mDb, "EID_BROADCAST", INT2FIX(DB_EID_BROADCAST));
@@ -539,6 +543,7 @@ Init_bdb()
     bdb_init_lock();
     bdb_init_log();
     bdb_init_delegator();
+    bdb_init_sequence();
 
     bdb_errstr = rb_tainted_str_new(0, 0);
     rb_global_variable(&bdb_errstr);

@@ -7,7 +7,7 @@
 <title>docs/transaction.rd</title>
 </head>
 <body>
-<h2><a name="label:0" id="label:0">BDB::Txn</a></h2><!-- RDLabel: "BDB::Txn" -->
+<h2><a name="label-0" id="label-0">BDB::Txn</a></h2><!-- RDLabel: "BDB::Txn" -->
 <p>The transaction subsystem makes operations atomic, consistent,
 isolated, and durable in the face of system and application
 failures. The subsystem requires that the data be properly logged and
@@ -23,44 +23,36 @@ logging, but does not enable locking, as a single thread of control
 that needed atomicity and recoverability would not require it.</p>
 <p>The following option can be given when the environnement is created</p>
 <dl>
-<dt><a name="label:1" id="label:1"><var>"set_tx_max"</var>
-</a></dt><!-- RDLabel: ""set_tx_max"
-" -->
+<dt><a name="label-1" id="label-1"><var>"set_tx_max"</var></a></dt><!-- RDLabel: ""set_tx_max"" -->
 <dd>
-<p>Set maximum number of transactions</p>
+Set maximum number of transactions
 </dd>
 </dl>
 <p>and with DB &gt;= 4.0</p>
 <dl>
-<dt><a name="label:2" id="label:2"><var>"set_timeout"</var>
-</a></dt><!-- RDLabel: ""set_timeout"
-" -->
-<dt><a name="label:3" id="label:3"><var>"set_txn_timeout"</var>
-</a></dt><!-- RDLabel: ""set_txn_timeout"
-" -->
-<dt><a name="label:4" id="label:4"><var>"set_lock_timeout"</var>
-</a></dt><!-- RDLabel: ""set_lock_timeout"
-" -->
+<dt><a name="label-2" id="label-2"><var>"set_timeout"</var></a></dt><!-- RDLabel: ""set_timeout"" -->
+<dt><a name="label-3" id="label-3"><var>"set_txn_timeout"</var></a></dt><!-- RDLabel: ""set_txn_timeout"" -->
+<dt><a name="label-4" id="label-4"><var>"set_lock_timeout"</var></a></dt><!-- RDLabel: ""set_lock_timeout"" -->
 </dl>
 <p>The transaction is created with <a href="env.html#begin">BDB::Env#begin</a>
-or with <a href="#label:11">begin</a> </p>
+or with <a href="#label-11">begin</a> </p>
 <p>See also <a href="env.html#txn_stat">BDB::Env#txn_stat</a> and
 <a href="env.html#txn_checkpoint">BDB::Env#txn_checkpoint</a></p>
-<h3><a name="label:5" id="label:5">Methods</a></h3><!-- RDLabel: "Methods" -->
+<h3><a name="label-5" id="label-5">Methods</a></h3><!-- RDLabel: "Methods" -->
 <dl>
-<dt><a name="label:6" id="label:6"><code>abort()</code></a><!-- RDLabel: "abort" -->
-<dt><a name="label:7" id="label:7"><code>txn_abort()</code></a></dt><!-- RDLabel: "txn_abort" -->
+<dt><a name="label-6" id="label-6"><code>abort()</code></a></dt><!-- RDLabel: "abort" -->
+<dt><a name="label-7" id="label-7"><code>txn_abort()</code></a></dt><!-- RDLabel: "txn_abort" -->
 <dd>
-<p>Abort the transaction. This is will terminate the transaction.</p></dd>
-<dt><a name="label:8" id="label:8"><code>assoc(<var>db</var>, ...)</code></a><!-- RDLabel: "assoc" -->
-<dt><a name="label:9" id="label:9"><code>associate(<var>db</var>, ...)</code></a><!-- RDLabel: "associate" -->
-<dt><a name="label:10" id="label:10"><code>txn_assoc(<var>db</var>, ...)</code></a></dt><!-- RDLabel: "txn_assoc" -->
+Abort the transaction. This is will terminate the transaction.</dd>
+<dt><a name="label-8" id="label-8"><code>assoc(<var>db</var>, ...)</code></a></dt><!-- RDLabel: "assoc" -->
+<dt><a name="label-9" id="label-9"><code>associate(<var>db</var>, ...)</code></a></dt><!-- RDLabel: "associate" -->
+<dt><a name="label-10" id="label-10"><code>txn_assoc(<var>db</var>, ...)</code></a></dt><!-- RDLabel: "txn_assoc" -->
 <dd>
-<p>Associate a database with the transaction, return a new database
-handle which is transaction protected.</p></dd>
-<dt><a name="label:11" id="label:11"><code>begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...) { |<var>txn</var>, <var>db</var>, ...| ...}</code></a><!-- RDLabel: "begin" -->
-<dt><a name="label:12" id="label:12"><code>begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...)</code></a><!-- RDLabel: "begin" -->
-<dt><a name="label:13" id="label:13"><code>txn_begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...)</code></a></dt><!-- RDLabel: "txn_begin" -->
+Associate a database with the transaction, return a new database
+handle which is transaction protected.</dd>
+<dt><a name="label-11" id="label-11"><code>begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...) { |<var>txn</var>, <var>db</var>, ...| ...}</code></a></dt><!-- RDLabel: "begin" -->
+<dt><a name="label-12" id="label-12"><code>begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...)</code></a></dt><!-- RDLabel: "begin" -->
+<dt><a name="label-13" id="label-13"><code>txn_begin(<var>flags</var> = <var>0</var>, <var>db</var>, ...)</code></a></dt><!-- RDLabel: "txn_begin" -->
 <dd>
 <p>begin a transaction (the transaction manager must be enabled). flags
 can have the value <var>DBD::TXN_COMMIT</var>, in this case the transaction
@@ -81,10 +73,10 @@ env.begin do |txn|
 end</pre>
 <p>An optional hash can be given with the possible keys <var>"flags"</var>,
 <var>"set_timeout"</var>, <var>"set_txn_timeout"</var>, <var>"set_lock_timeout"</var></p></dd>
-<dt><a name="label:14" id="label:14"><code>commit(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "commit" -->
-<dt><a name="label:15" id="label:15"><code>close(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "close" -->
-<dt><a name="label:16" id="label:16"><code>txn_commit(<var>flags</var> = <var>0</var>)</code></a><!-- RDLabel: "txn_commit" -->
-<dt><a name="label:17" id="label:17"><code>txn_close(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "txn_close" -->
+<dt><a name="label-14" id="label-14"><code>commit(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "commit" -->
+<dt><a name="label-15" id="label-15"><code>close(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "close" -->
+<dt><a name="label-16" id="label-16"><code>txn_commit(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "txn_commit" -->
+<dt><a name="label-17" id="label-17"><code>txn_close(<var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "txn_close" -->
 <dd>
 <p>Commit the transaction. This will finish the transaction.
 The <var>flags</var> can have the value </p>
@@ -98,13 +90,13 @@ integrity will be maintained but it is possible that this
 transaction may be undone during recovery instead of being redone.</p>
 <p>This behavior may be set for an entire Berkeley DB environment as
 part of the open interface.</p></dd>
-<dt><a name="label:18" id="label:18"><code>discard</code></a><!-- RDLabel: "discard" -->
-<dt><a name="label:19" id="label:19"><code>txn_discard</code></a></dt><!-- RDLabel: "txn_discard" -->
+<dt><a name="label-18" id="label-18"><code>discard</code></a></dt><!-- RDLabel: "discard" -->
+<dt><a name="label-19" id="label-19"><code>txn_discard</code></a></dt><!-- RDLabel: "txn_discard" -->
 <dd>
 <p>only with BDB::VERSION_MAJOR == 3 &amp;&amp; BDB::VERSION_MINOR &gt;= 3</p>
 <p>Discard a prepared but not resolved transaction handle, must be called
 only within BDB::Env#recover</p></dd>
-<dt><a name="label:20" id="label:20"><code>dbremove(<var>file</var>, <var>database</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "dbremove" -->
+<dt><a name="label-20" id="label-20"><code>dbremove(<var>file</var>, <var>database</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "dbremove" -->
 <dd>
 <p>only with BDB::VERSION_MAJOR == 4 &amp;&amp; BDB::VERSION_MINOR &gt;= 1</p>
 <p>remove the database specified by <var>file</var> and <var>database</var>. If no
@@ -112,7 +104,7 @@ only within BDB::Env#recover</p></dd>
 <var>file</var> is removed, incidentally removing all databases
 that it contained. </p>
 <p>The <var>flags</var> value must be set to 0 or <var>BDB::AUTO_COMMIT</var></p></dd>
-<dt><a name="label:21" id="label:21"><code>dbrename(<var>file</var>, <var>database</var>, <var>newname</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "dbrename" -->
+<dt><a name="label-21" id="label-21"><code>dbrename(<var>file</var>, <var>database</var>, <var>newname</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "dbrename" -->
 <dd>
 <p>only with BDB::VERSION_MAJOR == 4 &amp;&amp; BDB::VERSION_MINOR &gt;= 1</p>
 <p>rename the database specified by <var>file</var> and <var>database</var> to
@@ -120,24 +112,24 @@ that it contained. </p>
 represented by <var>file</var> is renamed, incidentally renaming all databases
 that it contained. </p>
 <p>The <var>flags</var> value must be set to 0 or <var>BDB::AUTO_COMMIT</var></p></dd>
-<dt><a name="label:22" id="label:22"><code>id()</code></a><!-- RDLabel: "id" -->
-<dt><a name="label:23" id="label:23"><code>txn_id()</code></a></dt><!-- RDLabel: "txn_id" -->
+<dt><a name="label-22" id="label-22"><code>id()</code></a></dt><!-- RDLabel: "id" -->
+<dt><a name="label-23" id="label-23"><code>txn_id()</code></a></dt><!-- RDLabel: "txn_id" -->
 <dd>
-<p>The txn_id function returns the unique transaction id associated
+The txn_id function returns the unique transaction id associated
 with the specified transaction. Locking calls made on behalf of
 this transaction should use the value returned from txn_id as the
-locker parameter to the lock_get or lock_vec calls.</p></dd>
-<dt><a name="label:24" id="label:24"><code>open_db(<var>type</var>, <var>name</var> = <var>nil</var>, <var>subname</var> = <var>nil</var>, <var>flags</var> = <var>0</var>, <var>mode</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "open_db" -->
+locker parameter to the lock_get or lock_vec calls.</dd>
+<dt><a name="label-24" id="label-24"><code>open_db(<var>type</var>, <var>name</var> = <var>nil</var>, <var>subname</var> = <var>nil</var>, <var>flags</var> = <var>0</var>, <var>mode</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "open_db" -->
 <dd>
 <p>Only with DB &gt;= 4.1</p>
 <p>open the database in the current transaction. type must be one of
 the constant <var>BDB::BTREE</var>, <var>BDB::HASH</var>, <var>BDB::RECNO</var>, 
 <var>BDB::QUEUE</var>. See <a href="access.html#open">open</a> for other
 arguments</p></dd>
-<dt><a name="label:25" id="label:25"><code>prepare()</code></a><!-- RDLabel: "prepare" -->
-<dt><a name="label:26" id="label:26"><code>txn_prepare()</code></a><!-- RDLabel: "txn_prepare" -->
-<dt><a name="label:27" id="label:27"><code>prepare(<var>id</var>)        # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a><!-- RDLabel: "prepare" -->
-<dt><a name="label:28" id="label:28"><code>txn_prepare(<var>id</var>)    # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a></dt><!-- RDLabel: "txn_prepare" -->
+<dt><a name="label-25" id="label-25"><code>prepare()</code></a></dt><!-- RDLabel: "prepare" -->
+<dt><a name="label-26" id="label-26"><code>txn_prepare()</code></a></dt><!-- RDLabel: "txn_prepare" -->
+<dt><a name="label-27" id="label-27"><code>prepare(<var>id</var>)        # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a></dt><!-- RDLabel: "prepare" -->
+<dt><a name="label-28" id="label-28"><code>txn_prepare(<var>id</var>)    # <var>version</var> <var>3</var>.<var>3</var>.<var>11</var></code></a></dt><!-- RDLabel: "txn_prepare" -->
 <dd>
 <p>The txn_prepare function initiates the beginning of a two-phase commit.</p>
 <p>In a distributed transaction environment, Berkeley DB can be used

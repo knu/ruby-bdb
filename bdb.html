@@ -7,15 +7,15 @@
 <title>bdb.rd</title>
 </head>
 <body>
-<h1><a name="label:0" id="label:0">BDB</a></h1><!-- RDLabel: "BDB" -->
+<h1><a name="label-0" id="label-0">BDB</a></h1><!-- RDLabel: "BDB" -->
 <p><a href="ftp://moulon.inra.fr/pub/ruby/">Download</a></p>
 <p>Berkeley DB is an embedded database system that supports keyed access
 to data.</p>
 <p>Developers may choose to store data in any of several different
 storage structures to satisfy the requirements of a particular
 application. In database terminology, these storage structures and the
-code that operates on them are called access methods.</p>
-<p>The library includes support for the following access methods:</p>
+code that operates on them are called access methods.
+The library includes support for the following access methods:</p>
 <ul>
 <li>B+tree: Stores keys in sorted order, using a default function that does
      lexicographical ordering of keys.</li>
@@ -33,8 +33,8 @@ code that operates on them are called access methods.</p>
 <p><a href="docs/env.html">Berkeley DB environnement</a></p>
 <p>Berkeley DB environment is an encapsulation of one or more databases,
 log files and shared information about the database environment such
-as shared memory buffer cache pages.</p>
-<p>Acces Methods</p>
+as shared memory buffer cache pages.
+Acces Methods</p>
 <ul>
 <li><a href="docs/hashlike.html">Hash like interface</a>
       these are the common methods for BDB::Btree,
@@ -42,6 +42,9 @@ as shared memory buffer cache pages.</p>
 <li><a href="docs/arraylike.html">Array like interface</a>
       methods for BDB::Recnum</li>
 </ul>
+<p><a href="docs/sequence.html">Sequence</a>
+A sequence is created with BDB::Common::create_sequence or
+BDB::Common::open_sequence (only with db &gt;= 4.3)</p>
 <p><a href="docs/transaction.html">Transaction Manager</a></p>
 <p>The transaction subsystem makes operations atomic, consistent,
 isolated, and durable in the face of system and application
@@ -55,8 +58,8 @@ and locked appropriately.</p>
 allows traversal of the database and access to duplicate keyed
 entries.  Cursors are used for operating on collections of records,
 for iterating over a database, and for saving handles to individual
-records, so that they can be modified after they have been read.</p>
-<p>See also iterators in <a href="docs/hashlike.html#each">Acces Methods</a></p>
+records, so that they can be modified after they have been read.
+See also iterators in <a href="docs/hashlike.html#each">Acces Methods</a></p>
 <p><a href="docs/lock.html">Lock system</a></p>
 <p>The lock subsystem provides interprocess and intraprocess concurrency
 control mechanisms. While the locking system is used extensively by

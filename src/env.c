@@ -56,15 +56,27 @@ bdb_env_rep_transport(env, control, rec, envid, flags)
 }
 
 static VALUE
-bdb_env_rep_elect(env, nb, pri, ti)
-    VALUE env, nb, pri, ti;
+bdb_env_rep_elect(argc, argv, env)
+    int argc;
+    VALUE *argv;
+    VALUE env;
 {
+    VALUE nb, pri, ti, nvo;
     bdb_ENV *envst;
-    int envid = 0;
+    int envid = 0, nvotes = 0;
 
     GetEnvDB(env, envst);
+    if (rb_scan_args(argc, argv, "31", &nb, &pri, &ti, &nvo) == 4) {
+        nvotes = NUM2INT(nvo);
+    }
+    
+#if BDB_VERSION >= 40300
+    bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb), nvotes,
+					  NUM2INT(pri), NUM2INT(ti), &envid, 0));
+#else
     bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb),
 					  NUM2INT(pri), NUM2INT(ti), &envid));
+#endif
     return INT2NUM(envid);
 }
 
@@ -300,9 +312,11 @@ bdb_env_i_options(obj, db_stobj)
         envp->db_verbose = NUM2INT(value);
     }
 #else
+#if BDB_VERSION < 40300
     else if (strcmp(options, "set_verb_chkpoint") == 0) {
         bdb_test_error(envp->set_verbose(envp, DB_VERB_CHKPOINT, NUM2INT(value)));
     }
+#endif
     else if (strcmp(options, "set_verb_deadlock") == 0) {
         bdb_test_error(envp->set_verbose(envp, DB_VERB_DEADLOCK, NUM2INT(value)));
     }
@@ -740,6 +754,19 @@ bdb_env_open_db(argc, argv, obj)
     return rb_funcall2(cl, rb_intern("new"), argc, argv);
 }
 
+#if BDB_VERSION >= 40300
+void
+bdb_env_errcall(env, errpfx, msg)
+    const DB_ENV *env;
+    const char *errpfx;
+    const char *msg;
+{
+    bdb_errcall = 1;
+    bdb_errstr = rb_tainted_str_new2(msg);
+}
+
+#else
+
 void
 bdb_env_errcall(errpfx, msg)
     const char *errpfx;
@@ -748,6 +775,8 @@ bdb_env_errcall(errpfx, msg)
     bdb_errcall = 1;
     bdb_errstr = rb_tainted_str_new2(msg);
 }
+
+#endif
 
 VALUE
 bdb_return_err()
@@ -1462,8 +1491,8 @@ void bdb_init_env()
     rb_define_method(bdb_cEnv, "set_flags", bdb_env_set_flags, -1);
     rb_define_method(bdb_cEnv, "home", bdb_env_home, 0);
 #if BDB_VERSION >= 40000
-    rb_define_method(bdb_cEnv, "rep_elect", bdb_env_rep_elect, 3);
-    rb_define_method(bdb_cEnv, "elect", bdb_env_rep_elect, 3);
+    rb_define_method(bdb_cEnv, "rep_elect", bdb_env_rep_elect, -1);
+    rb_define_method(bdb_cEnv, "elect", bdb_env_rep_elect, -1);
     rb_define_method(bdb_cEnv, "rep_process_message", bdb_env_rep_process_message, 3);
     rb_define_method(bdb_cEnv, "process_message", bdb_env_rep_process_message, 3);
     rb_define_method(bdb_cEnv, "rep_start", bdb_env_rep_start, 2);

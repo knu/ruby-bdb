@@ -176,6 +176,34 @@ class BDB::Common
    def  cache_priority=value
    end
    
+   #create a new sequence (see also <em>open_sequence</em>)
+   #
+   #equivalent to 
+   #<em>open_sequence(key, BDB::CREATE|BDB::EXCL, init, options)</em>
+   #
+   #return (or yield) an object BDB::Sequence
+   def create_sequence(key, init = nil, options = {})
+      yield sequence
+   end
+
+   #create or open a sequence (see BDB::Sequence)
+   #
+   #<em>key</em> : key for the sequence
+   #
+   #<em>flags</em> : flags can have BDB::CREATE, BDB::EXCL, BDB::AUTO_COMMIT,
+   #BDB::THREAD
+   #
+   #<em>init</em> : initial value for the sequence
+   #
+   #<em>options</em> : hash with the possible keys "set_cachesize",
+   #"set_flags" and "set_range"
+   #
+   #return (or yield) an object BDB::Sequence
+   def open_sequence(key, flags = 0, init = nil, options = {})
+      yield sequence
+   end
+   
+   #   
    #monitor the progress of some operations
    #
    def  feedback=(proc)

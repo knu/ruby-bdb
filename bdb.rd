@@ -56,6 +56,15 @@ Acces Methods
     * ((<Array like interface|URL:docs/arraylike.html>))
       methods for BDB::Recnum
 
+
+((<Sequence|URL:docs/sequence.html>))
+#^
+A sequence is created with BDB::Common::create_sequence or
+BDB::Common::open_sequence (only with db >= 4.3)
+#^
+# class Sequence
+# end
+
 ((<Transaction Manager|URL:docs/transaction.html>))
 
 #^
@@ -95,6 +104,7 @@ set of designated resources.
 #^
 # class Lock
 # end
+
 ((<Logging subsystem|URL:docs/log.html>))
 
 #^

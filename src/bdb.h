@@ -189,6 +189,23 @@ typedef struct {
 #endif
 } bdb_DB;
 
+#if BDB_VERSION >= 40300
+
+typedef struct {
+    DB_SEQUENCE *seqp;
+    VALUE db, txn, orig;
+    DB_TXN *txnid;
+} bdb_SEQ;
+
+#define GetSEQ(obj_,seq_) do {                          \
+    Data_Get_Struct(obj_, bdb_SEQ, seq_);               \
+    if (seq_->seqp == 0) {                              \
+        rb_raise(bdb_eFatal, "closed sequence");        \
+    }                                                   \
+} while (0)
+
+#endif
+
 typedef struct {
     DBC *dbc;
     VALUE db;
@@ -416,6 +433,7 @@ extern VALUE bdb_local_aref _(());
 extern VALUE bdb_test_recno _((VALUE, DBT *, db_recno_t *, VALUE));
 extern VALUE bdb_test_dump _((VALUE, DBT *, VALUE, int));
 extern VALUE bdb_test_ret _((VALUE, VALUE, VALUE, int));
+extern VALUE bdb_test_load_key _((VALUE, DBT *));
 extern VALUE bdb_assoc _((VALUE, DBT *, DBT *));
 extern VALUE bdb_assoc3 _((VALUE, DBT *, DBT *, DBT *));
 extern VALUE bdb_assoc_dyna _((VALUE, DBT *, DBT *));
@@ -427,7 +445,11 @@ extern VALUE bdb_each_key _((int, VALUE *, VALUE));
 extern VALUE bdb_each_value _((int, VALUE *, VALUE));
 extern VALUE bdb_each_valuec _((int, VALUE *, VALUE, int, VALUE));
 extern VALUE bdb_each_kvc _((int, VALUE *, VALUE, int, VALUE, int));
+#if BDB_VERSION >= 40300
+extern void bdb_env_errcall _((const DB_ENV *, const char *, const char *));
+#else
 extern void bdb_env_errcall _((const char *, char *));
+#endif
 extern VALUE bdb_protect_close _((VALUE));
 extern VALUE bdb_env_open_db _((int, VALUE *, VALUE));
 extern VALUE bdb_get _((int, VALUE *, VALUE));
@@ -448,6 +470,9 @@ extern void bdb_init_cursor _((void));
 extern void bdb_init_lock _((void));
 extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
+#if BDB_VERSION >= 40300
+extern void bdb_init_sequence _((void));
+#endif
 extern void bdb_clean_env _((VALUE, VALUE));
 extern VALUE bdb_makelsn _((VALUE));
 extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
