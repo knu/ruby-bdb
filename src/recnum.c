@@ -533,28 +533,31 @@ bdb_sary_reverse_bang(obj)
 }
 
 static VALUE
-bdb_sary_collect_bang(obj)
-    VALUE obj;
+bdb_sary_collect_bang(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
-    return bdb_each_valuec(obj, DB_NEXT, Qtrue);
+    return bdb_each_valuec(argc, argv, obj, DB_NEXT, Qtrue);
 }
 
 static VALUE
-bdb_sary_collect(obj)
-    VALUE obj;
+bdb_sary_collect(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
     if (!rb_block_given_p()) {
 	return bdb_sary_to_a(obj);
     }
-    return bdb_each_valuec(obj, DB_NEXT, rb_ary_new());
+    return bdb_each_valuec(argc, argv, obj, DB_NEXT, rb_ary_new());
 }
 
 static VALUE
-bdb_sary_filter(obj)
-    VALUE obj;
+bdb_sary_filter(argc, argv, obj)
+    int argc;
+    VALUE obj, *argv;
 {
     rb_warn("BDB::Recnum#filter is deprecated; use BDB::Recnum#collect!");
-    return bdb_sary_collect_bang(obj);
+    return bdb_sary_collect_bang(argc, argv, obj);
 }
 
 static VALUE
@@ -878,9 +881,9 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecnum, "pop", bdb_sary_pop, 0);
     rb_define_method(bdb_cRecnum, "shift", bdb_sary_shift, 0);
     rb_define_method(bdb_cRecnum, "unshift", bdb_sary_unshift_m, -1);
-    rb_define_method(bdb_cRecnum, "each", bdb_each_value, 0);
-    rb_define_method(bdb_cRecnum, "each_index", bdb_each_key, 0);
-    rb_define_method(bdb_cRecnum, "reverse_each", bdb_each_eulav, 0);
+    rb_define_method(bdb_cRecnum, "each", bdb_each_value, -1);
+    rb_define_method(bdb_cRecnum, "each_index", bdb_each_key, -1);
+    rb_define_method(bdb_cRecnum, "reverse_each", bdb_each_eulav, -1);
     rb_define_method(bdb_cRecnum, "length", bdb_sary_length, 0);
     rb_define_alias(bdb_cRecnum,  "size", "length");
     rb_define_method(bdb_cRecnum, "empty?", bdb_sary_empty_p, 0);
@@ -890,10 +893,10 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecnum, "indices", bdb_sary_indexes, -1);
     rb_define_method(bdb_cRecnum, "reverse", bdb_sary_reverse_m, 0);
     rb_define_method(bdb_cRecnum, "reverse!", bdb_sary_reverse_bang, 0);
-    rb_define_method(bdb_cRecnum, "collect", bdb_sary_collect, 0);
-    rb_define_method(bdb_cRecnum, "collect!", bdb_sary_collect_bang, 0);
-    rb_define_method(bdb_cRecnum, "map!", bdb_sary_collect_bang, 0);
-    rb_define_method(bdb_cRecnum, "filter", bdb_sary_filter, 0);
+    rb_define_method(bdb_cRecnum, "collect", bdb_sary_collect, -1);
+    rb_define_method(bdb_cRecnum, "collect!", bdb_sary_collect_bang, -1);
+    rb_define_method(bdb_cRecnum, "map!", bdb_sary_collect_bang, -1);
+    rb_define_method(bdb_cRecnum, "filter", bdb_sary_filter, -1);
     rb_define_method(bdb_cRecnum, "delete", bdb_sary_delete, 1);
     rb_define_method(bdb_cRecnum, "delete_at", bdb_sary_delete_at_m, 1);
     rb_define_method(bdb_cRecnum, "delete_if", bdb_sary_delete_if, 0);

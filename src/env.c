@@ -176,7 +176,8 @@ bdb_env_i_options(obj, db_stobj)
 #endif
     }
 #if DB_VERSION_MINOR >= 1
-    else if (strcmp(options, "set_server") == 0) {
+    else if (strcmp(options, "set_server") == 0 ||
+	strcmp(options, "set_rpc_server") == 0) {
 	char *host;
 	long sv_timeout, cl_timeout;
 	unsigned long flags;
@@ -209,7 +210,11 @@ bdb_env_i_options(obj, db_stobj)
 	    rb_raise(bdb_eFatal, "Invalid type for \"set_server\"");
 	    break;
 	}
+#if DB_VERSION_MINOR >= 3
+	bdb_test_error(dbenvp->set_rpc_server(dbenvp, NULL, host, cl_timeout, sv_timeout, flags));
+#else
 	bdb_test_error(dbenvp->set_server(dbenvp, host, cl_timeout, sv_timeout, flags));
+#endif
     }
 #endif
 

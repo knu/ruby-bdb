@@ -159,6 +159,8 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
      Returns the primary key and the value corresponding to ((|key|))
      in the secondary index
 
+     only with >= 3.3.11
+
 --- self[key] = value
      Stores the ((|value|)) associating with ((|key|))
 
@@ -208,19 +210,27 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
       It return the object deleted or ((|nil|)) if the specified
       key don't exist.
 
---- delete_if { |key, value| ... }
---- reject! { |key, value| ... }
+--- delete_if([bulk]) { |key, value| ... }
+--- reject!([bulk]) { |key, value| ... }
       Deletes associations if the evaluation of the block returns true. 
 
---- each { |key, value| ... }
---- each_pair { |key, value| ... }
-      Iterates over associations. 
+      ((<bulk>))
 
---- each_key { |key| ... }
+--- each([bulk]) { |key, value| ... }
+--- each_pair([bulk]) { |key, value| ... }
+      Iterates over associations.
+
+      ((<bulk>))
+
+--- each_key([bulk]) { |key| ... }
       Iterates over keys. 
 
---- each_value { |value| ... }
+      ((<bulk>))
+
+--- each_value([bulk]) { |value| ... }
       Iterates over values. 
+
+      ((<bulk>))
 
 --- empty?() 
        Returns true if the database is empty. 
@@ -302,4 +312,13 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
 
 --- shift 
        Removes and returns an association from the database.
+
+=== Remark
+
+==== bulk
+
+Only with >= 3.3.11 : if the parameter ((|bulk|)) is given, 
+an application buffer of size ((|bulk * 1024|)) will be used 
+(see "Retrieving records in bulk" in the documentation of BerkeleyDB)
+
 =end

@@ -83,6 +83,12 @@
 
 * new syntax "marshal" => Marshal (or any module with #load, #dump)
 * tested with 3.3.11
-* txn_prepare take now an extra argument
+* txn_prepare take now an extra argument with 3.3.11
 * secondary index for 3.3.11 (see #associate)
 * partial implementation of #pget
+
+-- 0.2.2
+
+* corrected set_rpc_server for 3.3.11
+* added support for bulk retrieval (#each, #each_value, #each_key) 3.3.11
+

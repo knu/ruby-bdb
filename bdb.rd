@@ -62,7 +62,7 @@ entries.  Cursors are used for operating on collections of records,
 for iterating over a database, and for saving handles to individual
 records, so that they can be modified after they have been read.
 
-See also iterators in ((<Acces Methods|URL:docs/access.html#each>))
+See also iterators in ((<Acces Methods|URL:docs/hashlike.html#each>))
 
 ((<Lock system|URL:docs/lock.html>))
 

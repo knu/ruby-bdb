@@ -27,7 +27,7 @@ open the database
 </P>
 
 <DL>
-<DT><A NAME="label:4"><VAR>name</VAR>
+<DT><A NAME="label:6"><VAR>name</VAR>
 </A><!-- RDLabel: "name" -->
 <DD>
 <P>
@@ -35,7 +35,7 @@ The argument name is used as the name of a single physical
 file on disk that will be used to back the database.
 </P>
 </DD>
-<DT><A NAME="label:5"><VAR>subname</VAR>
+<DT><A NAME="label:7"><VAR>subname</VAR>
 </A><!-- RDLabel: "subname" -->
 <DD>
 <P>
@@ -48,7 +48,7 @@ subdatabase in a database file that was not initially
 created using a subdatabase name.
 </P>
 </DD>
-<DT><A NAME="label:6"><VAR>flags</VAR>
+<DT><A NAME="label:8"><VAR>flags</VAR>
 </A><!-- RDLabel: "flags" -->
 <DD>
 <P>
@@ -62,7 +62,7 @@ OR'ing together one or more of the following values
 </P>
 
 <DL>
-<DT><A NAME="label:8"><VAR>BDB::CREATE</VAR>
+<DT><A NAME="label:10"><VAR>BDB::CREATE</VAR>
 </A><!-- RDLabel: "BDB::CREATE" -->
 <DD>
 <P>
@@ -71,7 +71,7 @@ do not already exist and the DB_CREATE flag is not
 specified, the call will fail. 
 </P>
 </DD>
-<DT><A NAME="label:9"><VAR>BD::EXCL</VAR>
+<DT><A NAME="label:11"><VAR>BD::EXCL</VAR>
 </A><!-- RDLabel: "BD::EXCL" -->
 <DD>
 <P>
@@ -82,14 +82,14 @@ physical database file and cannot be used to test if a
 subdatabase already exists. 
 </P>
 </DD>
-<DT><A NAME="label:10"><VAR>BDB::NOMMAP</VAR>
+<DT><A NAME="label:12"><VAR>BDB::NOMMAP</VAR>
 </A><!-- RDLabel: "BDB::NOMMAP" -->
 <DD>
 <P>
 Do not map this database into process memory.
 </P>
 </DD>
-<DT><A NAME="label:11"><VAR>BDB::RDONLY</VAR>
+<DT><A NAME="label:13"><VAR>BDB::RDONLY</VAR>
 </A><!-- RDLabel: "BDB::RDONLY" -->
 <DD>
 <P>
@@ -98,7 +98,7 @@ modify items in the database will fail regardless of the
 actual permissions of any underlying files. 
 </P>
 </DD>
-<DT><A NAME="label:12"><VAR>BDB::TRUNCATE</VAR>
+<DT><A NAME="label:14"><VAR>BDB::TRUNCATE</VAR>
 </A><!-- RDLabel: "BDB::TRUNCATE" -->
 <DD>
 <P>
@@ -118,7 +118,7 @@ protected environment.
 </DD>
 </DL>
 </DD>
-<DT><A NAME="label:7"><VAR>options</VAR>
+<DT><A NAME="label:9"><VAR>options</VAR>
 </A><!-- RDLabel: "options" -->
 <DD>
 <P>
@@ -127,7 +127,7 @@ for more informations)
 </P>
 
 <DL>
-<DT><A NAME="label:13"><VAR>set_array_base</VAR>
+<DT><A NAME="label:15"><VAR>set_array_base</VAR>
 </A><!-- RDLabel: "set_array_base" -->
 <DD>
 <P>
@@ -135,7 +135,7 @@ base index for BDB::Recno, BDB::Queue or BDB::Btree
 (with BDB::RECNUM). Must be 0 or 1
 </P>
 </DD>
-<DT><A NAME="label:14"><VAR>set_bt_compare</VAR>
+<DT><A NAME="label:16"><VAR>set_bt_compare</VAR>
 </A><!-- RDLabel: "set_bt_compare" -->
 <DD>
 <P>
@@ -145,7 +145,7 @@ specify a Btree comparison function
 </DL>
 
 <DL>
-<DT><A NAME="label:15"><VAR>set_bt_minkey</VAR>
+<DT><A NAME="label:17"><VAR>set_bt_minkey</VAR>
 </A><!-- RDLabel: "set_bt_minkey" -->
 <DD>
 <P>
@@ -155,105 +155,105 @@ set the minimum number of keys per Btree page
 </DL>
 
 <DL>
-<DT><A NAME="label:16"><VAR>set_bt_prefix</VAR>
+<DT><A NAME="label:18"><VAR>set_bt_prefix</VAR>
 </A><!-- RDLabel: "set_bt_prefix" -->
 <DD>
 <P>
 specify a Btree prefix comparison function 
 </P>
 </DD>
-<DT><A NAME="label:17"><VAR>set_cachesize</VAR>
+<DT><A NAME="label:19"><VAR>set_cachesize</VAR>
 </A><!-- RDLabel: "set_cachesize" -->
 <DD>
 <P>
 set the database cache size
 </P>
 </DD>
-<DT><A NAME="label:18"><VAR>set_dup_compare</VAR>
+<DT><A NAME="label:20"><VAR>set_dup_compare</VAR>
 </A><!-- RDLabel: "set_dup_compare" -->
 <DD>
 <P>
 specify a duplicate comparison function 
 </P>
 </DD>
-<DT><A NAME="label:19"><VAR>set_flags</VAR>
+<DT><A NAME="label:21"><VAR>set_flags</VAR>
 </A><!-- RDLabel: "set_flags" -->
 <DD>
 <P>
 general database configuration
 </P>
 </DD>
-<DT><A NAME="label:20"><VAR>set_h_ffactor</VAR>
+<DT><A NAME="label:22"><VAR>set_h_ffactor</VAR>
 </A><!-- RDLabel: "set_h_ffactor" -->
 <DD>
 <P>
 set the Hash table density
 </P>
 </DD>
-<DT><A NAME="label:21"><VAR>set_h_hash</VAR>
+<DT><A NAME="label:23"><VAR>set_h_hash</VAR>
 </A><!-- RDLabel: "set_h_hash" -->
 <DD>
 <P>
 specify a hashing function 
 </P>
 </DD>
-<DT><A NAME="label:22"><VAR>set_h_nelem</VAR>
+<DT><A NAME="label:24"><VAR>set_h_nelem</VAR>
 </A><!-- RDLabel: "set_h_nelem" -->
 <DD>
 <P>
 set the Hash table size
 </P>
 </DD>
-<DT><A NAME="label:23"><VAR>set_lorder</VAR>
+<DT><A NAME="label:25"><VAR>set_lorder</VAR>
 </A><!-- RDLabel: "set_lorder" -->
 <DD>
 <P>
 set the database byte order
 </P>
 </DD>
-<DT><A NAME="label:24"><VAR>set_pagesize</VAR>
+<DT><A NAME="label:26"><VAR>set_pagesize</VAR>
 </A><!-- RDLabel: "set_pagesize" -->
 <DD>
 <P>
 set the underlying database page size
 </P>
 </DD>
-<DT><A NAME="label:25"><VAR>set_re_delim</VAR>
+<DT><A NAME="label:27"><VAR>set_re_delim</VAR>
 </A><!-- RDLabel: "set_re_delim" -->
 <DD>
 <P>
 set the variable-length record delimiter
 </P>
 </DD>
-<DT><A NAME="label:26"><VAR>set_re_len</VAR>
+<DT><A NAME="label:28"><VAR>set_re_len</VAR>
 </A><!-- RDLabel: "set_re_len" -->
 <DD>
 <P>
 set the fixed-length record length
 </P>
 </DD>
-<DT><A NAME="label:27"><VAR>set_re_pad</VAR>
+<DT><A NAME="label:29"><VAR>set_re_pad</VAR>
 </A><!-- RDLabel: "set_re_pad" -->
 <DD>
 <P>
 set the fixed-length record pad byte
 </P>
 </DD>
-<DT><A NAME="label:28"><VAR>set_re_source</VAR>
+<DT><A NAME="label:30"><VAR>set_re_source</VAR>
 </A><!-- RDLabel: "set_re_source" -->
 <DD>
 <P>
 set the backing Recno text file
 </P>
 </DD>
-<DT><A NAME="label:29"><VAR>env</VAR>
+<DT><A NAME="label:31"><VAR>env</VAR>
 </A><!-- RDLabel: "env" -->
 <DD>
 <P>
 open the database in the environnement given as the value
 </P>
 </DD>
-<DT><A NAME="label:30"><VAR>txn</VAR>
+<DT><A NAME="label:32"><VAR>txn</VAR>
 </A><!-- RDLabel: "txn" -->
 <DD>
 <P>
@@ -343,6 +343,10 @@ Returns the value correspondind the <VAR>key</VAR>
 Returns the primary key and the value corresponding to <VAR>key</VAR>
 in the secondary index
 </P>
+
+<P>
+only with &gt;= 3.3.11
+</P>
 </DD>
 <DT><A NAME="self[key]"><CODE>self[key] = <var>value</var></CODE></A><!-- RDLabel: "self[key]" -->
 <DD>
@@ -428,30 +432,46 @@ It return the object deleted or <VAR>nil</VAR> if the specified
 key don't exist.
 </P>
 </DD>
-<DT><A NAME="delete_if"><CODE>delete_if { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "delete_if" -->
-<DT><A NAME="reject!"><CODE>reject! { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reject!" -->
+<DT><A NAME="delete_if"><CODE>delete_if([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "delete_if" -->
+<DT><A NAME="reject!"><CODE>reject!([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "reject!" -->
 <DD>
 <P>
 Deletes associations if the evaluation of the block returns true. 
 </P>
-</DD>
-<DT><A NAME="each"><CODE>each { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "each" -->
-<DT><A NAME="each_pair"><CODE>each_pair { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "each_pair" -->
-<DD>
+
 <P>
-Iterates over associations. 
+<A HREF="#label:5">bulk</A>
 </P>
 </DD>
-<DT><A NAME="each_key"><CODE>each_key { |<var>key</var>| ... }</CODE></A><!-- RDLabel: "each_key" -->
+<DT><A NAME="each"><CODE>each([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "each" -->
+<DT><A NAME="each_pair"><CODE>each_pair([<var>bulk</var>]) { |<var>key</var>, <var>value</var>| ... }</CODE></A><!-- RDLabel: "each_pair" -->
+<DD>
+<P>
+Iterates over associations.
+</P>
+
+<P>
+<A HREF="#label:5">bulk</A>
+</P>
+</DD>
+<DT><A NAME="each_key"><CODE>each_key([<var>bulk</var>]) { |<var>key</var>| ... }</CODE></A><!-- RDLabel: "each_key" -->
 <DD>
 <P>
 Iterates over keys. 
 </P>
+
+<P>
+<A HREF="#label:5">bulk</A>
+</P>
 </DD>
-<DT><A NAME="each_value"><CODE>each_value { |<var>value</var>| ... }</CODE></A><!-- RDLabel: "each_value" -->
+<DT><A NAME="each_value"><CODE>each_value([<var>bulk</var>]) { |<var>value</var>| ... }</CODE></A><!-- RDLabel: "each_value" -->
 <DD>
 <P>
 Iterates over values. 
+</P>
+
+<P>
+<A HREF="#label:5">bulk</A>
 </P>
 </DD>
 <DT><A NAME="empty?"><CODE>empty?()</CODE></A><!-- RDLabel: "empty?" -->
@@ -605,6 +625,15 @@ Removes and returns an association from the database.
 </P>
 </DD>
 </DL>
+<H3><A NAME="label:4">Remark
+</A></H3><!-- RDLabel: "Remark" -->
+<H4><A NAME="label:5">bulk
+</A></H4><!-- RDLabel: "bulk" -->
+<P>
+Only with &gt;= 3.3.11 : if the parameter <VAR>bulk</VAR> is given, 
+an application buffer of size <VAR>bulk * 1024</VAR> will be used 
+(see "Retrieving records in bulk" in the documentation of BerkeleyDB)
+</P>
 
 </BODY>
 </HTML>
