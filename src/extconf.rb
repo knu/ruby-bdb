@@ -26,7 +26,8 @@ if ARGV.include?('--help') || ARGV.include?('-h')
   
   --disable-thread
      disable the use of DB_THREAD
- ------------------------------------------------------------
+
+------------------------------------------------------------
 
 EOT
    exit

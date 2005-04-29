@@ -1,0 +1,10 @@
+<entry index='s'>
+<name>Sort</name>
+<reference>ruby</reference>
+<content>
+    To arrange in order
+    ((Ruby)) can sort anything, not only array, however complex, if only
+     * they're countable (((|Enumerable|)) is included),
+     * and the order is (i.e. ((|&lt;=>|)) is) defined in each element.
+</content>
+</entry>

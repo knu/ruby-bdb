@@ -1,0 +1,15 @@
+<entry index='s'>
+<name>Singleton Method</name>
+<reference>override</reference>
+<reference>object</reference>
+<reference>method</reference>
+<content>
+    ((Method)) which is defined only for the particular ((object|Object)).
+
+    Singleton method can be succeeded to other method(s) in the following case:
+     * Cloned.
+     * Made subclass(es).
+    When the singleton method ((overrides|Override)) the original method,
+    the original method can be invoked to appear by '((|((super))|))'.
+</content>
+</entry>

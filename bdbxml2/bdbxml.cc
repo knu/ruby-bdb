@@ -1,11 +1,17 @@
 #include "bdbxml.h"
 
-static VALUE xb_eFatal, xb_cTxn, xb_cEnv, xb_cRes, xb_cQue;
-static VALUE xb_cMan, xb_cInd, xb_cUpd, xb_cMod, xb_cVal;
+static VALUE xb_cEnv, xb_cRes, xb_cQue, xb_cMan;
+static VALUE xb_cInd, xb_cUpd, xb_cMod, xb_cVal;
 static VALUE xb_cCon, xb_cDoc, xb_cCxt;
 
 static VALUE xb_io;
 static ID id_current_env, id_close, id_read, id_write, id_pos;
+
+#if 0
+#define FREE_DEBUG(a, ...) fprintf(stderr, a, ##__VA_ARGS__)
+#else
+#define FREE_DEBUG(a, ...)
+#endif
 
 static void
 xb_io_push(VALUE obj)
@@ -102,9 +108,6 @@ namespace std {
 
 #include "dbxml/XmlInputStream.hpp"
 
-static void xb_res_free(xres *res);
-static void xb_res_mark(xres *res);
-
 class xbInput : public XmlInputStream {
 public:
     xbInput(const VALUE obj):pos_(false),obj_(obj) {
@@ -121,7 +124,8 @@ public:
 
     unsigned int curPos() const {
         if (pos_) {
-            return NUM2ULONG(rb_funcall(obj_, id_pos, 0, 0));
+            VALUE count = rb_funcall(obj_, id_pos, 0, 0);
+            return NUM2ULONG(count);
         }
         return 0;
     }
@@ -139,84 +143,6 @@ private:
     bool pos_;
     
 };
-
-static void
-xb_man_mark(xman *man)
-{
-    rb_gc_mark(man->env);
-    rb_gc_mark(man->rsv);
-}
-
-static VALUE
-xb_protect_close(VALUE obj)
-{
-    return rb_funcall2(obj, rb_intern("close"), 0, 0);
-}
-
-static VALUE
-xb_protect_res(VALUE obj)
-{
-    xb_res_free((xres *)obj);
-    return Qnil;
-}
-
-static void 
-man_delete_res(struct ary_st *db_res)
-{
-    VALUE *ary = db_res->ptr;
-    db_res->ptr = 0;
-    for (int i = 0; i < db_res->len; i++) {
-        rb_protect(xb_protect_res, ary[i], 0);
-    }
-    if (ary) ::free(ary);
-}
-
-static VALUE
-xb_man_close(VALUE obj)
-{
-    xman *man = (xman *)DATA_PTR(obj);
-    if (man->env) {
-        bdb_ENV *envst;
-        GetEnvDBErr(man->env, envst, id_current_env, xb_eFatal);
-        bdb_ary_delete(&envst->db_ary, obj);
-        man->env = 0;
-    }
-    if (man->man) {
-        man_delete_res(&man->db_res);
-        VALUE *ary = man->db_ary.ptr;
-        man->db_ary.ptr = 0;
-        for (int i = 0; i < man->db_ary.len; i++) {
-            if (rb_respond_to(ary[i], rb_intern("close"))) {
-                rb_protect(xb_protect_close, ary[i], 0);
-            }
-        }
-        if (ary) ::free(ary);
-        delete man->man;
-        man->man = 0;
-    }
-}
-
-static void
-xb_man_free(xman *man)
-{
-    xb_man_close(man->ori);
-    ::free(man);
-}
-
-
-static inline xman *
-get_man(VALUE obj)
-{
-    xman *man;
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dfree != (RDF)xb_man_free) {
-        rb_raise(xb_eFatal, "invalid Manager objects");
-    }
-    Data_Get_Struct(obj, xman, man);
-    if (!man->man) {
-        rb_raise(rb_eArgError, "invalid Manager object");
-    }
-    return man;
-}
 
 class XbResolve : public XmlResolver {
 public:
@@ -349,18 +275,169 @@ xb_i_txn(VALUE obj, int *flags)
 }
 
 static VALUE
+xb_protect_close(VALUE obj)
+{
+    return rb_funcall2(obj, id_close, 0, 0);
+}
+
+static void
+xb_final(bdb_ENV *envst)
+{
+    VALUE obj, *ary;
+    bdb_ENV *thst;
+    int i;
+
+    ary = envst->db_ary.ptr;
+    if (ary) {
+        envst->db_ary.mark = Qtrue;
+        for (i = 0; i < envst->db_ary.len; i++) {
+            if (rb_respond_to(ary[i], rb_intern("close"))) {
+                rb_protect(xb_protect_close, ary[i], 0);
+            }
+        }
+        envst->db_ary.mark = Qfalse;
+        envst->db_ary.total = envst->db_ary.len = 0;
+        envst->db_ary.ptr = 0;
+        free(ary);
+    }
+    if (envst->envp) {
+	if (!(envst->options & BDB_ENV_NOT_OPEN)) {
+            DbEnv *env_cxx = static_cast<DbEnv *>(envst->envp->app_private);
+            delete env_cxx;
+	}
+	envst->envp = NULL;
+    }
+}
+
+static void
+xb_env_free(bdb_ENV *envst)
+{
+    xb_final(envst);
+    ::free(envst);
+}
+
+static VALUE
+xb_env_close(VALUE obj)
+{
+    if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4) {
+	rb_raise(rb_eSecurityError, "Insecure: can't close the environnement");
+    }
+    bdb_ENV *envst;
+    GetEnvDBErr(obj, envst, id_current_env, xb_eFatal);
+    xb_final(envst);
+    RDATA(obj)->dfree = free;
+    return Qnil;
+}
+
+static VALUE
+xb_env_s_alloc(VALUE obj)
+{
+    bdb_ENV *envst;
+    return Data_Make_Struct(obj, bdb_ENV, 0, free, envst);
+}
+
+static VALUE
+xb_env_s_i_options(VALUE obj, int *flags)
+{
+    VALUE key = rb_ary_entry(obj, 0);
+    VALUE value = rb_ary_entry(obj, 1);
+    key = rb_obj_as_string(key);
+    char *options = StringValuePtr(key);
+    if (strcmp(options, "env_flags") == 0) {
+	*flags = NUM2INT(value);
+    }
+#ifdef DB_CLIENT
+    else if (strcmp(options, "set_rpc_server") == 0 ||
+	     strcmp(options, "set_server") == 0) {
+	*flags |= DB_CLIENT;
+    }
+#endif
+    return Qnil;
+}
+
+static VALUE
 xb_env_s_new(int argc, VALUE *argv, VALUE obj)
 {
-    DbEnv *env = new DbEnv(0);
-    DB_ENV *envd = env->get_DB_ENV();
-    envd->app_private = static_cast<void *>(env);
-    return bdb_env_s_rslbl(argc, argv, obj, envd);
+    VALUE res;
+    bdb_ENV *envst;
+    int flags = 0;
+
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    res = rb_obj_alloc(obj);
+#else
+    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
+#endif
+    Data_Get_Struct(res, bdb_ENV, envst);
+    if (argc && TYPE(argv[argc - 1]) == T_HASH) {
+	rb_iterate(rb_each, argv[argc - 1], 
+                   (VALUE(*)(ANYARGS))xb_env_s_i_options, (VALUE)&flags);
+    }
+    DbEnv *env = new DbEnv(flags);
+    envst->envp = env->get_DB_ENV();
+    envst->envp->app_private = static_cast<void *>(env);
+    envst->envp->set_errpfx(envst->envp, "BDB::");
+    bdb_test_error(envst->envp->set_alloc(envst->envp, malloc, realloc, free));
+    RDATA(res)->dfree = (RDF)xb_env_free;
+    rb_obj_call_init(res, argc, argv);
+    return res;
 }
+
+
+
+static VALUE
+xb_env_init(int argc, VALUE *argv, VALUE obj)
+{
+    bdb_ENV *envst;
+
+    Data_Get_Struct(obj, bdb_ENV, envst);
+    DbEnv *env = new DbEnv(0);
+    envst->envp = env->get_DB_ENV();
+    envst->envp->app_private = static_cast<void *>(env);
+    envst->envp->set_errpfx(envst->envp, "BDB::");
+    bdb_test_error(envst->envp->set_alloc(envst->envp, malloc, realloc, free));
+    RDATA(obj)->dfree = (RDF)xb_env_free;
+    bdb_env_init(argc, argv, obj);
+    return obj;
+}
+
 
 static VALUE
 xb_env_begin(int argc, VALUE *argv, VALUE obj)
 {
     rb_raise(rb_eNoMethodError, "use a Manager to open a transaction");
+}
+
+static void
+xb_man_mark(xman *man)
+{
+    rb_gc_mark(man->env);
+    rb_gc_mark(man->rsv);
+}
+
+static VALUE
+xb_man_close(VALUE obj)
+{
+    xman *man = (xman *)DATA_PTR(obj);
+    FREE_DEBUG("xb_man_close %x\n", man);
+    if (man->env) {
+        bdb_ENV *envst = (bdb_ENV *)DATA_PTR(man->env);
+        bdb_ary_delete(&envst->db_ary, obj);
+        man->env = 0;
+    }
+    if (man->man) {
+        delete man->man;
+        man->man = 0;
+    }
+}
+
+static void
+xb_man_free(xman *man)
+{
+    FREE_DEBUG("xb_man_free %x\n", man);
+    if (man->man) {
+        xb_man_close(man->ori);
+    }
+    ::free(man);
 }
 
 static VALUE
@@ -377,11 +454,14 @@ xb_env_manager(int argc, VALUE *argv, VALUE obj)
         flags = NUM2INT(a) & ~DBXML_ADOPT_DBENV;
     }
     GetEnvDBErr(obj, envst, id_current_env, xb_eFatal);
+    if (!(envst->options & BDB_ENV_NOT_OPEN)) {
+        envst->options |= BDB_ENV_NOT_OPEN;
+        flags |= DBXML_ADOPT_DBENV;
+    }
     env_cxx = static_cast<DbEnv *>(envst->envp->app_private);
     PROTECT(xmlman = new XmlManager(env_cxx, flags));
     res = Data_Make_Struct(xb_cMan, xman, (RDF)xb_man_mark,
                            (RDF)xb_man_free, man);
-    bdb_ary_push(&envst->db_ary, res);
     man->man = xmlman;
     man->env = obj;
     man->ori = res;
@@ -514,32 +594,6 @@ xb_man_type_set(VALUE obj, VALUE a)
     return a;
 }
 
-static inline XmlTransaction *
-get_txn(VALUE obj)
-{
-    if (rb_obj_is_kind_of(obj, xb_cTxn)) {
-	bdb_TXN *txnst;
-
-	GetTxnDBErr(obj, txnst, xb_eFatal);
-        return (XmlTransaction *)txnst->txn_cxx;
-    }
-    return 0;
-}
-
-static inline xman *
-get_man_txn(VALUE obj)
-{
-    if (rb_obj_is_kind_of(obj, xb_cTxn)) {
-	bdb_TXN *txnst;
-
-	GetTxnDBErr(obj, txnst, xb_eFatal);
-        return get_man(txnst->man);
-    }
-    else {
-        return get_man(obj);
-    }
-}
-
 static VALUE
 xb_man_rename(VALUE obj, VALUE a, VALUE b)
 {
@@ -625,7 +679,7 @@ xb_man_dump_con(int argc, VALUE *argv, VALUE obj)
         std::ofstream out(file);
         PROTECT2(man->man->dumpContainer(name, &out), out.close());
     }
-    return Qnil;
+    return obj;
 }
 
 static VALUE
@@ -666,23 +720,6 @@ xb_man_verify(int argc, VALUE *argv, VALUE obj)
         PROTECT(man->man->verifyContainer(name, &out, flags));
     }
     return Qnil;
-}
-
-static void xb_upd_free(xupd *);
-
-static inline xupd *
-get_upd(VALUE obj)
-{
-    xupd *upd;
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dfree != (RDF)xb_upd_free) {
-        rb_raise(rb_eArgError, "expected an Update Context");
-    }
-    Data_Get_Struct(obj, xupd, upd);
-    if (!upd->upd) {
-        rb_raise(rb_eArgError, "invalid Update Context");
-    }
-    xman *man = get_man(upd->man);
-    return upd;
 }
 
 static VALUE
@@ -737,7 +774,7 @@ xb_man_begin(int argc, VALUE *argv, VALUE obj)
     struct txn_rslbl txnr;
     xman *man;
     VALUE rman;
-    XmlTransaction *xmltxn;
+    XmlTransaction *xmltxn, *xmlold = 0;
     int flags = 0;
 
     if (argc) {
@@ -754,6 +791,7 @@ xb_man_begin(int argc, VALUE *argv, VALUE obj)
 
 	GetTxnDBErr(obj, txnst, xb_eFatal);
         rman = txnst->man;
+        xmlold = (XmlTransaction *)txnst->txn_cxx;
         man = get_man(txnst->man);
     }
     else {
@@ -764,23 +802,16 @@ xb_man_begin(int argc, VALUE *argv, VALUE obj)
         }
         obj = man->env;
     }
-    PROTECT(xmltxn = new XmlTransaction(man->man->createTransaction(flags)));
+    if (xmlold) {
+        PROTECT(xmltxn = new XmlTransaction(xmlold->createChild(flags)));
+    }
+    else {
+        PROTECT(xmltxn = new XmlTransaction(man->man->createTransaction(flags)));
+    }
     txnr.txn_cxx = xmltxn;
     txnr.txn = xmltxn->getDbTxn()->get_DB_TXN();
     txnr.man = rman;
     return bdb_env_rslbl_begin((VALUE)&txnr, argc, argv, obj);
-}
-
-static inline VALUE
-get_txn_man(VALUE obj)
-{
-    if (rb_obj_is_kind_of(obj, xb_cTxn)) {
-        bdb_TXN *txnst;
-
-        GetTxnDBErr(obj, txnst, xb_eFatal);
-        return txnst->man;
-    }
-    return 0;
 }
 
 static void
@@ -791,17 +822,41 @@ xb_con_mark(xcon *con)
     rb_gc_mark(con->txn);
 }
 
-static void delete_ind(VALUE);
+static VALUE
+close_txn(VALUE txn)
+{
+    bdb_TXN *txnst;
+
+    Data_Get_Struct(txn, bdb_TXN, txnst);
+    if (txnst->txnid) {
+        rb_funcall2(txn, rb_intern("abort"), 0, 0);
+    }
+    return Qnil;
+}
+
+static void 
+delete_ind(VALUE obj)
+{
+    if (!RTEST(obj)) return;
+    xind *ind = get_ind(obj);
+    delete ind->ind;
+    ind->ind = 0;
+    RDATA(obj)->dfree = free;
+    RDATA(obj)->dmark = 0;
+}
 
 static void
 xb_con_free(xcon *con)
 {
+    FREE_DEBUG("xb_con_free %x\n", con);
     if (con->con) {
         if (con->man) {
+            xman *man;
+
             delete_ind(con->ind);
-            xman *man = get_man(con->man);
-            man_delete_res(&man->db_res);
-            bdb_ary_delete(&man->db_ary, con->ori);
+            if (con->txn) {
+                rb_protect(close_txn, con->txn, 0);
+            }
         }
         delete con->con;
     }
@@ -840,6 +895,7 @@ xb_int_open_con(int argc, VALUE *argv, VALUE obj, VALUE orig)
         Data_Get_Struct(res, xcon, con);
         RDATA(res)->dfree = (RDF)xb_con_free;
     }
+    FREE_DEBUG("open_con %x man %x\n", con, man);
     con->con = xmlcon;
     if (rb_obj_is_kind_of(obj, xb_cTxn)) {
         con->txn = obj;
@@ -849,8 +905,6 @@ xb_int_open_con(int argc, VALUE *argv, VALUE obj, VALUE orig)
         con->man = obj;
     }
     con->opened = 1;
-    con->ori = res;
-    bdb_ary_push(&(get_man(con->man)->db_ary), res);
     return res;
 }
 
@@ -907,6 +961,7 @@ xb_int_create_con(int argc, VALUE *argv, VALUE obj, VALUE orig)
         Data_Get_Struct(res, xcon, con);
         RDATA(res)->dfree = (RDF)xb_con_free;
     }
+    FREE_DEBUG("open_con %x man %x\n", con, man);
     con->con = xmlcon;
     if (rb_obj_is_kind_of(obj, xb_cTxn)) {
         con->txn = obj;
@@ -916,8 +971,6 @@ xb_int_create_con(int argc, VALUE *argv, VALUE obj, VALUE orig)
         con->man = obj;
     }
     con->opened = 1;
-    con->ori = res;
-    bdb_ary_push(&(get_man(con->man)->db_ary), res);
     return res;
 }
 
@@ -973,6 +1026,7 @@ xb_upd_mark(xupd *upd)
 static void
 xb_upd_free(xupd *upd)
 {
+    FREE_DEBUG("xb_upd_free %x\n", upd);
     if (upd->upd) {
         delete upd->upd;
     }
@@ -1053,11 +1107,19 @@ xb_doc_mark(xdoc *doc)
 }
 
 static void
-xb_doc_free(xdoc *doc)
+doc_free(xdoc *doc)
 {
     if (doc->doc) {
         delete doc->doc;
+        doc->doc = 0;
     }
+}
+
+static void
+xb_doc_free(xdoc *doc)
+{
+    FREE_DEBUG("xb_doc_free %x\n", doc);
+    doc_free(doc);
     ::free(doc);
 }
 
@@ -1104,6 +1166,15 @@ xb_doc_init(VALUE obj, VALUE a)
     return xb_int_create_doc(a, obj);
 }
 
+static VALUE
+xb_doc_close(VALUE obj)
+{
+    xdoc *doc = get_doc(obj);
+    FREE_DEBUG("xb_doc_close %x\n", doc);
+    doc_free(doc);
+    return Qnil;
+}
+
 static void
 xb_cxt_mark(xcxt *cxt)
 {
@@ -1113,26 +1184,11 @@ xb_cxt_mark(xcxt *cxt)
 static void
 xb_cxt_free(xcxt *cxt)
 {
+    FREE_DEBUG("xb_cxt_free %x\n", cxt);
     if (cxt->cxt) {
         delete cxt->cxt;
     }
     ::free(cxt);
-}
-
-static void
-xb_que_mark(xque *que)
-{
-    rb_gc_mark(que->man);
-    rb_gc_mark(que->txn);
-}
-
-static void
-xb_que_free(xque *que)
-{
-    if (que->que) {
-        delete que->que;
-    }
-    ::free(que);
 }
 
 static VALUE
@@ -1191,22 +1247,24 @@ xb_cxt_init(int argc, VALUE *argv, VALUE obj)
     argc--; argv++;
     return xb_int_create_cxt(argc, argv, tmp, obj);
 }
-       
-static inline xcxt *
-get_cxt(VALUE obj)
+
+static void
+xb_que_mark(xque *que)
 {
-    xcxt *cxt;
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dfree != (RDF)xb_cxt_free) {
-        rb_raise(rb_eArgError, "expected a Query Context");
-    }
-    Data_Get_Struct(obj, xcxt, cxt);
-    if (!cxt->cxt) {
-        rb_raise(rb_eArgError, "invalid QueryContext");
-    }
-    xman *man = get_man(cxt->man);
-    return cxt;
+    rb_gc_mark(que->man);
+    rb_gc_mark(que->txn);
 }
 
+static void
+xb_que_free(xque *que)
+{
+    FREE_DEBUG("xb_que_free %x\n", que);
+    if (que->que) {
+        delete que->que;
+    }
+    ::free(que);
+}
+       
 static VALUE
 xb_man_prepare(int argc, VALUE *argv, VALUE obj)
 {
@@ -1249,26 +1307,34 @@ xb_man_prepare(int argc, VALUE *argv, VALUE obj)
 }
 
 static void
-xb_res_free(xres *res)
-{
-    if (res->res) {
-        delete res->res;
-        if (res->man) {
-            xman *tmp = get_man(res->man);
-            bdb_ary_delete(&tmp->db_res, (VALUE)res);
-        }
-    }
-    ::free(res);
-}
-
-static void
 xb_res_mark(xres *res)
 {
     rb_gc_mark(res->man);
-    xman *tmp = get_man(res->man);
-    for (int i = 0; i < tmp->db_ary.len; i++) {
-        rb_gc_mark(tmp->db_ary.ptr[i]);
+}
+
+static void
+res_free(xres *res)
+{
+    if (res->res) {
+        delete res->res;
+        res->res = 0;
     }
+}
+
+static void
+xb_res_free(xres *res)
+{
+    FREE_DEBUG("xb_res_free %x\n", res);
+    res_free(res);
+    ::free(res);
+}
+
+static VALUE
+xb_res_close(VALUE obj)
+{
+    xres *res = get_res(obj);
+    res_free(res);
+    return Qnil;
 }
 
 static VALUE
@@ -1384,51 +1450,6 @@ xb_man_upgrade(int argc, VALUE *argv, VALUE obj)
     return obj;
 }
 
-static inline xcon *
-get_con(VALUE obj)
-{
-    xcon *con;
-
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dmark != (RDF)xb_con_mark) {
-        rb_raise(rb_eArgError, "invalid Container");
-    }
-    Data_Get_Struct(obj, xcon, con);
-    if (!con->opened) {
-        rb_raise(rb_eArgError, "closed container");
-    }
-    if (!con->con || !con->man) {
-        rb_raise(rb_eArgError, "invalid Container");
-    }
-    xman *man = get_man(con->man);
-    return con;
-} 
-
-static inline XmlTransaction *
-get_con_txn(xcon *con)
-{
-    if (RTEST(con->txn)) {
-        bdb_TXN *txnst;
-
-	GetTxnDBErr(con->txn, txnst, xb_eFatal);
-        return (XmlTransaction *)txnst->txn_cxx;
-    }
-    return 0;
-}
-
-static inline xdoc *
-get_doc(VALUE obj)
-{
-    xdoc *doc;
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dmark != (RDF)xb_doc_mark) {
-        rb_raise(rb_eArgError, "invalid document");
-    }
-    Data_Get_Struct(obj, xdoc, doc);
-    if (!doc->doc) {
-        rb_raise(rb_eArgError, "invalid document");
-    }
-    return doc;
-}  
-
 static VALUE
 xb_con_manager(VALUE obj)
 {
@@ -1455,11 +1476,11 @@ static VALUE
 xb_con_close(VALUE obj)
 {
     xcon *con = get_con(obj);
+    FREE_DEBUG("xb_con_close %x\n", con);
     delete_ind(con->ind);
     con->ind = 0;
-    PROTECT(con->con->sync());
-    xman *man = get_man(con->man);
-    bdb_ary_delete(&man->db_ary, obj);
+    delete con->con;
+    con->con = 0;
     con->opened = 0;
     return Qnil;
 }
@@ -1468,7 +1489,7 @@ static void
 delete_doc(VALUE obj, xdoc *doc)
 {
     if (TYPE(obj) != T_DATA || RDATA(obj)->dfree != (RDF)xb_doc_free) {
-        rb_raise(rb_eArgError, "expected an IndexSpecification object");
+        rb_raise(rb_eArgError, "expected a Document object");
     }
     delete doc->doc;
     doc->doc = 0;
@@ -1608,70 +1629,6 @@ xb_con_update(int argc, VALUE *argv, VALUE obj)
     return obj;
 }
 
-
-static void 
-xb_ind_free(xind *ind)
-{
-    if (ind->ind) {
-        delete ind->ind;
-        if (RTEST(ind->con)) {
-            xcon *con = get_con(ind->con);
-            con->ind = 0;
-        }
-    }
-    ::free(ind);
-}
-
-static void 
-xb_ind_mark(xind *ind)
-{
-    rb_gc_mark(ind->con);
-}
-
-static inline xind *
-get_ind(VALUE obj)
-{
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dfree != (RDF)xb_ind_free) {
-        rb_raise(rb_eArgError, "expected an IndexSpecification object");
-    }
-    xind *ind;
-    Data_Get_Struct(obj, xind, ind);
-    if (!ind->ind) {
-        rb_raise(rb_eArgError, "expected an IndexSpecification object");
-    }
-    return ind;
-}
-
-static void 
-delete_ind(VALUE obj)
-{
-    if (!RTEST(obj)) return;
-    xind *ind = get_ind(obj);
-    delete ind->ind;
-    ind->ind = 0;
-    RDATA(obj)->dfree = free;
-    RDATA(obj)->dmark = 0;
-}
-
-static void
-add_ind(VALUE obj, VALUE a)
-{
-    xcon *con = get_con(obj);
-    if (con->ind == a) return;
-    if (RTEST(con->ind)) {
-        xind *ind = get_ind(con->ind);
-        delete ind->ind;
-        RDATA(con->ind)->dfree = free;
-        RDATA(con->ind)->dmark = 0;
-    }
-    xind *ind = get_ind(a);
-    if (ind->con != obj) {
-        xcon *tmp = get_con(ind->con);
-        tmp->ind = 0;
-    }
-    con->ind = a;
-}
-
 static VALUE
 xb_con_delete(int argc, VALUE *argv, VALUE obj)
 {
@@ -1750,6 +1707,27 @@ xb_con_name(VALUE obj)
     return rb_tainted_str_new2(name.c_str());
 }
 
+
+static void 
+xb_ind_mark(xind *ind)
+{
+    rb_gc_mark(ind->con);
+}
+
+static void 
+xb_ind_free(xind *ind)
+{
+    FREE_DEBUG("xb_ind_free %x\n", ind);
+    if (ind->ind) {
+        delete ind->ind;
+        if (RTEST(ind->con)) {
+            xcon *con = get_con(ind->con);
+            con->ind = 0;
+        }
+    }
+    ::free(ind);
+}
+
 static VALUE
 xb_con_index(int argc, VALUE *argv, VALUE obj)
 {
@@ -1780,6 +1758,25 @@ xb_con_index(int argc, VALUE *argv, VALUE obj)
     ind->con = obj;
     con->ind = res;
     return res;
+}
+
+static void
+add_ind(VALUE obj, VALUE a)
+{
+    xcon *con = get_con(obj);
+    if (con->ind == a) return;
+    if (RTEST(con->ind)) {
+        xind *ind = get_ind(con->ind);
+        delete ind->ind;
+        RDATA(con->ind)->dfree = free;
+        RDATA(con->ind)->dmark = 0;
+    }
+    xind *ind = get_ind(a);
+    if (ind->con != obj) {
+        xcon *tmp = get_con(ind->con);
+        tmp->ind = 0;
+    }
+    con->ind = a;
 }
 
 static VALUE
@@ -1838,6 +1835,7 @@ xb_con_get(int argc, VALUE *argv, VALUE obj)
     }
     res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark, 
                            (RDF)xb_doc_free, doc);
+    xman *man = get_man(con->man);
     doc->doc = xmldoc;
     doc->man = con->man;
     return res;
@@ -2253,12 +2251,30 @@ xb_val_mark(xval *val)
 }
 
 static void
-xb_val_free(xval *val)
+val_free(xval *val)
 {
     if (val->val) {
         delete val->val;
+        val->val = 0;
     }
+}
+
+static void
+xb_val_free(xval *val)
+{
+    FREE_DEBUG("xb_val_free %x\n", val);
+    val_free(val);
     ::free(val);
+}
+
+static VALUE
+xb_val_close(VALUE obj)
+{
+    xval *val;
+
+    Data_Get_Struct(obj, xval, val);
+    val_free(val);
+    return Qnil;
 }
 
 static VALUE
@@ -2383,7 +2399,9 @@ xb_doc_get(int argc, VALUE *argv, VALUE obj)
     VALUE a, b;
 
     if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
-        uri = StringValuePtr(a);
+        if (!NIL_P(a)) {
+            uri = StringValuePtr(a);
+        }
         name = StringValuePtr(b);
     }
     else {
@@ -2583,22 +2601,6 @@ xb_cxt_return_get(VALUE obj)
     return INT2NUM(type);
 }
 
-static inline xque *
-get_que(VALUE obj)
-{
-    xque *que;
-
-    if (TYPE(obj) != T_DATA || RDATA(obj)->dmark != (RDF)xb_que_mark) {
-        rb_raise(rb_eArgError, "expected a Query Expression");
-    }
-    Data_Get_Struct(obj, xque, que);
-    if (!que->que) {
-        rb_raise(rb_eArgError, "invalid QueryExpression");
-    }
-    xman *man = get_man(que->man);
-    return que;
-}
-
 static VALUE
 xb_que_manager(VALUE obj)
 {
@@ -2649,6 +2651,13 @@ xb_que_exec(int argc, VALUE *argv, VALUE obj)
 
     xque *que = get_que(obj);
     switch (argc) {
+    case 0:
+    {
+        xman *man = get_man(que->man);
+        xmlcxt = new XmlQueryContext(man->man->createQueryContext());
+        has_cxt = false;
+    }
+    break;
     case 1:
         if (TYPE(argv[0]) == T_DATA &&
             RDATA(argv[0])->dfree == (RDF)xb_cxt_free) {
@@ -2727,19 +2736,6 @@ xb_que_exec(int argc, VALUE *argv, VALUE obj)
     }
     return result;
 }
-
-static inline xres *
-get_res(VALUE obj)
-{
-    xres *res;
-
-    Data_Get_Struct(obj, xres, res);
-    if (!res->res) {
-        rb_raise(rb_eArgError, "invalid Results");
-    }
-    xman *man = get_man(res->man);
-    return res;
-}
     
 static VALUE
 xb_res_manager(VALUE obj)
@@ -2788,6 +2784,7 @@ xb_mod_mark(xmod *mod)
 static void
 xb_mod_free(xmod *mod)
 {
+    FREE_DEBUG("xb_mod_free %x\n", mod);
     if (mod->mod) {
         delete mod->mod;
     }
@@ -2834,18 +2831,6 @@ static VALUE
 xb_mod_init(VALUE obj, VALUE a)
 {
     return xb_int_create_mod(a, obj);
-}
-
-static inline xmod *
-get_mod(VALUE obj)
-{
-    xmod *mod;
-    Data_Get_Struct(obj, xmod, mod);
-    if (!mod->mod) {
-        rb_raise(rb_eArgError, "invalid Modify");
-    }
-    xman *man = get_man(mod->man);
-    return mod;
 }
 
 static VALUE
@@ -2970,14 +2955,18 @@ xb_mod_execute(int argc, VALUE *argv, VALUE obj)
     rb_secure(4);
     switch (rb_scan_args(argc, argv, "12", &a, &b, &c)) {
     case 3:
+    {
         xupd *upd = get_upd(c);
         xmlupd = upd->upd;
         freeupd = false;
+    }
         /* ... */
     case 2:
+    {
         xcxt *cxt = get_cxt(b);
         xmlcxt = cxt->cxt;
         freecxt = false;
+    }
     }
     if (TYPE(a) == T_DATA && RDATA(a)->dfree == (RDF)xb_res_free) {
         res = get_res(a);
@@ -3054,6 +3043,7 @@ xb_val_to_doc(VALUE obj)
     PROTECT(xmldoc = new XmlDocument(val->val->asDocument()));
     VALUE res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark, 
                                  (RDF)xb_doc_free, doc);
+    xman *man = get_man(val->man);
     doc->doc = xmldoc;
     doc->man = val->man;
     return res;
@@ -3504,8 +3494,15 @@ extern "C" {
 
 	xb_eFatal = rb_const_get(xb_mDb, rb_intern("Fatal"));
 	xb_cEnv = rb_const_get(xb_mDb, rb_intern("Env"));
-	rb_define_singleton_method(xb_cEnv, "new", RMF(xb_env_s_new), -1);
-	rb_define_singleton_method(xb_cEnv, "create", RMF(xb_env_s_new), -1);
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+	rb_define_alloc_func(xb_cEnv, RMFS(xb_env_s_alloc));
+#else
+	rb_define_singleton_method(xb_cEnv, "allocate", RMFS(xb_env_s_alloc), 0);
+#endif
+        rb_define_singleton_method(xb_cEnv, "new", RMF(xb_env_s_new), -1);
+        rb_define_singleton_method(xb_cEnv, "create", RMF(xb_env_s_new), -1);
+	rb_define_private_method(xb_cEnv, "initialize", RMF(xb_env_init), -1);
+        rb_define_method(xb_cEnv, "close", RMF(xb_env_close), 0);
         rb_define_method(xb_cEnv, "manager", RMF(xb_env_manager), -1);
 	rb_define_method(xb_cEnv, "begin", RMF(xb_env_begin), -1);
 	rb_define_method(xb_cEnv, "txn_begin", RMF(xb_env_begin), -1);
@@ -3519,8 +3516,6 @@ extern "C" {
 	rb_define_method(xb_cTxn, "open_container", RMF(xb_man_open_con), -1);
 	rb_define_method(xb_cTxn, "rename_container", RMF(xb_man_rename), 2);
 	rb_define_method(xb_cTxn, "remove_container", RMF(xb_man_remove), 1);
-	rb_define_method(xb_cTxn, "create_document", RMF(xb_man_create_doc), 0)	;
-        rb_define_method(xb_cTxn, "create_modify", RMF(xb_man_create_mod), 0);
         rb_define_method(xb_cTxn, "prepare", RMF(xb_man_prepare), -1);
         rb_define_method(xb_cTxn, "query", RMF(xb_man_query), -1);
         rb_define_method(xb_cTxn, "method_missing", RMF(xb_txn_missing), -1);
@@ -3605,13 +3600,20 @@ extern "C" {
 	rb_define_method(xb_cMan, "transaction", RMF(xb_man_begin), -1);
 	rb_define_method(xb_cMan, "create_container", RMF(xb_man_create_con), -1);
 	rb_define_method(xb_cMan, "open_container", RMF(xb_man_open_con), -1);
+	rb_define_method(xb_cMan, "open", RMF(xb_man_open_con), -1);
 	rb_define_method(xb_cMan, "rename_container", RMF(xb_man_rename), 2);
+	rb_define_method(xb_cMan, "rename", RMF(xb_man_rename), 2);
 	rb_define_method(xb_cMan, "remove_container", RMF(xb_man_remove), 1);
+	rb_define_method(xb_cMan, "remove", RMF(xb_man_remove), 1);
 	rb_define_method(xb_cMan, "upgrade_container", RMF(xb_man_upgrade), 1);
+        rb_define_method(xb_cMan, "upgrade", RMF(xb_man_upgrade), 1);
 	rb_define_method(xb_cMan, "dump_container", RMF(xb_man_dump_con), -1);
+	rb_define_method(xb_cMan, "dump", RMF(xb_man_dump_con), -1);
 	rb_define_method(xb_cMan, "load_container", RMF(xb_man_load_con), -1);
+	rb_define_method(xb_cMan, "load", RMF(xb_man_load_con), -1);
 
 	rb_define_method(xb_cMan, "verify_container", RMF(xb_man_verify), 1);
+	rb_define_method(xb_cMan, "verify", RMF(xb_man_verify), 1);
 	rb_define_method(xb_cMan, "create_update_context", RMF(xb_man_create_upd), 0);
 	rb_define_method(xb_cMan, "create_query_context", RMF(xb_man_create_cxt), -1);
 	rb_define_method(xb_cMan, "create_results", RMF(xb_man_create_res), 0);
@@ -3654,6 +3656,7 @@ extern "C" {
 	rb_define_method(xb_cCon, "get", RMF(xb_con_get), -1);
 	rb_define_method(xb_cCon, "<<", RMF(xb_con_add), -1);
 	rb_define_method(xb_cCon, "put", RMF(xb_con_add), -1);
+	rb_define_method(xb_cCon, "push", RMF(xb_con_add), -1);
 	rb_define_method(xb_cCon, "update", RMF(xb_con_update), -1);
 	rb_define_method(xb_cCon, "[]=", RMF(xb_con_set), 2);
 	rb_define_method(xb_cCon, "delete", RMF(xb_con_delete), -1);

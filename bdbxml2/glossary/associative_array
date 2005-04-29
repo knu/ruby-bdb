@@ -1,0 +1,19 @@
+<entry index='a'>
+<name>Associative Array</name>
+<reference>hash</reference>
+<content>
+    Alias of ((hash|Hash))
+
+    It seems "Associative" is because
+    the hash can take out the value of an arbitrary key,
+    and "Array" is because you can assume it to be an array
+    which the subscript is not number.
+    Once upon a time,
+    the associative array (called associative memory then)
+    was thought to be realized with hardware,
+    but improvement of hardware's calculation speed
+    and discovery of an appropriate algorithm
+    (it is called "((Hash)) table", derivation of the hash)
+    brought us achievement only with software.
+</content>
+</entry>

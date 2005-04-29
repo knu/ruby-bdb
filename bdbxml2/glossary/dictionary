@@ -1,0 +1,17 @@
+<entry index='d'>
+<name>Dictionary</name>
+<reference>data</reference>
+<reference>paradigm</reference>
+<reference>object-oriented</reference>
+<reference>hash</reference>
+<reference>ruby</reference>
+<content>
+    The one that can take the definition out of the item.
+    Changed to the alias of "((hash|Hash))."
+    In ((Smalltalk)) (which can be called the origin of
+    ((object-oriented|Object-Oriented)) ((paradigm|Paradigm))
+    the ((data|Data)) structure which corresponds to the hash
+    was called "Dictionary."
+    So there are specks of the crowd who are familiar with that term.
+</content>
+</entry>

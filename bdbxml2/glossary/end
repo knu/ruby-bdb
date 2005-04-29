@@ -1,0 +1,68 @@
+<entry index='e'>
+<name>end</name>
+<reference>block</reference>
+<reference>bug</reference>
+<reference>ruby</reference>
+<reference>eiffel</reference>
+<reference>perl</reference>
+<reference>matz</reference>
+<content>
+    Reserved word to which ((block|Block)) structure is finished.
+    According to a certain statistics, 33% of the person,
+    who saw ((Ruby)) first sees this, associates Pascal. (...trust it?)
+    However, this form which does not pair with '((|begin|))' is
+    actually the neighbor of Ada or ((Eiffel)) rather than Pascal.
+
+    ((Ruby)) do not to have offered to {}
+    which had been accustomed and familiar with C and ((Perl)).
+    It is from the following reasons:
+
+     * Evasion of ambiguous simple / complex sentence problem
+
+       For instance, in C, when you try to add a sentence on
+
+           if (a==b)
+              c();
+
+       and do as follows
+
+           if (a==b)
+              c();
+              d();
+
+       leads a confusing ((bug|Bug)).
+       This problem exists also in Pascal.
+
+     * Evasion of dangling 'else' problem
+
+       It is similar to the situation above-mentioned. If you write
+
+           if (a==b)
+              if (c==d) foo();
+           else bar();
+
+       it becomes annoying.
+       To tell the truth, what you really meant is:
+
+           if (a==b) {
+              if (c==d) foo();
+              else bar();
+           }
+
+     * Improvement of readability
+
+       There is a person who thinks that
+       closing the ((block|Block)) in the word named 'end' is
+       legible to program, though it is a debatable opinion.
+
+     * Problems in sentence structure of '((|begin|))' and '((|case|))'
+
+       Frankly speaking, ((matz)) have tried to use
+       the ((variable|Variable)) 'end' several time
+       only to have had a terrible time.
+       Then, he examined to change to the grammar with {} for a time,
+       but every time he abandoned it for the part of grammar
+       of '((|begin|))' and '((|case|))' with no beauty.
+       To tell the truth, this might be the first reason.
+</content>
+</entry>

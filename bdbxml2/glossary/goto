@@ -1,0 +1,16 @@
+<entry index='g'>
+<name>goto</name>
+<reference>exception</reference>
+<reference>ruby</reference>
+<reference>non-local exit</reference>
+<content>
+    One of which ((Ruby)) doesn't have.
+
+    Why ((|goto|))'s absent is not for the policy "it should not be anywhere,"
+    but for the fact "it's troublesome in implementation."
+    In place of ((|goto|)), ((|catch|))/((|throw|))
+    or the ((exception|Exception)) is used\ in ((Ruby)).
+
+    See also "((Non-Local Exit))."
+</content>
+</entry>

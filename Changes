@@ -253,3 +253,10 @@
 
 * compile for 4.3
 * BDB::Sequence (not tested)
+
+--- 0.5.5
+
+* store_nil_as_null (see README.en)
+* patch bdb_TXN (Thanks akira yamada <akira@debian.org>)
+
+

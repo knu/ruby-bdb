@@ -1,0 +1,19 @@
+<entry index='m'>
+<name>Mix-in</name>
+<reference>function</reference>
+<reference>inheritance</reference>
+<reference>ruby</reference>
+<reference>matz</reference>
+<content>
+    To make a new taste mixing various one with the ice cream.
+    Changed into mix the module with the class,
+    and add the ((function|Function)).
+    See also "((Inheritance))."
+
+    Multiple ((inheritance|Inheritance)) is not adopted in ((Ruby)).
+    Instead, the inheritance for the is-a relation,
+    and Mix-in for sharing the ((function|Function)) is prepared.
+    The purpose of this is the belief of ((matz))
+    that the relations should be in chaos when multiple inheritance is abused.
+</content>
+</entry>

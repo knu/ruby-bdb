@@ -1,0 +1,23 @@
+<entry index='f'>
+<name>Function</name>
+<reference>self</reference>
+<reference>module function</reference>
+<reference>receiver</reference>
+<reference>instance variable</reference>
+<reference>method</reference>
+<reference>ruby</reference>
+<content>
+    Strictly speaking, ((Ruby)) has no functions.
+    But the appearance of a method call with ((receiver|Receiver)) left out
+    is like a function, and furthermore, there is a ((method|Method)) which
+    we can describe it as a virtual function, ((|((self))|)),
+    ((instance variable|Instance Variable)),
+    where no ((receiver|Receiver)) informations are referred.
+    Such methods are sometimes, in a torelant situation, called functions.
+
+    Mostly such function(al method)s' visibility is set to private, so that
+    they could not be called in the form which ((receiver|Receiver)) is
+    not omitted.
+    The representative of that methods is ((module function|Module Function)).
+</content>
+</entry>

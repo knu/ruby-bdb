@@ -1,0 +1,21 @@
+<entry index='i'>
+<name>Inheritance</name>
+<reference>function</reference>
+<reference>mix-in</reference>
+<content>
+    Do minimum in itself, and fully rely on what succeeded
+    from the ancestor or the relative to deal the rest matter.
+    In the real world, It should be an unpleasant fellow.
+
+    Turned to establish a new class
+    which adds the ((function|Function)) to a certain class.
+    Inheritance is effective to express the relation of is-a.
+    For instance,
+    "Student" class which describes the character of the general
+    student can be succeeded to "Department of Engineering student
+    (who is afflicted with the experiment)" class.
+    When there is no is-a relation and the situation only shares
+    the character and the function,
+    it is assumed preferable to use ((Mix-in)).
+</content>
+</entry>

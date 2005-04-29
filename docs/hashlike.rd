@@ -170,6 +170,7 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
       Hash, Possible options are (see the documentation of Berkeley DB
       for more informations) 
 
+      : ((|store_nil_as_null|)): if `true' will store `nil' as `\000', otherwise as an empty string (default `false')
       : ((|set_array_base|)): base index for BDB::Recno, BDB::Queue or BDB::Btree (with BDB::RECNUM). Must be 0 or 1
       : ((|set_bt_compare|)) :  specify a Btree comparison function 
       : ((|set_bt_minkey|)) :   set the minimum number of keys per Btree page

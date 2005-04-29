@@ -53,7 +53,7 @@ class TestBtree < Inh::TestCase
       assert_equal([12, "alpha"], $bdb["alpha"].to_orig, "<retrieve value>")
       assert_equal(nil, $bdb["gamma"] = nil, "<set nil>")
       assert_equal(nil, $bdb["gamma"].to_orig, "<retrieve nil>")
-      assert($bdb.key?("alpha") == [12, "alpha"], "<has key>")
+      assert($bdb.key?("alpha"), "<has key>")
       assert_equal(false, $bdb.key?("unknown"), "<has unknown key>")
       assert($bdb.value?(nil), "<has nil>")
       assert($bdb.value?([12, "alpha"]), "<has value>")

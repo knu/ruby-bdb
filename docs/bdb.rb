@@ -1,6 +1,19 @@
 # Berkeley DB is an embedded database system that supports keyed access
 # to data.
 # 
+# ...............................................................
+# 
+# With bdb >= 0.5.5 <em>nil</em> is stored as an empty string (when marshal is
+# not used).
+# 
+# Open the database with
+# 
+#      "store_nil_as_null" => true
+# 
+# if you want the old behavior (<em>nil</em> stored as `\000')
+#
+# ...............................................................
+#
 # Developers may choose to store data in any of several different
 # storage structures to satisfy the requirements of a particular
 # application. In database terminology, these storage structures and the

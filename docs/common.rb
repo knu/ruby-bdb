@@ -61,6 +61,7 @@ class BDB::Common
       #  Hash, Possible options are (see the documentation of Berkeley DB
       #  for more informations) 
       #
+      #  * <em>store_nil_as_null</em>: if `true' will store `nil' as `\000', otherwise as an empty string (default `false')
       #  * <em>set_array_base</em>: base index for BDB::Recno, BDB::Queue or BDB::Btree (with BDB::RECNUM). Must be 0 or 1
       #  * <em>set_bt_compare</em> :  specify a Btree comparison function 
       #  * <em>set_bt_minkey</em> :   set the minimum number of keys per Btree page

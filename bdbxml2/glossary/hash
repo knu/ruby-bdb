@@ -1,0 +1,13 @@
+<entry index='h'>
+<name>Hash</name>
+<reference>associative array</reference>
+<reference>dictionary</reference>
+<reference>ruby</reference>
+<content>
+    Data structure in ((Ruby)) which expresses the mapping from key to value.
+    It is also called "((Associative Array))" or "((Dictionary))."
+    The derivation of hash is the algorithm
+    which is called "Hash table" in the achievement of the structure.
+    The word 'hash' means "cut in pieces", of "hashed beef."
+</content>
+</entry>

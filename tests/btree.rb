@@ -71,9 +71,8 @@ class TestBtree < Inh::TestCase
       assert_equal("alpha", $bdb["alpha"], "<retrieve value>")
       assert_equal(nil, $bdb["gamma"] = nil, "<set nil>")
       assert_equal(nil, $bdb["gamma"], "<retrieve nil>")
-      assert($bdb.key?("alpha") == "alpha", "<has key>")
+      assert($bdb.key?("alpha"), "<has key>")
       assert_equal(false, $bdb.key?("unknown"), "<has unknown key>")
-      assert($bdb.value?(nil), "<has nil>")
       assert($bdb.value?("alpha"), "<has value>")
       assert_equal(false, $bdb.value?("unknown"), "<has unknown value>")
       assert_equal(false, $bdb.put("alpha", "gamma", BDB::NOOVERWRITE), "<nooverwrite>")
@@ -125,17 +124,17 @@ class TestBtree < Inh::TestCase
       assert_equal(arr0, arr1.reverse, "<reverse>")
       assert_equal($hash.invert, $bdb.invert, "<invert>")
       $bdb.each do |key, value|
-	 if rand < 0.5
-	    assert_equal($bdb, $bdb.delete(key), "<delete value>")
-	    $hash.delete(key)
-	 end
+         if rand > 0.5
+            assert_equal($bdb, $bdb.delete(key), "<delete value>")
+            $hash.delete(key)
+         end
       end
       assert_equal($bdb.size, $hash.size, "<size after load>")
       $bdb.each do |key, value|
 	 assert_equal($hash[key], value, "<after delete>")
       end
-      $bdb.each do |key, value|
-	 assert($hash.key?(key), "<key after delete>")
+      $hash.each do |key, value|
+	 assert($bdb.key?(key), "<key after delete>")
 	 assert_equal($bdb, $bdb.delete(key), "<delete value>")
       end
    end
@@ -257,7 +256,7 @@ class TestBtree < Inh::TestCase
       assert_equal(2, len, "<len>")
       assert_equal("t", $bdb["red"], "<partial (3, 2) get red>")
       assert_equal("se", $bdb["green"], "<partial (3, 2) get green>")
-      assert_equal("", $bdb["blue"], "<partial (3, 2) get blue>")
+      assert_equal(nil, $bdb["blue"], "<partial (3, 2) get blue>")
       pon, off, len = $bdb.partial_clear
       assert(pon, "<pon>")
       assert_equal(3, off, "<off>")

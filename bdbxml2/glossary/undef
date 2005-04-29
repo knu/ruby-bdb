@@ -1,0 +1,16 @@
+<entry index='u'>
+<name>undef</name>
+<reference>inheritance</reference>
+<reference>method</reference>
+<reference>mix-in</reference>
+<content>
+    To set the ((method|Method)) undefined.
+
+    '((|undef|))' means that the particular method can be obviated,
+    while ((inheritance|Inheritance)) or ((Mix-in))
+    just adds class on the method.
+    However, you'll pay for the lack of prudence
+    when you '((|undef|))' the method which is called from inside of
+    the method, which is crucial to the implementation of the class.
+</content>
+</entry>

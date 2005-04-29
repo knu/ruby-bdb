@@ -1,0 +1,24 @@
+<entry index='i'>
+<name>Iterator</name>
+<reference>block</reference>
+<reference>method</reference>
+<content>
+    Rehearser
+    The group of a certain code which can be passed to the ((method|Method))
+    is called '((block|Block)).'
+    Iterator is the method which the given block...this is surely the case.
+    In general, the block is executed more than one time, so the method is
+    called 'iterator' ("iterate" = repeat it); but there is a custom
+    to call the case executing only once or not repeating, also iterator,
+    insofar as the block is given to the method.
+    Keep in mind, just the method have the 'repetition' as many as 0 or 1 time,
+    do not call it liar, because it must be the 'repetition.'
+
+    In the iterator, you can execute the block by '((|yield|)).'
+
+    Ah, of course
+    Nothing happens to the metho
+    when the block is given of not evaluating the block internally.
+    I wish you not to disappoint though the error does not occur either.
+</content>
+</entry>

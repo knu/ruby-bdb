@@ -28,6 +28,18 @@
  
   ruby extconf.rb --with-db-dir=/home/ts/local
 
+* WARNING
+
+  With bdb >= 0.5.5 `nil' is stored as an empty string (when marshal is not
+  used).
+
+  Open the database with
+
+     "store_nil_as_null" => true
+
+  if you want the old behavior (`nil' stored as `\000')
+
+
 * examples 
 
   examples/basic.rb        simple access method
@@ -49,6 +61,7 @@
  
  You can redistribute it and/or modify it under the same term as
  Ruby.
+
  
  
 Guy Decoux <ts@moulon.inra.fr>

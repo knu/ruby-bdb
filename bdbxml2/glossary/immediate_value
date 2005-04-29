@@ -1,0 +1,17 @@
+<entry index='i'>
+<name>Immediate Value</name>
+<reference>object</reference>
+<reference>reference</reference>
+<reference>variable</reference>
+<reference>ruby</reference>
+<content>
+    The one in ((variable|Variable)) that not ((reference|Reference))
+    but actual value is stored.
+    Only '((|Fixnum|))' and ((|nil|))/((|true|))/((|false|)) are
+    immediate values in present ((Ruby)).
+    However, there's no law against another ((Ruby))
+    which ((|Fixnum|)) is not immediate value, and also you can regard
+    the all values on the model as a ((reference|Reference))
+    to the ((object|Object)).
+</content>
+</entry>

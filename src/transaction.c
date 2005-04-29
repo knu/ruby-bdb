@@ -2,36 +2,50 @@
 
 static ID id_txn_close;
 
+static VALUE
+txn_close(VALUE ary)
+{
+    if (rb_respond_to(RARRAY(ary)->ptr[0], id_txn_close)) {
+        rb_funcall(RARRAY(ary)->ptr[0], id_txn_close, 2,
+                   RARRAY(ary)->ptr[1], Qfalse);
+    }
+    return Qnil;
+}
+
 static void
 clean_ary(txnst, result)
     bdb_TXN *txnst;
     VALUE result;
 {
-    VALUE *ary;
+    VALUE *ary, tmp;
     int i, len;
 
+    tmp = rb_assoc_new(Qnil, result);
     if (txnst->db_ary.ptr) {
+        txnst->db_ary.mark = Qtrue;
 	ary = txnst->db_ary.ptr;
-	txnst->db_ary.ptr = 0;
 	len = txnst->db_ary.len;
-	txnst->db_ary.len = 0;
+
 	for (i = 0; i < len; i++) {
-	    if (rb_respond_to(ary[i], id_txn_close)) {
-		rb_funcall(ary[i], id_txn_close, 2, result, Qfalse);
-	    }
+            RARRAY(tmp)->ptr[0] = ary[i];
+            rb_protect(txn_close, tmp, 0);
 	}
+        txnst->db_ary.mark = Qfalse;
+	txnst->db_ary.ptr = 0;
+	txnst->db_ary.total = txnst->db_ary.len = 0;
 	free(ary);
     }
     if (txnst->db_assoc.ptr) {
+        txnst->db_assoc.mark = Qtrue;
 	ary = txnst->db_assoc.ptr;
-	txnst->db_assoc.ptr = 0;
 	len = txnst->db_assoc.len;
-	txnst->db_assoc.len = 0;
 	for (i = 0; i < len; i++) {
-	    if (rb_respond_to(ary[i], id_txn_close)) {
-		rb_funcall(ary[i], id_txn_close, 2, result, Qfalse);
-	    }
+            RARRAY(tmp)->ptr[0] = ary[i];
+            rb_protect(txn_close, tmp, 0);
 	}
+        txnst->db_assoc.mark = Qfalse;
+	txnst->db_assoc.ptr = 0;
+	txnst->db_assoc.total = txnst->db_assoc.len = 0;
 	free(ary);
     }
 }
@@ -69,7 +83,11 @@ bdb_txn_mark(txnst)
 {
     rb_gc_mark(txnst->marshal);
     rb_gc_mark(txnst->mutex);
+#if BDB_VERSION >= 40000
     rb_gc_mark(txnst->man);
+#endif
+    bdb_ary_mark(&txnst->db_ary);
+    bdb_ary_mark(&txnst->db_assoc);
 }
 
 static VALUE

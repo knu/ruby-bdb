@@ -1,0 +1,18 @@
+<entry index='e'>
+<name>ENV</name>
+<reference>environment variable</reference>
+<reference>singleton method</reference>
+<reference>instance</reference>
+<reference>ruby</reference>
+<reference>object</reference>
+<reference>hash</reference>
+<content>
+    ((Object)) which operates same as ((Hash))
+    to access ((environment variable|Environment Variable)).
+    Actually it is an ((instance|Instance)) of the Object class
+    which adds a ((singleton method|Singleton Method)).
+    When the ((environment variable|Environment Variable)) is changed
+    with this object, it is succeeded to the offspring process
+    of ((Ruby)).
+</content>
+</entry>

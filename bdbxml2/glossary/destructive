@@ -1,0 +1,11 @@
+<entry index='d'>
+<name>Destructive</name>
+<reference>receiver</reference>
+<reference>method</reference>
+<content>
+    ((Method)) such as String#chop and Array#concat
+    is said "It has destructive action",
+    since they change the state of the ((receiver|Receiver)),
+    though the hardware is seldom put out of order.
+</content>
+</entry>

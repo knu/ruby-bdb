@@ -20,6 +20,3 @@ man.query("collection('exa.dbxml')/book") do |val|
    puts "#{val.to_document.name} = #{val}"
 end
 man.query("collection('exa.dbxml')/book")
-con.close
-io = File.new("exa.dumped", "w")
-man.dump_container("exa.dbxml", io)

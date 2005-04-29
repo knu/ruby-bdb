@@ -1,0 +1,7 @@
+<entry index='s'>
+<name>Singleton Class</name>
+<reference>object</reference>
+<content>
+    Virtual class only for the particular ((object|Object)).
+</content>
+</entry>

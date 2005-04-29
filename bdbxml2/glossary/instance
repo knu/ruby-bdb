@@ -1,0 +1,16 @@
+<entry index='i'>
+<name>Instance</name>
+<reference>paradigm</reference>
+<reference>object-oriented</reference>
+<reference>object</reference>
+<content>
+    ((Object))
+
+    There seems to be a meaning to emphasize belonging to the class
+    where the object exists.
+    It is heard that there are a lot of people who have failed
+    in ((object-oriented|Object-Oriented)) ((paradigm|Paradigm))
+    by confusing whether the one s/he touches is an object or an instance.
+    
+</content>
+</entry>

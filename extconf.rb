@@ -14,9 +14,13 @@ def rule(target, clean = nil)
    wr
 end
 
-subdirs = Dir["*"].select do |subdir|
-   /\Abdbxml/ !~ subdir && File.file?(subdir + "/extconf.rb")
-end
+subdirs = if $configure_args.has_key?("--make")
+             []
+          else
+             Dir["*"].select do |subdir|
+                /\Abdbxml/ !~ subdir && File.file?(subdir + "/extconf.rb")
+             end
+          end
 
 begin
    make = open("Makefile", "w")
@@ -24,6 +28,7 @@ begin
 SUBDIRS = #{subdirs.join(' ')}
 
 #{rule('all')}
+#{rule('static')}
 #{rule('clean', false)}
 #{rule('distclean', true)}
 #{rule('realclean', true)}
@@ -75,3 +80,4 @@ subdirs.each do |subdir|
    Dir.chdir("..")
    STDERR.puts("#{$0}: Leaving directory `#{subdir}'")
 end
+$makefile_created = true

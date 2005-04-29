@@ -1,0 +1,13 @@
+<entry index='s'>
+<name>Sather</name>
+<reference>matz</reference>
+<reference>object-oriented programming</reference>
+<reference>eiffel</reference>
+<reference>ruby</reference>
+<content>
+    An ((object-oriented programming|Object-Oriented Programming)) language.
+
+    ((Matz|matz)) likes Sather rather than ((Eiffel)).
+    But Sather doesn't look like ((Ruby)) at all, either.
+</content>
+</entry>

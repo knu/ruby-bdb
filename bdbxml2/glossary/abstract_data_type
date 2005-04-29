@@ -1,0 +1,14 @@
+<entry index='a'>
+<name>Abstract Data Type</name>
+<reference>encapsulation</reference>
+<reference>data</reference>
+<content>
+    A bunch of data structure and operation to the ((data|Data))
+    is called an abstract data type.
+
+    The abstract data should not be operated unless passing this operation.
+    As a result, it is not referred directly from the outside,
+    and the change in an internal structure does not color the outside.
+    This is called ((encapsulation|Encapsulation)).
+</content>
+</entry>

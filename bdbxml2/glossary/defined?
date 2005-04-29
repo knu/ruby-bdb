@@ -1,0 +1,16 @@
+<entry index='d'>
+<name>defined?</name>
+<reference>method</reference>
+<reference>ruby</reference>
+<content>
+    Operator to examine whether the various expression is actually defined.
+    It returns the string to show the type of the expression if defined,
+    and returns nil if not defined.
+    While defined? looks like the ((method|Method)),
+    it is the built-in operator of ((Ruby)),
+    and it doesn't evaluate arguments.
+    Therefore, there'll be no output with:
+
+        defined? print("abc\n")
+</content>
+</entry>

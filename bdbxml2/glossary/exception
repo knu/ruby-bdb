@@ -1,0 +1,18 @@
+<entry index='e'>
+<name>Exception</name>
+<reference>thread</reference>
+<reference>ruby</reference>
+<content>
+    The one occurs in exceptional situation.
+    when it occurs,
+    unless it is caught explicitly by '((|rescue|))' paragraph of '((|begin|))',
+    the call hierarchy is traced back
+    and the execution of program (((Thread))) is interrupted.
+    The ((Ruby)) program should thank exception,
+    because it is able to ((end)) without checking
+    an exceptional situation one by one, in almost all of the case.
+    The information on the place where the exception is generated
+    is stored in ((|$@|)),
+    and the information on the exception itself is stored in ((|$!|)).
+</content>
+</entry>

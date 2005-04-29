@@ -639,13 +639,18 @@ bdb_final(envst)
     int i;
 
     ary = envst->db_ary.ptr;
-    envst->db_ary.ptr = 0;
-    for (i = 0; i < envst->db_ary.len; i++) {
-	if (rb_respond_to(ary[i], rb_intern("close"))) {
-	    rb_protect(bdb_protect_close, ary[i], 0);
-	}
+    if (ary) {
+        envst->db_ary.mark = Qtrue;
+        for (i = 0; i < envst->db_ary.len; i++) {
+            if (rb_respond_to(ary[i], rb_intern("close"))) {
+                rb_protect(bdb_protect_close, ary[i], 0);
+            }
+        }
+        envst->db_ary.mark = Qfalse;
+        envst->db_ary.total = envst->db_ary.len = 0;
+        envst->db_ary.ptr = 0;
+        free(ary);
     }
-    free(ary);
     if (envst->envp) {
 	if (!(envst->options & BDB_ENV_NOT_OPEN)) {
 #if BDB_VERSION < 30000
@@ -710,6 +715,7 @@ bdb_env_mark(envst)
     rb_gc_mark(envst->feedback);
 #endif
     rb_gc_mark(envst->home);
+    bdb_ary_mark(&envst->db_ary);
 }
 
 VALUE
@@ -969,7 +975,7 @@ bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
 
 #endif
 
-static VALUE
+VALUE
 bdb_env_init(argc, argv, obj)
     int argc;
     VALUE *argv;
@@ -987,7 +993,11 @@ bdb_env_init(argc, argv, obj)
     st_config = 0;
     db_config = 0;
     mode = flags = 0;
+    if (!RDATA(obj)->dmark) {
+        RDATA(obj)->dmark = (RUBY_DATA_FUNC)bdb_env_mark;
+    }
     Data_Get_Struct(obj, bdb_ENV, envst);
+    envst->envp->set_errcall(envst->envp, bdb_env_errcall);
     envp = envst->envp;
 #if BDB_VERSION >= 40100
     if (rb_const_defined(CLASS_OF(obj), rb_intern("BDB_ENCRYPT"))) {

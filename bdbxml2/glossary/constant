@@ -1,0 +1,8 @@
+<entry index='c'>
+<name>Constant</name>
+<reference>variable</reference>
+<content>
+    ((Variable)) which cannot change value once it is defined.
+    ...Contradiction in terms?
+</content>
+</entry>

@@ -1,0 +1,15 @@
+<entry index='e'>
+<name>Eiffel</name>
+<reference>block</reference>
+<reference>object-oriented programming</reference>
+<reference>ruby</reference>
+<reference>matz</reference>
+<content>
+    An ((object-oriented programming|Object-Oriented Programming)) language.
+    Young ((matz)) has said to drop scales off his eyes by the book
+    "Object-oriented Software Construction,"
+    written by the author of this language.
+    Even so, ((Ruby)) doesn't look like Eiffel at all, except
+    the ((block|Block)) end (with '((|((end))|))') and a reserved word '((|rescue|)).'
+</content>
+</entry>

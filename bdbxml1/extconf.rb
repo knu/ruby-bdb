@@ -1,3 +1,5 @@
+# VERIFY 'myconfig' then comment this line
+
 require 'mkmf'
 load './myconfig'
 

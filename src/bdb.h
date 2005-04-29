@@ -56,6 +56,8 @@ extern "C" {
 #define BDB_NO_THREAD      (1<<10)
 #define BDB_INIT_LOCK      (1<<11)
 
+#define BDB_NIL            (1<<12)
+
 #define BDB_TXN_COMMIT     (1<<0)
 
 #define BDB_APP_DISPATCH   (1<<0)
@@ -109,7 +111,7 @@ extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
 #endif
 
 struct ary_st {
-    int len, total;
+    int len, total, mark;
     VALUE *ptr;
 };
 
@@ -159,6 +161,8 @@ typedef struct {
 
 #define FILTER_KEY 0
 #define FILTER_VALUE 1
+
+#define FILTER_FREE 2
 
 typedef struct {
     int options;
@@ -452,6 +456,7 @@ extern void bdb_env_errcall _((const DB_ENV *, const char *, const char *));
 #else
 extern void bdb_env_errcall _((const char *, char *));
 #endif
+extern VALUE bdb_env_init _((int, VALUE *, VALUE));
 extern VALUE bdb_protect_close _((VALUE));
 extern VALUE bdb_env_open_db _((int, VALUE *, VALUE));
 extern VALUE bdb_get _((int, VALUE *, VALUE));
@@ -482,6 +487,7 @@ extern VALUE bdb_return_err _((void));
 extern void bdb_ary_push _((struct ary_st *, VALUE));
 extern void bdb_ary_unshift _((struct ary_st *, VALUE));
 extern VALUE bdb_ary_delete _((struct ary_st *, VALUE));
+extern void bdb_ary_mark _((struct ary_st *));
 
 #if defined(__cplusplus)
 }

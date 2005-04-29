@@ -1,0 +1,19 @@
+<entry index='b'>
+<name>Big Endian</name>
+<reference>byte order</reference>
+<reference>data</reference>
+<reference>little endian</reference>
+<content>
+    The American Continent original inhabitants... are Indians.
+    Here: ((*endian*)).
+    The etymology is the people who eat the egg from a round edge,
+    after Swift's "Gulliver's Travels."
+    Naturally, the people who eat from a pointed edge are
+    the (('Little' endian|Little Endian)).
+
+    In the computer industry,
+    it is one of the forms when CPU etc. arrange ((data|Data)).
+    The networkers are said that they will like Big endian.
+    See also "((byte order|Byte Order))."
+</content>
+</entry>

@@ -1,0 +1,21 @@
+<entry index='m'>
+<name>Module Function</name>
+<reference>singleton method</reference>
+<reference>function</reference>
+<reference>method</reference>
+<content>
+    In the ((methods|Method)) which is used like ((function|Function)).
+    the one defined both as a method of the module
+    and a ((singleton method|Singleton Method)) is called module function.
+    For instance, most methods of the ((|Math|)) module are the module functions.
+    These methods is convenient because it can be used
+    both in the form(for example)::
+
+        Math.sqrt(2)
+
+    and
+
+        include Math
+        sqrt(2)
+</content>
+</entry>

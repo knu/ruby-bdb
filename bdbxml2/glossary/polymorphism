@@ -1,0 +1,19 @@
+<entry index='p'>
+<name>Polymorphism</name>
+<reference>receiver</reference>
+<reference>method</reference>
+<reference>object</reference>
+<reference>ruby</reference>
+<content>
+    To define actual operation as to an ((object|Object)).
+
+    ((Ruby)) carries it out to choose the ((method|Method)
+    according to the object of the ((receiver|Receiver)).
+
+    : Example:                              
+        obj = "abc"
+        print obj.length, "\n"        # => 3
+        obj = [1,2,3,4]
+        print obj.length, "\n"        # => 4
+</content>
+</entry>

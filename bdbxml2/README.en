@@ -11,6 +11,9 @@
 
 .... modify './myconfig' to adapt it to your configuration
      IMPORTANT : you must use a version of xercesc compiled *without* threads
+     Comment in extconf.rb the line
+
+VERIFY 'myconfig' then comment this line
 
 .... This version must be used with [db-4.3.*, DbXml 2.0.*]
 

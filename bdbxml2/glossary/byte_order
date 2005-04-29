@@ -1,0 +1,14 @@
+<entry index='b'>
+<name>Byte Order</name>
+<reference>data</reference>
+<reference>big endian</reference>
+<reference>little endian</reference>
+<content>
+    Do you arrange four byte ((data|Data)) 0x1234
+    with 1, 2, 3, 4? or 4, 3, 2, 1?
+    The former way is called ((Big Endian)),
+    and the latter is called ((Little Endian)).
+    The controversy which is good continues from the preliterate era
+    and till now the conclusion has not been reached yet.
+</content>
+</entry>
