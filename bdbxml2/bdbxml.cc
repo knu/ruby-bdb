@@ -2,7 +2,7 @@
 
 static VALUE xb_cEnv, xb_cRes, xb_cQue, xb_cMan;
 static VALUE xb_cInd, xb_cUpd, xb_cMod, xb_cVal;
-static VALUE xb_cCon, xb_cDoc, xb_cCxt;
+static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_mObs;
 
 static VALUE xb_io;
 static ID id_current_env, id_close, id_read, id_write, id_pos;
@@ -160,7 +160,7 @@ public:
         res->res = &xmlresult;
         res->man = man_;
         VALUE obj = retrieve_txn(xmltxn);
-        VALUE rep = rb_funcall(obj_, rb_intern("resolve_collection"),
+        VALUE rep = rb_funcall(obj_, rb_intern("resolve_collection"), 3,
                                obj, uri, result);
         if (RTEST(rep)) {
             return true;
@@ -179,7 +179,7 @@ public:
         res->res = &xmlresult;
         res->man = man_;
         VALUE obj = retrieve_txn(xmltxn);
-        VALUE rep = rb_funcall(obj_, rb_intern("resolve_document"),
+        VALUE rep = rb_funcall(obj_, rb_intern("resolve_document"), 3,
                                obj, uri, result);
         if (RTEST(rep)) {
             return true;
@@ -194,7 +194,7 @@ public:
         VALUE sys = rb_tainted_str_new2(xmlsys.c_str());
         VALUE pub = rb_tainted_str_new2(xmlpub.c_str());
         VALUE obj = retrieve_txn(xmltxn);
-        VALUE res = rb_funcall(obj_, rb_intern("resolve_entity"),
+        VALUE res = rb_funcall(obj_, rb_intern("resolve_entity"), 3,
                                obj, sys, pub);
         if (NIL_P(res)) {
             return NULL;
@@ -212,7 +212,7 @@ public:
         VALUE schema = rb_tainted_str_new2(xmlschema.c_str());
         VALUE name = rb_tainted_str_new2(xmlname.c_str());
         VALUE obj = retrieve_txn(xmltxn);
-        VALUE res = rb_funcall(obj_, rb_intern("resolve_schema"),
+        VALUE res = rb_funcall(obj_, rb_intern("resolve_schema"), 3,
                                obj, schema, name);
         if (NIL_P(res)) {
             return NULL;
@@ -325,7 +325,7 @@ xb_env_close(VALUE obj)
     bdb_ENV *envst;
     GetEnvDBErr(obj, envst, id_current_env, xb_eFatal);
     xb_final(envst);
-    RDATA(obj)->dfree = free;
+    rset_obj(obj);
     return Qnil;
 }
 
@@ -382,8 +382,6 @@ xb_env_s_new(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
-
-
 static VALUE
 xb_env_init(int argc, VALUE *argv, VALUE obj)
 {
@@ -400,7 +398,6 @@ xb_env_init(int argc, VALUE *argv, VALUE obj)
     return obj;
 }
 
-
 static VALUE
 xb_env_begin(int argc, VALUE *argv, VALUE obj)
 {
@@ -415,6 +412,78 @@ xb_man_mark(xman *man)
 }
 
 static VALUE
+ent_each(VALUE klass)
+{
+    return rb_funcall(xb_mObs, rb_intern("each_object"), 1, klass);
+}
+
+static VALUE xb_res_close(VALUE obj);
+static VALUE xb_val_close(VALUE obj);
+static VALUE xb_doc_close(VALUE obj);
+static VALUE xb_con_close(VALUE obj);
+
+static VALUE
+ent_release(VALUE obj, VALUE man)
+{
+    VALUE klass = CLASS_OF(obj);
+    if (klass == xb_cRes) {
+        xres *res;
+        Data_Get_Struct(obj, xres, res);
+        if (res->man == man) {
+            FREE_DEBUG("res_release %x\n", obj);
+            xb_res_close(obj);
+        }
+        return Qnil;
+    }
+    if (klass == xb_cVal) {
+        xval *val;
+        Data_Get_Struct(obj, xval, val);
+        if (val->man == man) {
+            FREE_DEBUG("val_release %x\n", obj);
+            xb_val_close(obj);
+        }
+        return Qnil;
+    }
+    if (klass == xb_cDoc) {
+        xdoc *doc;
+        Data_Get_Struct(obj, xdoc, doc);
+        if (doc->man == man) {
+            FREE_DEBUG("doc_release %x\n", obj);
+            xb_doc_close(obj);
+        }
+        return Qnil;
+    }
+    if (klass == xb_cCon) {
+        xcon *con;
+        Data_Get_Struct(obj, xcon, con);
+        if (con->man == man) {
+            FREE_DEBUG("con_release %x\n", obj);
+            xb_con_close(obj);
+        }
+        return Qnil;
+    }
+    if (klass == xb_cQue) {
+        xque *que;
+        Data_Get_Struct(obj, xque, que);
+        if (que->man == man) {
+            FREE_DEBUG("que_release %x\n", obj);
+            delete que->que;
+            que->que = 0;
+            rset_obj(obj);
+        }
+        return Qnil;
+    }
+    return Qnil;
+}
+
+static VALUE
+clean_ent(VALUE ary)
+{
+    return rb_iterate(ent_each, RARRAY(ary)->ptr[1], 
+                      (VALUE (*)(...))ent_release, RARRAY(ary)->ptr[0]);
+}
+
+static VALUE
 xb_man_close(VALUE obj)
 {
     xman *man = (xman *)DATA_PTR(obj);
@@ -424,6 +493,18 @@ xb_man_close(VALUE obj)
         bdb_ary_delete(&envst->db_ary, obj);
         man->env = 0;
     }
+    VALUE ary = rb_ary_new2(2);
+    RARRAY(ary)->ptr[0] = obj;
+    RARRAY(ary)->ptr[1] = xb_cRes;
+    rb_protect(clean_ent, ary, 0);
+    RARRAY(ary)->ptr[1] = xb_cVal;
+    rb_protect(clean_ent, ary, 0);
+    RARRAY(ary)->ptr[1] = xb_cDoc;
+    rb_protect(clean_ent, ary, 0);
+    RARRAY(ary)->ptr[1] = xb_cQue;
+    rb_protect(clean_ent, ary, 0);
+    RARRAY(ary)->ptr[1] = xb_cCon;
+    rb_protect(clean_ent, ary, 0);
     if (man->man) {
         delete man->man;
         man->man = 0;
@@ -1172,6 +1253,7 @@ xb_doc_close(VALUE obj)
     xdoc *doc = get_doc(obj);
     FREE_DEBUG("xb_doc_close %x\n", doc);
     doc_free(doc);
+    rset_obj(obj);
     return Qnil;
 }
 
@@ -1334,6 +1416,7 @@ xb_res_close(VALUE obj)
 {
     xres *res = get_res(obj);
     res_free(res);
+    rset_obj(obj);
     return Qnil;
 }
 
@@ -1458,6 +1541,54 @@ xb_con_manager(VALUE obj)
 }
 
 static VALUE
+xb_con_alias_set(VALUE obj, VALUE a)
+{
+    xcon *con = get_con(obj);
+    char *alias = StringValuePtr(a);
+    if (con->con->addAlias(alias)) {
+        return a;
+    }
+    return Qnil;
+}
+
+static VALUE
+xb_con_alias_del(VALUE obj, VALUE a)
+{
+    xcon *con = get_con(obj);
+    char *alias = StringValuePtr(a);
+    if (con->con->removeAlias(alias)) {
+        return a;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_con_all(int argc, VALUE *argv, VALUE obj)
+{
+    xres *res;
+    XmlResults *xmlres;
+    VALUE a;
+    int flags = 0;
+
+    if (rb_scan_args(argc, argv, "01", &a)) {
+        flags = NUM2INT(a);
+    }
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+    if (xmltxn) {
+        PROTECT(xmlres = new XmlResults(con->con->getAllDocuments(*xmltxn, flags)));
+    }
+    else {
+        PROTECT(xmlres = new XmlResults(con->con->getAllDocuments(flags)));
+    }
+    VALUE result = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark,
+                                    (RDF)xb_res_free, res);
+    res->res = xmlres;
+    res->man = con->man;
+    return result;
+}
+
+static VALUE
 xb_con_type(VALUE obj)
 {
     xcon *con = get_con(obj);
@@ -1477,11 +1608,9 @@ xb_con_close(VALUE obj)
 {
     xcon *con = get_con(obj);
     FREE_DEBUG("xb_con_close %x\n", con);
+    rset_obj(obj);
     delete_ind(con->ind);
-    con->ind = 0;
     delete con->con;
-    con->con = 0;
-    con->opened = 0;
     return Qnil;
 }
 
@@ -1492,9 +1621,7 @@ delete_doc(VALUE obj, xdoc *doc)
         rb_raise(rb_eArgError, "expected a Document object");
     }
     delete doc->doc;
-    doc->doc = 0;
-    RDATA(obj)->dfree = free;
-    RDATA(obj)->dmark = 0;
+    rset_obj(obj);
 }
 
 static VALUE
@@ -1707,7 +1834,6 @@ xb_con_name(VALUE obj)
     return rb_tainted_str_new2(name.c_str());
 }
 
-
 static void 
 xb_ind_mark(xind *ind)
 {
@@ -1768,8 +1894,7 @@ add_ind(VALUE obj, VALUE a)
     if (RTEST(con->ind)) {
         xind *ind = get_ind(con->ind);
         delete ind->ind;
-        RDATA(con->ind)->dfree = free;
-        RDATA(con->ind)->dmark = 0;
+        rset_obj(con->ind);
     }
     xind *ind = get_ind(a);
     if (ind->con != obj) {
@@ -2274,6 +2399,7 @@ xb_val_close(VALUE obj)
 
     Data_Get_Struct(obj, xval, val);
     val_free(val);
+    rset_obj(obj);
     return Qnil;
 }
 
@@ -3398,12 +3524,7 @@ extern "C" {
     static VALUE
     xb_que_txn_close(VALUE obj, VALUE commit, VALUE real)
     {
-        xque *que;
-
-        Data_Get_Struct(obj, xque, que);
-        RDATA(obj)->dmark = (RDF)0;
-        que->man = que->txn = Qfalse;
-        que->que = 0;
+        rset_obj(obj);
 	return Qnil;
     }
 
@@ -3427,12 +3548,7 @@ extern "C" {
     static VALUE
     xb_mod_txn_close(VALUE obj, VALUE commit, VALUE real)
     {
-        xmod *mod;
-
-        Data_Get_Struct(obj, xmod, mod);
-        RDATA(obj)->dmark = (RDF)0;
-        mod->man = mod->txn = Qfalse;
-        mod->mod = 0;
+        rset_obj(obj);
 	return Qnil;
     }
 
@@ -3492,6 +3608,7 @@ extern "C" {
 		     major, minor, patch);
 	}
 
+        xb_mObs = rb_const_get(rb_cObject, rb_intern("ObjectSpace"));
 	xb_eFatal = rb_const_get(xb_mDb, rb_intern("Fatal"));
 	xb_cEnv = rb_const_get(xb_mDb, rb_intern("Env"));
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
@@ -3651,6 +3768,9 @@ extern "C" {
 	rb_define_method(xb_cCon, "index", RMF(xb_con_index), -1);
 	rb_define_method(xb_cCon, "index=", RMF(xb_con_index_set), -1);
 	rb_define_method(xb_cCon, "name", RMF(xb_con_name), 0);
+        rb_define_method(xb_cCon, "alias=", RMF(xb_con_alias_set), 1);
+        rb_define_method(xb_cCon, "delete_alias", RMF(xb_con_alias_del), 1);
+        rb_define_method(xb_cCon, "all_documents", RMF(xb_con_all), -1);
 	rb_define_method(xb_cCon, "type", RMF(xb_con_type), 0);
 	rb_define_method(xb_cCon, "[]", RMF(xb_con_get), -1);
 	rb_define_method(xb_cCon, "get", RMF(xb_con_get), -1);
@@ -3732,6 +3852,7 @@ extern "C" {
 	rb_define_method(xb_cDoc, "fetch", RMF(xb_doc_fetch), 0);
 	rb_define_method(xb_cDoc, "to_s", RMF(xb_doc_content_str), 0);
 	rb_define_method(xb_cDoc, "to_str", RMF(xb_doc_content_str), 0);
+	rb_define_method(xb_cDoc, "release", RMF(xb_doc_close), 0);
 
 	xb_cCxt = rb_define_class_under(xb_mXML, "Context", rb_cObject);
 	rb_const_set(xb_mXML, rb_intern("QueryContext"), xb_cCxt);

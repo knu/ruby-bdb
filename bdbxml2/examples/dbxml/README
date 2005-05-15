@@ -6,7 +6,7 @@ You must first load the database, to do this
 
   1) change the variable data in load.rb 
 
-       data = "/home/ts/db/dbxml-1.1.0/examples/xmlData"
+       data = "/home/ts/db/dbxml-2.1.7/dbxml/examples/xmlData"
 
      to specify where are located the 2 directories simpleData and nsData
 

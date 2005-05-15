@@ -138,6 +138,19 @@ get_res(VALUE obj)
     return res;
 }
 
+static inline xval *
+get_val(VALUE obj)
+{
+    xval *val;
+
+    Data_Get_Struct(obj, xval, val);
+    if (!val->val) {
+        rb_raise(rb_eArgError, "invalid Value");
+    }
+    xman *man = get_man(val->man);
+    return val;
+}
+
 static void xb_doc_mark(xdoc *);
 
 static inline xdoc *
@@ -304,6 +317,15 @@ get_mod(VALUE obj)
     xman *man = get_man(mod->man);
     return mod;
 }
+
+static inline void
+rset_obj(VALUE obj)
+{
+    RBASIC(obj)->klass = rb_cData;
+    RDATA(obj)->dfree = (RDF)free;
+    RDATA(obj)->dmark = 0;
+}
+
 
 static void xb_res_free(xres *res);
 static void xb_res_mark(xres *res);
