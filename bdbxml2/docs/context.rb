@@ -77,4 +77,21 @@ class BDB::XML::Context
    # Sets the base URI used for relative paths in query expressions.
    def uri=(val)
    end    
+
+   # Discover the name of the default collection used by fn:collection()
+   # with no arguments in an XQuery expression.
+   def collection
+   end
+
+   # Set theURI specifying the name of the collection. 
+   #
+   # The default collection is that which is used by fn:collection()
+   # without any arguments in an XQuery expression.
+   def collection=(uri)
+   end
+
+   # Same than Context#[] but return the sequence of values bound to the variable.
+   def get_results(name)
+   end
+
 end

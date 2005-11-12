@@ -254,7 +254,7 @@ bdb_cursor_get_common(argc, argv, obj, c_pget)
 }
 
 static VALUE
-bdb_cursor_get(argc, argv, obj)
+bdb_cursor_get(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_cursor_get_common(argc, argv, obj, 0);
 }
@@ -377,7 +377,7 @@ bdb_cursor_put(argc, argv, obj)
     MEMZERO(&data, DBT, 1);
     cnt = rb_scan_args(argc, argv, "21", &a, &b, &c);
     GetCursorDB(obj, dbcst, dbst);
-    flags = NUM2INT(c);
+    flags = NUM2INT(a);
     if (flags & (DB_KEYFIRST | DB_KEYLAST)) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");

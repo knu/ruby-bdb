@@ -64,6 +64,41 @@ class BDB::XML::Manager
    def begin(flags = 0)
    end   
 
+   # Examines the named file, and if it is a container, returns a non-zero 
+   # database format version. If the file does not exist, or is not a container,
+   # zero is returned.
+   def container_version(file)
+   end
+
+   # Instantiates an new XML::IndexLookup object for performing index lookup
+   # operations. Only a single index may be specified, and substring indexes
+   # are not supported.
+   #
+   # * <em>container</em>
+   #   The target container for the lookup operation
+   #
+   # * <em>uri</em>
+   #   The namespace of the node to be used. The default namespace is selected
+   #   by passing an empty string for the namespace. 
+   #
+   # * <em>name</em>
+   #   The name of the element or attribute node to be used. 
+   #
+   # * <em>index</em>
+   #   A comma-separated list of strings that represent the indexing strategy.
+   #
+   # * <em>value</em>
+   #   The value to be used as the single value for an equality or inequality
+   #   lookup, or as the lower bound of a range lookup.
+   #
+   # * <em>op</em>
+   #   Selects the operation to be performed. Must be one of: 
+   #   XML::IndexLookup::NONE, XML::IndexLookup::EQ, XML::IndexLookup::GT, 
+   #   XML::IndexLookup::GTE, XML::IndexLookup::LT, XML::IndexLookup::LTE . 
+   #
+   def create_index_lookup(container, uri, name, index, value = nil, op = XML::IndexLookup::EQ)
+   end
+
    # create a XML::Update object
    def create_update_context
    end
@@ -121,8 +156,8 @@ class BDB::XML::Manager
    def prepare(query, context = nil)
    end
 
-   # Execute a query. If a block is given it will call Xml::Results#each for
-   # the results, or it will return an Xml::Results object
+   # Execute a query. If a block is given it will call XML::::Results#each for
+   # the results, or it will return an XML::::Results object
    #
    # This is equivalent to call XML::Manager#prepare and then 
    # XML::Query#execute
@@ -131,6 +166,22 @@ class BDB::XML::Manager
    # * <em>context</em> an optional query context
    def query(query, context = nil)
       yield value
+   end
+
+   # Reindex an entire container. The container should be backed up prior to using
+   # this method, as it destroys existing indexes before reindexing. If the operation 
+   # fails, and your container is not backed up, you may lose information.
+   #
+   # Use this call to change the type of indexing used for a container between
+   # document-level indexes and node-level indexes. This method can take a very
+   # long time to execute, depending on the size of the container, and should
+   # not be used casually.
+   # 
+   # * <em>name</em> The path to the container to be reindexed.
+   # * <em>context</em> The update context to use for the reindex operation.
+   # * <em>flags</em> Use XML::INDEX_NODES in order to index the container at
+   #   the node level; otherwise, it will be indexed at the document level.
+   def reindex_container(name, context = nil, flags = 0)
    end
 
    # Register a resolver
@@ -201,5 +252,14 @@ class BDB::XML::Manager
    # * <emto_close</em> if true, the io will be closed at end
    # * <em>flags</em> can have the value BDB::SALVAGE, BDB::AGGRESSIVE
    def verify_container(name, path, flags = 0)
+   end
+
+   # Sets the integer increment to be used when pre-allocating document ids
+   # for new documents created by XML::Container::put
+   def sequence_increment=(increment)
+   end
+
+   # Retrieve the integer increment.
+   def sequence_increment
    end
 end

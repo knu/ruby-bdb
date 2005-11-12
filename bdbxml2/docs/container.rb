@@ -90,7 +90,7 @@ class BDB::XML::Container
    def  transaction?
    end
    
-   #Update a document within the container
+   # Update a document within the container
    #
    # * <em>document</em> an XML::Document to be updated
    # * <em>context</em> an optional Update context
@@ -100,5 +100,52 @@ class BDB::XML::Container
    # Flush database pages for the container to disk
    def sync
    end
-   
+
+   # Returns true if the container is configured to create node indexes.
+   def index?
+   end
+
+   # Return database page size.
+   def pagesize
+   end
+
+   # call-seq:
+   #    add_index(uri, name, index, context = nil)
+   #    add_index(uri, name, type, syntax, context = nil)
+   #
+   # Add a new index : this is a convenient method. See <em>XML::Index#add</em>
+   def add_index()
+   end
+
+   # Add the default index : this is a convenient method. See 
+   # <em>XML::Index#add_default</em>
+   def add_default(index, context = nil)
+   end
+
+   # call-seq:
+   #    delete_index(uri, name, index, context = nil)
+   #    delete_index(uri, name, type, syntax, context = nil)
+   #
+   # Delete the index : this is a convenient method. See <em>XML::Index#delete</em>
+   def delete_index()
+   end
+
+   # Delete the default index : this is a convenient method. See 
+   # <em>XML::Index#delete_default</em>
+   def delete_default(index, context = nil)
+   end
+
+   # call-seq:
+   #    replace_index(uri, name, index, context = nil)
+   #    replace_index(uri, name, type, syntax, context = nil)
+   #
+   # Replace the index : this is a convenient method. See <em>XML::Index#replace</em>
+   def replace_index()
+   end
+
+   # Replace the default index : this is a convenient method. See 
+   # <em>XML::Index#replace_default</em>
+   def replace_default(index, context = nil)
+   end
+  
 end

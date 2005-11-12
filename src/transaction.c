@@ -3,7 +3,7 @@
 static ID id_txn_close;
 
 static VALUE
-txn_close(VALUE ary)
+txn_close_i(VALUE ary)
 {
     if (rb_respond_to(RARRAY(ary)->ptr[0], id_txn_close)) {
         rb_funcall(RARRAY(ary)->ptr[0], id_txn_close, 2,
@@ -28,7 +28,7 @@ clean_ary(txnst, result)
 
 	for (i = 0; i < len; i++) {
             RARRAY(tmp)->ptr[0] = ary[i];
-            rb_protect(txn_close, tmp, 0);
+            rb_protect(txn_close_i, tmp, 0);
 	}
         txnst->db_ary.mark = Qfalse;
 	txnst->db_ary.ptr = 0;
@@ -41,7 +41,7 @@ clean_ary(txnst, result)
 	len = txnst->db_assoc.len;
 	for (i = 0; i < len; i++) {
             RARRAY(tmp)->ptr[0] = ary[i];
-            rb_protect(txn_close, tmp, 0);
+            rb_protect(txn_close_i, tmp, 0);
 	}
         txnst->db_assoc.mark = Qfalse;
 	txnst->db_assoc.ptr = 0;

@@ -21,9 +21,17 @@ Module included : Enumerable
     : ((|context|)) 
       an optional Update context
    
+--- index?
+
+    Returns true if the container is configured to create node indexes.
+
 --- manager
 
     return the current manager for the container, or ((|nil|))
+
+--- pagesize
+
+    Returns true if the container is configured to create node indexes.
    
 --- each {|doc| ... }
     Iterate over all documents
@@ -57,8 +65,32 @@ Module included : Enumerable
     Retrieve the ((|BDB::XML::Index|))
     
     Return ((|nil|)) if no indexing was specified
-    
-   
+
+--- add_index(uri, name, index, context = nil)
+--- add_index(uri, name, type, syntax, context = nil)    
+
+    Add a new index : this is a convenient method. See ((|XML::Index#add|))
+
+--- add_default_index(index, context = nil)
+
+    Add default index : this is a convenient method. See ((|XML::Index#add_default|))
+ 
+--- delete_index(index, context = nil)
+
+    Delete an index : this is a convenient method. See ((|XML::Index#delete|))
+
+--- delete_default_index(index, context = nil)
+
+    Delete default index : this is a convenient method. See ((|XML::Index#delete_default|)) 
+
+--- replace_index(index, context = nil)
+
+    Replace an index : this is a convenient method. See ((|XML::Index#replace|))
+
+--- replace_default_index(index, context = nil)
+
+    Replace default index : this is a convenient method. See ((|XML::Index#replace_default|)) 
+
 --- name
 
     return the name of the container

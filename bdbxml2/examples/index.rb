@@ -1,4 +1,5 @@
-#!/usr/bin/ruby -I../../src -I..
+#!/usr/bin/ruby
+$LOAD_PATH.unshift("../../src", "..")
 require 'bdbxml'
 
 File::unlink("exa.dbxml") rescue nil

@@ -237,7 +237,6 @@ bdb_test_load(obj, a, type_kv)
     }
     if ((a->flags & DB_DBT_MALLOC) && !(type_kv & FILTER_FREE)) {
 	free(a->data);
-        a->flags &= ~DB_DBT_MALLOC;
     }
     return res;
 }
@@ -290,7 +289,6 @@ test_load_dyna(obj, key, val)
     VALUE res = test_load_dyna1(obj, key, val);
     if (key->flags & DB_DBT_MALLOC) {
 	free(key->data);
-        key->flags &= ~DB_DBT_MALLOC;
     }
     return res;
 }
@@ -2375,7 +2373,6 @@ bdb_treat(st, pkey, key, data)
     case BDB_ST_KEY:
 	if (data->flags & DB_DBT_MALLOC) {
 	    free(data->data);
-            data->flags &= ~DB_DBT_MALLOC;
 	}
 	rb_yield(bdb_test_load_key(st->db, key));
 	break;

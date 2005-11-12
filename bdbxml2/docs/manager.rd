@@ -167,11 +167,77 @@ BDB::Transaction respond to the same method than BDB::XML::Manager
 --- container_type = type
     Set the default container type for new XML::Container
 
+--- container_version(file)
+
+    Examines the named ((|file|)), and if it is a container, returns a non-zero 
+    database format version. If the ((|file|)) does not exist, or is not a container,
+    zero is returned.
+
+--- create_index_lookup(container, uri, name, index, value = nil, op = XML::IndexLookup::EQ)
+
+    Instantiates an new XML::IndexLookup object for performing index lookup
+    operations. Only a single index may be specified, and substring indexes
+    are not supported.
+   
+    : ((|container|))
+      The target container for the lookup operation
+   
+    : ((|uri|))
+      The namespace of the node to be used. The default namespace is selected
+      by passing an empty string for the namespace. 
+   
+    : ((|name|))
+      The name of the element or attribute node to be used. 
+   
+    : ((|index|))
+      A comma-separated list of strings that represent the indexing strategy.
+   
+    : ((|value|))
+      The value to be used as the single value for an equality or inequality
+      lookup, or as the lower bound of a range lookup.
+   
+    : ((|op|))
+      Selects the operation to be performed. Must be one of: 
+      XML::IndexLookup::NONE, XML::IndexLookup::EQ, XML::IndexLookup::GT, 
+      XML::IndexLookup::GTE, XML::IndexLookup::LT, XML::IndexLookup::LTE . 
+   
+
 --- pagesize
     Return the current page size value
 
 --- pagesize = size
     Set the current page size value
+
+--- reindex_container(name, context = nil, flags = 0)
+
+    Reindex an entire container. The container should be backed up prior to using
+    this method, as it destroys existing indexes before reindexing. If the operation 
+    fails, and your container is not backed up, you may lose information.
+   
+    Use this call to change the type of indexing used for a container between
+    document-level indexes and node-level indexes. This method can take a very
+    long time to execute, depending on the size of the container, and should
+    not be used casually.
+    
+    : ((|name|)) 
+      The path to the container to be reindexed.
+
+    : ((|context|)) 
+      The update context to use for the reindex operation.
+
+    : ((|flags|)) 
+      Use XML::INDEX_NODES in order to index the container at
+      the node level; otherwise, it will be indexed at the document level.
+
+
+--- sequence_increment = increment
+
+    Sets the integer ((|increment|)) to be used when pre-allocating document ids
+    for new documents created by XML::Container::put
+
+--- sequence_increment
+
+    Retrieve the integer increment.
 
 --- update_container(name, context = nil)
     Upgrades the container from a previous version of Berkeley DB XML

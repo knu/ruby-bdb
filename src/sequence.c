@@ -260,7 +260,7 @@ bdb_seq_flags(obj)
 {
 
     bdb_SEQ *seqst;
-    int flags;
+    unsigned int flags;
 
     GetSEQ(obj, seqst);
     bdb_test_error(seqst->seqp->get_flags(seqst->seqp, &flags));

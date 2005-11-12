@@ -997,7 +997,9 @@ bdb_env_init(argc, argv, obj)
         RDATA(obj)->dmark = (RUBY_DATA_FUNC)bdb_env_mark;
     }
     Data_Get_Struct(obj, bdb_ENV, envst);
+#if BDB_VERSION >= 30000
     envst->envp->set_errcall(envst->envp, bdb_env_errcall);
+#endif
     envp = envst->envp;
 #if BDB_VERSION >= 40100
     if (rb_const_defined(CLASS_OF(obj), rb_intern("BDB_ENCRYPT"))) {

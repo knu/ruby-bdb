@@ -63,12 +63,26 @@ typedef struct {
     VALUE txn;
     VALUE man;
     int opened;
+#if BDBXML_VERSION >= 20200
+    VALUE look;
+#endif
 } xcon;
 
 typedef struct {
     XmlIndexSpecification *ind;
     VALUE con;
 } xind;
+
+#if BDBXML_VERSION >= 20200
+
+typedef struct {
+    XmlIndexLookup *look;
+    VALUE man;
+    VALUE txn;
+    VALUE con;
+} xlook;
+
+#endif
 
 typedef struct {
     XmlResults *res;
@@ -134,7 +148,7 @@ get_res(VALUE obj)
     if (!res->res) {
         rb_raise(rb_eArgError, "invalid Results");
     }
-    xman *man = get_man(res->man);
+    get_man(res->man);
     return res;
 }
 
@@ -147,7 +161,7 @@ get_val(VALUE obj)
     if (!val->val) {
         rb_raise(rb_eArgError, "invalid Value");
     }
-    xman *man = get_man(val->man);
+    get_man(val->man);
     return val;
 }
 
@@ -206,7 +220,7 @@ get_upd(VALUE obj)
     if (!upd->upd) {
         rb_raise(rb_eArgError, "invalid Update Context");
     }
-    xman *man = get_man(upd->man);
+    get_man(upd->man);
     return upd;
 }
 
@@ -235,7 +249,7 @@ get_cxt(VALUE obj)
     if (!cxt->cxt) {
         rb_raise(rb_eArgError, "invalid QueryContext");
     }
-    xman *man = get_man(cxt->man);
+    get_man(cxt->man);
     return cxt;
 }
 
@@ -256,7 +270,7 @@ get_con(VALUE obj)
     if (!con->con || !con->man) {
         rb_raise(rb_eArgError, "invalid Container");
     }
-    xman *man = get_man(con->man);
+    get_man(con->man);
     return con;
 } 
 
@@ -288,6 +302,29 @@ get_ind(VALUE obj)
     return ind;
 }
 
+#if BDBXML_VERSION >= 20200
+
+static void xb_look_mark(xlook *);
+
+static inline xlook *
+get_look(VALUE obj)
+{
+    xlook *look;
+
+    if (TYPE(obj) != T_DATA || RDATA(obj)->dmark != (RDF)xb_look_mark) {
+        rb_raise(rb_eArgError, "invalid IndexLookup");
+    }
+    Data_Get_Struct(obj, xlook, look);
+    if (!look->look || !look->man || !look->con) {
+        rb_raise(rb_eArgError, "invalid IndexLookup");
+    }
+    get_man(look->man);
+    get_con(look->con);
+    return look;
+} 
+
+#endif
+
 static void xb_que_mark(xque *);
 
 static inline xque *
@@ -302,7 +339,7 @@ get_que(VALUE obj)
     if (!que->que) {
         rb_raise(rb_eArgError, "invalid QueryExpression");
     }
-    xman *man = get_man(que->man);
+    get_man(que->man);
     return que;
 }
 
@@ -314,7 +351,7 @@ get_mod(VALUE obj)
     if (!mod->mod) {
         rb_raise(rb_eArgError, "invalid Modify");
     }
-    xman *man = get_man(mod->man);
+    get_man(mod->man);
     return mod;
 }
 

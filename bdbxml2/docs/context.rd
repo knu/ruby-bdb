@@ -36,6 +36,18 @@ bindings.
 
     Delete all the namespace prefix mappings
    
+--- collection
+
+    Discover the name of the default collection used by fn:collection()
+    with no arguments in an XQuery expression.
+
+--- collection = uri
+
+    Set theURI specifying the name of the collection. 
+   
+    The default collection is that which is used by fn:collection()
+    without any arguments in an XQuery expression.
+
 --- del_namespace(name)
 
     Delete the namespace URI for a particular prefix
@@ -52,6 +64,10 @@ bindings.
 
     Get the namespace URI that a namespace prefix maps onto
    
+--- get_results(name)
+
+    Same than Context#[] but return the sequence of values bound to the variable.
+
 --- returntype
 
     Return the return type

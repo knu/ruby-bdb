@@ -234,50 +234,121 @@ Return the default container type</dd>
 <dt><a name="label-52" id="label-52"><code>container_type = <var>type</var></code></a></dt><!-- RDLabel: "container_type = type" -->
 <dd>
 Set the default container type for new XML::Container</dd>
-<dt><a name="label-53" id="label-53"><code>pagesize</code></a></dt><!-- RDLabel: "pagesize" -->
+<dt><a name="label-53" id="label-53"><code>container_version(<var>file</var>)</code></a></dt><!-- RDLabel: "container_version" -->
+<dd>
+Examines the named <var>file</var>, and if it is a container, returns a non-zero 
+database format version. If the <var>file</var> does not exist, or is not a container,
+zero is returned.</dd>
+<dt><a name="label-54" id="label-54"><code>create_index_lookup(<var>container</var>, <var>uri</var>, <var>name</var>, <var>index</var>, <var>value</var> = <var>nil</var>, <var>op</var> = <var>XML</var>::<var>IndexLookup</var>::<var>EQ</var>)</code></a></dt><!-- RDLabel: "create_index_lookup" -->
+<dd>
+Instantiates an new XML::IndexLookup object for performing index lookup
+operations. Only a single index may be specified, and substring indexes
+are not supported.
+<dl>
+<dt><a name="label-55" id="label-55"><var>container</var></a></dt><!-- RDLabel: "container" -->
+<dd>
+The target container for the lookup operation
+</dd>
+<dt><a name="label-56" id="label-56"><var>uri</var></a></dt><!-- RDLabel: "uri" -->
+<dd>
+The namespace of the node to be used. The default namespace is selected
+by passing an empty string for the namespace. 
+</dd>
+<dt><a name="label-57" id="label-57"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+The name of the element or attribute node to be used. 
+</dd>
+<dt><a name="label-58" id="label-58"><var>index</var></a></dt><!-- RDLabel: "index" -->
+<dd>
+A comma-separated list of strings that represent the indexing strategy.
+</dd>
+<dt><a name="label-59" id="label-59"><var>value</var></a></dt><!-- RDLabel: "value" -->
+<dd>
+The value to be used as the single value for an equality or inequality
+lookup, or as the lower bound of a range lookup.
+</dd>
+<dt><a name="label-60" id="label-60"><var>op</var></a></dt><!-- RDLabel: "op" -->
+<dd>
+Selects the operation to be performed. Must be one of: 
+XML::IndexLookup::NONE, XML::IndexLookup::EQ, XML::IndexLookup::GT, 
+XML::IndexLookup::GTE, XML::IndexLookup::LT, XML::IndexLookup::LTE . 
+</dd>
+</dl></dd>
+<dt><a name="label-61" id="label-61"><code>pagesize</code></a></dt><!-- RDLabel: "pagesize" -->
 <dd>
 Return the current page size value</dd>
-<dt><a name="label-54" id="label-54"><code>pagesize = <var>size</var></code></a></dt><!-- RDLabel: "pagesize = size" -->
+<dt><a name="label-62" id="label-62"><code>pagesize = <var>size</var></code></a></dt><!-- RDLabel: "pagesize = size" -->
 <dd>
 Set the current page size value</dd>
-<dt><a name="label-55" id="label-55"><code>update_container(<var>name</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "update_container" -->
+<dt><a name="label-63" id="label-63"><code>reindex_container(<var>name</var>, <var>context</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "reindex_container" -->
+<dd>
+<p>Reindex an entire container. The container should be backed up prior to using
+this method, as it destroys existing indexes before reindexing. If the operation 
+fails, and your container is not backed up, you may lose information.</p>
+<p>Use this call to change the type of indexing used for a container between
+document-level indexes and node-level indexes. This method can take a very
+long time to execute, depending on the size of the container, and should
+not be used casually.</p>
+<dl>
+<dt><a name="label-64" id="label-64"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+The path to the container to be reindexed.
+</dd>
+<dt><a name="label-65" id="label-65"><var>context</var></a></dt><!-- RDLabel: "context" -->
+<dd>
+The update context to use for the reindex operation.
+</dd>
+<dt><a name="label-66" id="label-66"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
+<dd>
+Use XML::INDEX_NODES in order to index the container at
+the node level; otherwise, it will be indexed at the document level.
+</dd>
+</dl></dd>
+<dt><a name="label-67" id="label-67"><code>sequence_increment = <var>increment</var></code></a></dt><!-- RDLabel: "sequence_increment = increment" -->
+<dd>
+Sets the integer <var>increment</var> to be used when pre-allocating document ids
+for new documents created by XML::Container::put</dd>
+<dt><a name="label-68" id="label-68"><code>sequence_increment</code></a></dt><!-- RDLabel: "sequence_increment" -->
+<dd>
+Retrieve the integer increment.</dd>
+<dt><a name="label-69" id="label-69"><code>update_container(<var>name</var>, <var>context</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "update_container" -->
 <dd>
 Upgrades the container from a previous version of Berkeley DB XML
 <dl>
-<dt><a name="label-56" id="label-56"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dt><a name="label-70" id="label-70"><var>name</var></a></dt><!-- RDLabel: "name" -->
 <dd>
 name of the container to be upgraded
 </dd>
-<dt><a name="label-57" id="label-57"><var>context</var></a></dt><!-- RDLabel: "context" -->
+<dt><a name="label-71" id="label-71"><var>context</var></a></dt><!-- RDLabel: "context" -->
 <dd>
 an optional update context
 </dd>
 </dl></dd>
-<dt><a name="label-58" id="label-58"><code>verify_container(<var>name</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "verify_container" -->
-<dt><a name="label-59" id="label-59"><code>verify_container(<var>name</var>, <var>path</var>, <var>flags</var> = <var>BDB</var>::<var>SALVAGE</var>)</code></a></dt><!-- RDLabel: "verify_container" -->
-<dt><a name="label-60" id="label-60"><code>verify_container(<var>name</var>, <var>io</var>, <var>to_close</var> = <var>false</var>, <var>flags</var> = <var>BDB</var>::<var>SALVAGE</var>)</code></a></dt><!-- RDLabel: "verify_container" -->
+<dt><a name="label-72" id="label-72"><code>verify_container(<var>name</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "verify_container" -->
+<dt><a name="label-73" id="label-73"><code>verify_container(<var>name</var>, <var>path</var>, <var>flags</var> = <var>BDB</var>::<var>SALVAGE</var>)</code></a></dt><!-- RDLabel: "verify_container" -->
+<dt><a name="label-74" id="label-74"><code>verify_container(<var>name</var>, <var>io</var>, <var>to_close</var> = <var>false</var>, <var>flags</var> = <var>BDB</var>::<var>SALVAGE</var>)</code></a></dt><!-- RDLabel: "verify_container" -->
 <dd>
 Checks that the container data files are not corrupt, and optionally 
 writes the salvaged container data to the specified pathname.
 <dl>
-<dt><a name="label-61" id="label-61"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dt><a name="label-75" id="label-75"><var>name</var></a></dt><!-- RDLabel: "name" -->
 <dd>
 name of the container
 </dd>
-<dt><a name="label-62" id="label-62"><var>path</var></a></dt><!-- RDLabel: "path" -->
+<dt><a name="label-76" id="label-76"><var>path</var></a></dt><!-- RDLabel: "path" -->
 <dd>
 name of the file where the container will be
 dumped if BDB::SALVAGE is set.
 </dd>
-<dt><a name="label-63" id="label-63"><var>io</var></a></dt><!-- RDLabel: "io" -->
+<dt><a name="label-77" id="label-77"><var>io</var></a></dt><!-- RDLabel: "io" -->
 <dd>
 an object which respond to #write if BDB::SALVAGE is set
 </dd>
-<dt><a name="label-64" id="label-64"><var>to_close</var></a></dt><!-- RDLabel: "to_close" -->
+<dt><a name="label-78" id="label-78"><var>to_close</var></a></dt><!-- RDLabel: "to_close" -->
 <dd>
 if true the io will be closed at end.
 </dd>
-<dt><a name="label-65" id="label-65"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
+<dt><a name="label-79" id="label-79"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
 <dd>
 can have the value BDB::SALVAGE, BDB::AGGRESSIVE
 </dd>

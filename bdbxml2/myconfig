@@ -16,10 +16,10 @@ $include = {
 
 $library = {
    'db' => ["#{$base}/lib/", ["db-4.3", "db_cxx-4.3"]],
-   'dbxml' => ["#{$base}/lib", "dbxml-2.1"],
+   'dbxml' => ["#{$base}/lib", "dbxml-2.2"],
    'pathan' => ["#{$base}/lib", "pathan"],
    'xercesc' => ["#{$base}/lib", "xerces-c"],
-   'xquery' => ["#{$base}/lib", "xquery-1.1"],
+   'xquery' => ["#{$base}/lib", "xquery-1.2"],
 }
 
 # order for ld (don't change it)

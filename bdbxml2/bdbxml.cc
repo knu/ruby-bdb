@@ -3,6 +3,9 @@
 static VALUE xb_cEnv, xb_cRes, xb_cQue, xb_cMan;
 static VALUE xb_cInd, xb_cUpd, xb_cMod, xb_cVal;
 static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_mObs;
+#if BDBXML_VERSION >= 20200
+static VALUE xb_cLook;
+#endif
 
 static VALUE xb_io;
 static ID id_current_env, id_close, id_read, id_write, id_pos;
@@ -139,8 +142,8 @@ public:
     }
 
 private:
-    VALUE obj_;
     bool pos_;
+    VALUE obj_;
     
 };
 
@@ -224,8 +227,8 @@ public:
     }
    
 private:
-    VALUE obj_;
     VALUE man_;
+    VALUE obj_;
 
     VALUE retrieve_txn(XmlTransaction *xmltxn) const {
         if (xmltxn == 0) return man_;
@@ -283,8 +286,7 @@ xb_protect_close(VALUE obj)
 static void
 xb_final(bdb_ENV *envst)
 {
-    VALUE obj, *ary;
-    bdb_ENV *thst;
+    VALUE *ary;
     int i;
 
     ary = envst->db_ary.ptr;
@@ -298,7 +300,7 @@ xb_final(bdb_ENV *envst)
         envst->db_ary.mark = Qfalse;
         envst->db_ary.total = envst->db_ary.len = 0;
         envst->db_ary.ptr = 0;
-        free(ary);
+        ::free(ary);
     }
     if (envst->envp) {
 	if (!(envst->options & BDB_ENV_NOT_OPEN)) {
@@ -509,6 +511,7 @@ xb_man_close(VALUE obj)
         delete man->man;
         man->man = 0;
     }
+    return Qnil;
 }
 
 static void
@@ -720,7 +723,7 @@ xb_txn_missing(int argc, VALUE *argv, VALUE obj)
     bdb_TXN *txnst;
 
     GetTxnDBErr(obj, txnst, xb_eFatal);
-    xman *man = get_man(txnst->man);
+    get_man(txnst->man);
     if (argc <= 0) { 
         rb_raise(rb_eArgError, "no id given");
     }
@@ -770,7 +773,7 @@ xb_man_verify(int argc, VALUE *argv, VALUE obj)
     int flags = 0;
 
     rb_secure(4);
-    switch (rb_scan_args(argc, argv, "12", &a, &b, &c, &c)) {
+    switch (rb_scan_args(argc, argv, "12", &a, &b, &c, &d)) {
     case 4:
         flags = NUM2INT(d);
         /* ... */
@@ -781,7 +784,6 @@ xb_man_verify(int argc, VALUE *argv, VALUE obj)
     }
     xman *man = get_man(obj);
     char *name = StringValuePtr(a);
-    char *file = 0; 
     if (flags & DB_SALVAGE) {
         if (rb_respond_to(b, id_write)) {
             std::xbWrite rbw(b, RTEST(c));
@@ -808,7 +810,7 @@ xb_man_load_con(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b, c = Qnil, d = Qnil;
     xupd *upd;
-    XmlUpdateContext *xmlupd;
+    XmlUpdateContext *xmlupd = 0;
     unsigned long lineno = 0;
     bool freeupd = true;
 
@@ -895,12 +897,85 @@ xb_man_begin(int argc, VALUE *argv, VALUE obj)
     return bdb_env_rslbl_begin((VALUE)&txnr, argc, argv, obj);
 }
 
+#if BDBXML_VERSION >= 20200
+
+static VALUE
+xb_man_con_version(VALUE obj, VALUE a)
+{
+    xman *man = get_man(obj);
+    char *uri = StringValuePtr(a);
+    return INT2NUM(man->man->existsContainer(uri));
+}
+
+static VALUE
+xb_man_reindex(int argc, VALUE *argv, VALUE obj)
+{
+    XmlUpdateContext *xmlupd = 0;
+    xupd *upd;
+    VALUE a, b, c;
+    std::string name;
+    bool freeupd = true;
+    int flags = 0;
+
+    rb_secure(2);
+    XmlTransaction *xmltxn = get_txn(obj);
+    xman *man = get_man_txn(obj);
+    switch (rb_scan_args(argc, argv, "12", &a, &b, &c)) {
+    case 3:
+        flags = NUM2INT(c);
+        /* ... */
+    case 2:
+        if (!NIL_P(b)) {
+            upd = get_upd(b);
+            xmlupd = upd->upd;
+            freeupd = false;
+        }
+        /* ... */
+    case 1:
+        name = StringValuePtr(a);
+        break;
+    }
+    if (freeupd) {
+        xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+    }
+    if (xmltxn) {
+        PROTECT2(man->man->reindexContainer(name, *xmlupd, flags),
+                 if (freeupd) delete xmlupd);
+    }
+    else {
+        PROTECT2(man->man->reindexContainer(*xmltxn, name, *xmlupd, flags),
+                 if (freeupd) delete xmlupd);
+    }
+    return obj;
+}
+
+static VALUE
+xb_man_increment_get(VALUE obj)
+{
+    xman *man = get_man(obj);
+    return INT2NUM(man->man->getDefaultSequenceIncrement());
+}
+
+static VALUE
+xb_man_increment_set(VALUE obj, VALUE a)
+{
+    xman *man = get_man(obj);
+    int incr = NUM2INT(a);
+    PROTECT(man->man->setDefaultSequenceIncrement(incr));
+    return a;
+}
+
+#endif
+
 static void
 xb_con_mark(xcon *con)
 {
     rb_gc_mark(con->man);
     rb_gc_mark(con->ind);
     rb_gc_mark(con->txn);
+#if BDBXML_VERSION >= 20200
+    rb_gc_mark(con->look);
+#endif
 }
 
 static VALUE
@@ -926,15 +1001,27 @@ delete_ind(VALUE obj)
     RDATA(obj)->dmark = 0;
 }
 
+static void 
+delete_look(VALUE obj)
+{
+    if (!RTEST(obj)) return;
+    xlook *look = get_look(obj);
+    delete look->look;
+    look->look = 0;
+    RDATA(obj)->dfree = free;
+    RDATA(obj)->dmark = 0;
+}
+
 static void
 xb_con_free(xcon *con)
 {
     FREE_DEBUG("xb_con_free %x\n", con);
     if (con->con) {
         if (con->man) {
-            xman *man;
-
             delete_ind(con->ind);
+#if BDBXML_VERSION >= 20200
+            delete_look(con->look);
+#endif
             if (con->txn) {
                 rb_protect(close_txn, con->txn, 0);
             }
@@ -1082,7 +1169,7 @@ xb_con_s_open(int argc, VALUE *argv, VALUE obj)
     }
     VALUE tmp = argv[0];
     argc--; argv++;
-    xman *man = get_man(tmp);
+    get_man(tmp);
     VALUE res = xb_con_s_alloc(obj);
     return xb_int_open_con(argc, argv, tmp, res);
 }
@@ -1610,6 +1697,9 @@ xb_con_close(VALUE obj)
     FREE_DEBUG("xb_con_close %x\n", con);
     rset_obj(obj);
     delete_ind(con->ind);
+#if BDBXML_VERSION >= 20200
+    delete_look(con->look);
+#endif
     delete con->con;
     return Qnil;
 }
@@ -1630,7 +1720,7 @@ xb_con_add(int argc, VALUE *argv, VALUE obj)
     VALUE a, c, d;
     volatile VALUE b;
     xupd *upd;
-    XmlUpdateContext *xmlupd;
+    XmlUpdateContext *xmlupd = 0;
     bool freeupd = true;
     int flags = 0;
     
@@ -1725,7 +1815,7 @@ static VALUE
 xb_con_update(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b;
-    XmlUpdateContext *xmlupd;
+    XmlUpdateContext *xmlupd = 0;
     bool freeupd = true;
     
     rb_secure(4);
@@ -1761,7 +1851,7 @@ xb_con_delete(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b;
     xupd *upd;
-    XmlUpdateContext *xmlupd;
+    XmlUpdateContext *xmlupd = 0;
     bool freeupd = true;
     
     rb_secure(4);
@@ -1834,6 +1924,314 @@ xb_con_name(VALUE obj)
     return rb_tainted_str_new2(name.c_str());
 }
 
+static VALUE
+xb_con_add_index(int argc, VALUE *argv, VALUE obj)
+{
+    xupd *upd;
+    VALUE a, b, c, d, e;
+    char *uri = 0, *name = 0, *index = 0;
+    XmlUpdateContext *xmlupd = 0;
+    
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    switch(rb_scan_args(argc, argv, "32", &a, &b, &c, &d, &e)) {
+    case 5:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	XmlIndexSpecification::Type type = XmlIndexSpecification::Type(NUM2INT(c));
+	XmlValue::Type syntax = XmlValue::Type(NUM2INT(d));
+	upd = get_upd(e);
+	xmlupd = upd->upd;
+	if (xmltxn) {
+	    PROTECT(con->con->addIndex(*xmltxn, uri, name, type, syntax, *xmlupd));
+	}
+	else {
+	    PROTECT(con->con->addIndex(uri, name, type, syntax, *xmlupd));
+	}
+	break;
+    }
+    case 4:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	if (TYPE(d) == T_DATA && RDATA(d)->dfree == (RDF)xb_upd_free) {
+	    upd = get_upd(d);
+	    xmlupd = upd->upd;
+	    index = StringValuePtr(c);
+	    if (xmltxn) {
+		PROTECT(con->con->addIndex(*xmltxn, uri, name, index, *xmlupd));
+	    }
+	    else {
+		PROTECT(con->con->addIndex(uri, name, index, *xmlupd));
+	    }
+	}
+	else {
+	    XmlValue::Type syntax = XmlValue::Type(NUM2INT(d));
+	    XmlIndexSpecification::Type type = XmlIndexSpecification::Type(NUM2INT(c));
+            xman *man = get_man(con->man);
+            xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	    if (xmltxn) {
+		PROTECT2(con->con->addIndex(*xmltxn, uri, name, type, syntax, *xmlupd),
+			 delete xmlupd);
+	    }
+	    else {
+		PROTECT2(con->con->addIndex(uri, name, type, syntax, *xmlupd),
+			 delete xmlupd);
+	    }
+	}
+	break;
+    }
+    case 3:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	index = StringValuePtr(c);
+	xman *man = get_man(con->man);
+	xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	if (xmltxn) {
+	    PROTECT2(con->con->addIndex(*xmltxn, uri, name, index, *xmlupd),
+		     delete xmlupd);
+	}
+	else {
+	    PROTECT2(con->con->addIndex(uri, name, index, *xmlupd),
+		     delete xmlupd);
+	}
+	break;
+    }
+    }
+    return obj;
+}
+	
+static VALUE
+xb_con_add_def_index(int argc, VALUE *argv, VALUE obj)
+{
+    xupd *upd;
+    VALUE a, b;
+    char *index = 0;
+    XmlUpdateContext *xmlupd = 0;
+    
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    switch(rb_scan_args(argc, argv, "11", &a, &b)) {
+    case 2:
+    {
+	index = StringValuePtr(a);
+	upd = get_upd(b);
+	xmlupd = upd->upd;
+	if (xmltxn) {
+	    PROTECT(con->con->addDefaultIndex(*xmltxn, index, *xmlupd));
+	}
+	else {
+	    PROTECT(con->con->addDefaultIndex(index, *xmlupd));
+	}
+	break;
+    }
+    case 1:
+    {
+	index = StringValuePtr(a);
+	xman *man = get_man(con->man);
+	xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	if (xmltxn) {
+	    PROTECT2(con->con->addDefaultIndex(*xmltxn, index, *xmlupd),
+		     delete xmlupd);
+	}
+	else {
+	    PROTECT2(con->con->addDefaultIndex(index, *xmlupd),
+		     delete xmlupd);
+	}
+	break;
+    }
+    }
+    return obj;
+}
+
+static VALUE
+xb_con_delete_index(int argc, VALUE *argv, VALUE obj)
+{
+    xupd *upd;
+    VALUE a, b, c, d;
+    char *uri = 0, *name = 0, *index = 0;
+    XmlUpdateContext *xmlupd = 0;
+    
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    switch(rb_scan_args(argc, argv, "31", &a, &b, &c, &d)) {
+    case 4:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	index = StringValuePtr(c);
+	upd = get_upd(d);
+	xmlupd = upd->upd;
+	if (xmltxn) {
+	    PROTECT(con->con->deleteIndex(*xmltxn, uri, name, index, *xmlupd));
+	}
+	else {
+	    PROTECT(con->con->deleteIndex(uri, name, index, *xmlupd));
+	}
+	break;
+    }
+    case 3:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	index = StringValuePtr(c);
+	xman *man = get_man(con->man);
+	xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	if (xmltxn) {
+	    PROTECT2(con->con->deleteIndex(*xmltxn, uri, name, index, *xmlupd),
+		     delete xmlupd);
+	}
+	else {
+	    PROTECT2(con->con->deleteIndex(uri, name, index, *xmlupd),
+		     delete xmlupd);
+	}
+	break;
+    }
+    }
+    return obj;
+}
+	
+static VALUE
+xb_con_delete_def_index(int argc, VALUE *argv, VALUE obj)
+{
+    xupd *upd;
+    VALUE a, b;
+    char *index = 0;
+    XmlUpdateContext *xmlupd = 0;
+    
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    switch(rb_scan_args(argc, argv, "11", &a, &b)) {
+    case 2:
+    {
+	index = StringValuePtr(a);
+	upd = get_upd(b);
+	xmlupd = upd->upd;
+	if (xmltxn) {
+	    PROTECT(con->con->deleteDefaultIndex(*xmltxn, index, *xmlupd));
+	}
+	else {
+	    PROTECT(con->con->deleteDefaultIndex(index, *xmlupd));
+	}
+	break;
+    }
+    case 1:
+    {
+	index = StringValuePtr(a);
+	xman *man = get_man(con->man);
+	xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	if (xmltxn) {
+	    PROTECT2(con->con->deleteDefaultIndex(*xmltxn, index, *xmlupd),
+		     delete xmlupd);
+	}
+	else {
+	    PROTECT2(con->con->deleteDefaultIndex(index, *xmlupd),
+		     delete xmlupd);
+	}
+	break;
+    }
+    }
+    return obj;
+}
+	
+static VALUE
+xb_con_replace_index(int argc, VALUE *argv, VALUE obj)
+{
+    xupd *upd;
+    VALUE a, b, c, d;
+    char *uri = 0, *name = 0, *index = 0;
+    XmlUpdateContext *xmlupd = 0;
+    
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    switch(rb_scan_args(argc, argv, "31", &a, &b, &c, &d)) {
+    case 4:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	index = StringValuePtr(c);
+	upd = get_upd(d);
+	xmlupd = upd->upd;
+	if (xmltxn) {
+	    PROTECT(con->con->replaceIndex(*xmltxn, uri, name, index, *xmlupd));
+	}
+	else {
+	    PROTECT(con->con->replaceIndex(uri, name, index, *xmlupd));
+	}
+	break;
+    }
+    case 3:
+    {
+	uri = StringValuePtr(a);
+	name = StringValuePtr(b);
+	index = StringValuePtr(c);
+	xman *man = get_man(con->man);
+	xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	if (xmltxn) {
+	    PROTECT2(con->con->replaceIndex(*xmltxn, uri, name, index, *xmlupd),
+		     delete xmlupd);
+	}
+	else {
+	    PROTECT2(con->con->replaceIndex(uri, name, index, *xmlupd),
+		     delete xmlupd);
+	}
+	break;
+    }
+    }
+    return obj;
+}
+	
+static VALUE
+xb_con_replace_def_index(int argc, VALUE *argv, VALUE obj)
+{
+    xupd *upd;
+    VALUE a, b;
+    char *index = 0;
+    XmlUpdateContext *xmlupd = 0;
+    
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    switch(rb_scan_args(argc, argv, "11", &a, &b)) {
+    case 2:
+    {
+	index = StringValuePtr(a);
+	upd = get_upd(b);
+	xmlupd = upd->upd;
+	if (xmltxn) {
+	    PROTECT(con->con->replaceDefaultIndex(*xmltxn, index, *xmlupd));
+	}
+	else {
+	    PROTECT(con->con->replaceDefaultIndex(index, *xmlupd));
+	}
+	break;
+    }
+    case 1:
+    {
+	index = StringValuePtr(a);
+	xman *man = get_man(con->man);
+	xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+	if (xmltxn) {
+	    PROTECT2(con->con->replaceDefaultIndex(*xmltxn, index, *xmlupd),
+		     delete xmlupd);
+	}
+	else {
+	    PROTECT2(con->con->replaceDefaultIndex(index, *xmlupd),
+		     delete xmlupd);
+	}
+	break;
+    }
+    }
+    return obj;
+}
+	
 static void 
 xb_ind_mark(xind *ind)
 {
@@ -1851,7 +2249,7 @@ xb_ind_free(xind *ind)
             con->ind = 0;
         }
     }
-    ::free(ind);
+   ::free(ind);
 }
 
 static VALUE
@@ -1908,7 +2306,7 @@ static VALUE
 xb_con_index_set(int argc, VALUE *argv, VALUE obj)
 {
     xupd *upd;
-    XmlUpdateContext *xmlupd;
+    XmlUpdateContext *xmlupd = 0;
     bool freeupd = true;
     VALUE a, b;
     
@@ -1937,6 +2335,27 @@ xb_con_index_set(int argc, VALUE *argv, VALUE obj)
     return obj;
 }
 
+#if BDBXML_VERSION >= 20200
+
+static VALUE
+xb_con_index_p(VALUE obj)
+{
+    xcon *con = get_con(obj);
+    if (con->con->getIndexNodes()) {
+        return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_con_pagesize(VALUE obj)
+{
+    xcon *con = get_con(obj);
+    return INT2NUM(con->con->getPageSize());
+}
+
+#endif
+
 static VALUE
 xb_con_get(int argc, VALUE *argv, VALUE obj)
 {
@@ -1960,7 +2379,7 @@ xb_con_get(int argc, VALUE *argv, VALUE obj)
     }
     res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark, 
                            (RDF)xb_doc_free, doc);
-    xman *man = get_man(con->man);
+    get_man(con->man);
     doc->doc = xmldoc;
     doc->man = con->man;
     return res;
@@ -1974,9 +2393,8 @@ xb_con_stat(int argc, VALUE *argv, VALUE obj)
     VALUE a, b, c, d, e, f;
     XmlValue xmlval = XmlValue();
     XmlStatistics *stats;
-    char *index, *p_uri, *p_name;
+    char *index = 0, *p_uri = 0, *p_name = 0;
     bool has_parent = false;
-    bool has_value = false;
     double total, uniq;
 
     switch (rb_scan_args(argc, argv, "33", &a, &b, &c, &d, &e, &f)) {
@@ -2040,10 +2458,8 @@ xb_con_lookup(int argc, VALUE *argv, VALUE obj)
     VALUE a, b, c, d, e, f;
     XmlValue xmlval = XmlValue();
     XmlResults *xmlres;
-    char *index, *p_uri, *p_name;
+    char *index = 0, *p_uri = 0, *p_name = 0;
     bool has_parent = false;
-    bool has_value = false;
-    double total, uniq;
     XmlQueryContext *xmlcxt;
     bool freecxt = false;
 
@@ -2369,6 +2785,368 @@ xb_ind_find(int argc, VALUE *argv, VALUE obj)
     return Qnil;
 }
 
+#if BDBXML_VERSION >= 20200
+
+static void
+xb_look_mark(xlook *look)
+{
+    rb_gc_mark(look->txn);
+    rb_gc_mark(look->man);
+    rb_gc_mark(look->con);
+}
+
+static void
+xb_look_free(xlook *look)
+{
+    FREE_DEBUG("xb_look_free %x\n", look);
+    if (look->look) {
+        delete look->look;
+        if (RTEST(look->con)) {
+            xcon *con = get_con(look->con);
+            con->look = 0;
+        }
+    }
+    ::free(look);
+}
+
+static void
+add_look(VALUE obj, VALUE a)
+{
+    xcon *con = get_con(obj);
+    if (con->look == a) return;
+    if (RTEST(con->look)) {
+        xlook *look = get_look(con->look);
+        delete look->look;
+        rset_obj(con->look);
+    }
+    xlook *look = get_look(a);
+    if (look->con != obj) {
+        xcon *tmp = get_con(look->con);
+        tmp->look = 0;
+    }
+    con->look = a;
+}
+
+static VALUE
+xb_man_create_look(int argc, VALUE *argv, VALUE obj)
+{
+    XmlIndexLookup *xmllook;
+    xlook *look;
+    XmlValue xmlval = XmlValue();
+    XmlIndexLookup::Operation xmlop = XmlIndexLookup::EQ;
+    VALUE a, b, c, d, e, f, res;
+
+    rb_secure(4);
+    xman *man = get_man_txn(obj);
+    switch(rb_scan_args(argc, argv, "42", &a, &b, &c, &d, &e, &f)) {
+    case 6:
+        xmlop = XmlIndexLookup::Operation(NUM2INT(f));
+        /* ... */
+    case 5:
+        if (!NIL_P(e)) {
+            xmlval = xb_val_xml(e);
+        }
+        /* ... */
+    }
+    xcon *con = get_con(a);
+    char *uri = StringValuePtr(b);
+    char *name = StringValuePtr(c);
+    char *index = StringValuePtr(d);
+
+    PROTECT(xmllook = new XmlIndexLookup(man->man->createIndexLookup(*con->con, uri, name, index,
+								     xmlval, xmlop)));
+
+    res = Data_Make_Struct(xb_cLook, xlook, (RDF)xb_look_mark, (RDF)xb_look_free, look);
+    look->look = xmllook;
+    if (rb_obj_is_kind_of(obj, xb_cTxn)) {
+        look->txn = obj;
+        look->man = get_txn_man(obj);
+    }
+    else {
+        look->man = obj;
+    }
+    look->con = a;
+    add_look(a, res);
+    return res;
+}
+
+static VALUE
+xb_look_manager(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    return look->man;
+}
+
+static VALUE
+xb_look_transaction(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    return look->txn;
+}
+
+static VALUE
+xb_look_transaction_p(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    if (RTEST(look->txn)) {
+        return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_look_container_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    xcon *con = get_con(a);
+    PROTECT(look->look->setContainer(*con->con));
+    look->con = a;
+    add_look(a, obj);
+    return a;
+}
+
+static VALUE
+xb_look_container_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    return look->con;
+}
+
+static VALUE
+xb_look_highbound_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    a = rb_Array(a);
+    if (RARRAY(a)->len != 2) {
+        rb_raise(rb_eArgError, "invalid argument [value, operation]");
+    }
+    XmlValue xmlval = xb_val_xml(RARRAY(a)->ptr[0]);
+    XmlIndexLookup::Operation xmlop = XmlIndexLookup::Operation(NUM2INT(RARRAY(a)->ptr[1]));
+    PROTECT(look->look->setHighBound(xmlval, xmlop));
+    return a;
+}
+
+static VALUE xb_xml_val(XmlValue *, VALUE);
+
+static VALUE
+xb_look_highbound_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    XmlIndexLookup::Operation xmlop = look->look->getHighBoundOperation();
+    XmlValue xmlval;
+
+    PROTECT(xmlval = look->look->getHighBoundValue());
+    VALUE a = xb_xml_val(&xmlval, look->man);
+    return rb_assoc_new(a, INT2NUM(xmlop));
+}
+
+static VALUE
+xb_look_lowbound_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    a = rb_Array(a);
+    if (RARRAY(a)->len != 2) {
+        rb_raise(rb_eArgError, "invalid argument [value, operation]");
+    }
+    XmlValue xmlval = xb_val_xml(RARRAY(a)->ptr[0]);
+    XmlIndexLookup::Operation xmlop = XmlIndexLookup::Operation(NUM2INT(RARRAY(a)->ptr[1]));
+    PROTECT(look->look->setLowBound(xmlval, xmlop));
+    return a;
+}
+
+static VALUE
+xb_look_lowbound_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    XmlIndexLookup::Operation xmlop = look->look->getLowBoundOperation();
+    XmlValue xmlval;
+
+    PROTECT(xmlval = look->look->getLowBoundValue());
+    VALUE a = xb_xml_val(&xmlval, look->man);
+    return rb_assoc_new(a, INT2NUM(xmlop));
+}
+
+static VALUE
+xb_look_index_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    char *index = StringValuePtr(a);
+    PROTECT(look->look->setIndex(index));
+    return a;
+}
+
+static VALUE
+xb_look_index_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    std::string index;
+    PROTECT(index = look->look->getIndex());
+    return rb_tainted_str_new2(index.c_str());
+}
+
+static VALUE
+xb_look_node_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    a = rb_Array(a);
+    if (RARRAY(a)->len != 2) {
+        rb_raise(rb_eArgError, "invalid argument [uri, name]");
+    }
+    char *uri = StringValuePtr(RARRAY(a)->ptr[0]);
+    char *name = StringValuePtr(RARRAY(a)->ptr[1]);
+    PROTECT(look->look->setNode(uri, name));
+    return a;
+}
+
+static VALUE
+xb_look_node_uri_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    std::string uri;
+    PROTECT(uri = look->look->getNodeURI());
+    return rb_tainted_str_new2(uri.c_str());
+}
+
+static VALUE
+xb_look_node_uri_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    char *uri = StringValuePtr(a);
+    PROTECT(look->look->setNode(uri, look->look->getNodeName()));
+    return a;
+}
+
+static VALUE
+xb_look_node_name_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    std::string name;
+    PROTECT(name = look->look->getNodeName());
+    return rb_tainted_str_new2(name.c_str());
+}
+
+static VALUE
+xb_look_node_name_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    char *name = StringValuePtr(a);
+    PROTECT(look->look->setNode(look->look->getNodeURI(), name));
+    return a;
+}
+
+static VALUE
+xb_look_node_get(VALUE obj)
+{
+    return rb_assoc_new(xb_look_node_uri_get(obj), xb_look_node_name_get(obj));
+}
+
+static VALUE
+xb_look_parent_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    a = rb_Array(a);
+    if (RARRAY(a)->len != 2) {
+        rb_raise(rb_eArgError, "invalid argument [uri, name]");
+    }
+    char *uri = StringValuePtr(RARRAY(a)->ptr[0]);
+    char *name = StringValuePtr(RARRAY(a)->ptr[1]);
+    PROTECT(look->look->setParent(uri, name));
+    return a;
+}
+
+static VALUE
+xb_look_parent_uri_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    std::string uri;
+    PROTECT(uri = look->look->getParentURI());
+    return rb_tainted_str_new2(uri.c_str());
+}
+
+static VALUE
+xb_look_parent_uri_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    char *uri = StringValuePtr(a);
+    PROTECT(look->look->setParent(uri, look->look->getParentName()));
+    return a;
+}
+
+static VALUE
+xb_look_parent_name_get(VALUE obj)
+{
+    xlook *look = get_look(obj);
+    std::string name;
+    PROTECT(name = look->look->getParentName());
+    return rb_tainted_str_new2(name.c_str());
+}
+
+static VALUE
+xb_look_parent_name_set(VALUE obj, VALUE a)
+{
+    xlook *look = get_look(obj);
+    char *name = StringValuePtr(a);
+    PROTECT(look->look->setParent(look->look->getParentURI(), name));
+    return a;
+}
+
+static VALUE
+xb_look_parent_get(VALUE obj)
+{
+    return rb_assoc_new(xb_look_parent_uri_get(obj), xb_look_parent_name_get(obj));
+}
+
+static VALUE
+xb_look_execute(int argc, VALUE *argv, VALUE obj)
+{
+    xlook *look = get_look(obj);
+    XmlQueryContext *xmlcxt;
+    xcxt *cxt;
+    VALUE a, b;
+    int flags = 0;
+    bool freecxt = true;
+
+    switch(rb_scan_args(argc, argv, "02", &a, &b)) {
+    case 2:
+        flags = NUM2INT(b);
+        /* ... */
+    case 1:
+        if (!NIL_P(a)) {
+            cxt = get_cxt(a);
+            xmlcxt = cxt->cxt;
+            freecxt = false;
+        }
+    }
+    if (freecxt) {
+        xman *man = get_man(look->man);
+        xmlcxt = new XmlQueryContext(man->man->createQueryContext());
+    }
+    XmlResults *xmlres;
+    if (!RTEST(look->txn)) {
+        PROTECT2(xmlres = new XmlResults(look->look->execute(*xmlcxt, flags)),
+                 if (freecxt) delete xmlcxt;);
+    }
+    else {
+        bdb_TXN *txnst;
+
+        GetTxnDBErr(look->txn, txnst, xb_eFatal);
+        XmlTransaction *xmltxn = (XmlTransaction *)txnst->txn_cxx;
+        PROTECT2(xmlres = new XmlResults(look->look->execute(*xmltxn, *xmlcxt, flags)),
+                 if (freecxt) delete xmlcxt;);
+    }
+    xres *res;
+    VALUE result = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark,
+                                    (RDF)xb_res_free, res);
+    res->res = xmlres;
+    res->man = look->man;
+    if (rb_block_given_p()) {
+        return rb_iterate(rb_each, result, (VALUE(*)(ANYARGS))rb_yield, Qnil);
+    }
+    return result;
+}
+
+#endif
+
 static void
 xb_val_mark(xval *val)
 {
@@ -2407,7 +3185,6 @@ static VALUE
 xb_xml_val(XmlValue *xmlval, VALUE man)
 {
     VALUE res;
-    xdoc *doc;
     if (xmlval->isNull()) {
 	return Qnil;
     }
@@ -2681,13 +3458,38 @@ xb_cxt_get(VALUE obj, VALUE a)
     return xb_xml_val(&xmlval, cxt->man);
 }
 
+#if BDBXML_VERSION >= 20200
+
+static VALUE
+xb_cxt_get_results(VALUE obj, VALUE a)
+{
+    xcxt *cxt = get_cxt(obj);
+    char *name = StringValuePtr(a);
+    XmlResults xmlres;
+    PROTECT(cxt->cxt->getVariableValue(name, xmlres));
+    xres *res;
+    VALUE result = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark,
+                                    (RDF)xb_res_free, res);
+    res->res = new XmlResults(xmlres);
+    res->man = cxt->man;
+    return result;
+}
+
+#endif
+
 static VALUE
 xb_cxt_set(VALUE obj, VALUE a, VALUE b)
 {
     xcxt *cxt = get_cxt(obj);
     char *name = StringValuePtr(a);
-    XmlValue xmlval = xb_val_xml(b);
-    PROTECT(cxt->cxt->setVariableValue(name, xmlval));
+    if (TYPE(b) == T_DATA && RDATA(b)->dfree == (RDF)xb_res_free) {
+        xres *res = get_res(b);
+        PROTECT(cxt->cxt->setVariableValue(name, res->res));
+    }
+    else {
+        XmlValue xmlval = xb_val_xml(b);
+        PROTECT(cxt->cxt->setVariableValue(name, xmlval));
+    }
     return obj;
 }
 
@@ -2726,6 +3528,28 @@ xb_cxt_return_get(VALUE obj)
     PROTECT(type = cxt->cxt->getReturnType());
     return INT2NUM(type);
 }
+
+#if BDBXML_VERSION >= 20200
+
+static VALUE
+xb_cxt_coll_set(VALUE obj, VALUE a)
+{
+    xcxt *cxt = get_cxt(obj);
+    char *uri = StringValuePtr(a);
+    PROTECT(cxt->cxt->setDefaultCollection(uri));
+    return a;
+}
+
+static VALUE
+xb_cxt_coll_get(VALUE obj)
+{
+    xcxt *cxt = get_cxt(obj);
+    std::string uri;
+    PROTECT(uri = cxt->cxt->getDefaultCollection());
+    return rb_tainted_str_new2(uri.c_str());
+}
+
+#endif
 
 static VALUE
 xb_que_manager(VALUE obj)
@@ -2766,7 +3590,6 @@ xb_que_to_str(VALUE obj)
 static VALUE
 xb_que_exec(int argc, VALUE *argv, VALUE obj)
 {
-    VALUE a, b, c;
     XmlTransaction *xmltxn = 0;
     XmlQueryContext *xmlcxt;
     xcxt *cxt;
@@ -2892,13 +3715,24 @@ static VALUE
 xb_res_each(VALUE obj)
 {
     XmlValue xmlval;
-    xdoc *doc;
+    if (!rb_block_given_p()) {
+        rb_raise(rb_eArgError, "block not supplied");
+    }
     xres *res = get_res(obj);
     PROTECT(res->res->reset());
     while (res->res->next(xmlval)) {
         rb_yield(xb_xml_val(&xmlval, res->man));
     }
     return obj;
+}
+
+static VALUE
+xb_con_each(VALUE obj)
+{
+    if (!rb_block_given_p()) {
+        rb_raise(rb_eArgError, "block not supplied");
+    }
+    return xb_res_each(xb_con_all(0, NULL, obj));
 }
 
 static void
@@ -3071,10 +3905,10 @@ xb_mod_execute(int argc, VALUE *argv, VALUE obj)
 {
     xmod *mod = get_mod(obj);
     XmlValue xmlval;
-    xres *res;
+    xres *res = 0;
     bool has_val = false;
-    XmlUpdateContext *xmlupd;
-    XmlQueryContext *xmlcxt;
+    XmlUpdateContext *xmlupd = 0;
+    XmlQueryContext *xmlcxt = 0;
     bool freeupd = true, freecxt = true;
     VALUE a, b, c;
     
@@ -3169,7 +4003,7 @@ xb_val_to_doc(VALUE obj)
     PROTECT(xmldoc = new XmlDocument(val->val->asDocument()));
     VALUE res = Data_Make_Struct(xb_cDoc, xdoc, (RDF)xb_doc_mark, 
                                  (RDF)xb_doc_free, doc);
-    xman *man = get_man(val->man);
+    get_man(val->man);
     doc->doc = xmldoc;
     doc->man = val->man;
     return res;
@@ -3501,6 +4335,9 @@ extern "C" {
         con->con = 0;
         con->opened = 0;
         delete_ind(con->ind);
+#if BDBXML_VERSION >= 20200
+        delete_look(con->look);
+#endif
 	return Qnil;
     }
 
@@ -3572,9 +4409,6 @@ extern "C" {
 #endif
 
 	static VALUE xb_mDb,  xb_mXML;
-#if defined(DBXML_DOM_XERCES2)
-	static VALUE xb_mDom;
-#endif
 
 	if (rb_const_defined_at(rb_cObject, rb_intern("BDB"))) {
 	    rb_raise(rb_eNameError, "module already defined");
@@ -3635,6 +4469,11 @@ extern "C" {
 	rb_define_method(xb_cTxn, "remove_container", RMF(xb_man_remove), 1);
         rb_define_method(xb_cTxn, "prepare", RMF(xb_man_prepare), -1);
         rb_define_method(xb_cTxn, "query", RMF(xb_man_query), -1);
+#if BDBXML_VERSION >= 20200
+        rb_define_method(xb_cTxn, "create_index_lookup", RMF(xb_man_create_look), -1);
+        rb_define_method(xb_cTxn, "container_version", RMF(xb_man_con_version), 1);
+	rb_define_method(xb_cTxn, "reindex_container", RMF(xb_man_reindex), -1);
+#endif
         rb_define_method(xb_cTxn, "method_missing", RMF(xb_txn_missing), -1);
 
 	DbXml::setLogLevel(DbXml::LEVEL_ALL, false);
@@ -3674,9 +4513,16 @@ extern "C" {
 #ifdef DBXML_CHKSUM_SHA1
 	rb_define_const(xb_mXML, "CHKSUM_SHA1", INT2NUM(DBXML_CHKSUM_SHA1));
 #endif
-#ifdef DBXML_ENCRYPT
+#ifdef DB_ENCRYPT
 	rb_define_const(xb_mXML, "ENCRYPT", INT2NUM(DBXML_ENCRYPT));
 #endif
+#if BDBXML_VERSION >= 20200
+	rb_define_const(xb_mXML, "REVERSE_ORDER", INT2NUM(DBXML_REVERSE_ORDER));
+	rb_define_const(xb_mXML, "CACHE_DOCUMENTS", INT2NUM(DBXML_CACHE_DOCUMENTS));
+	rb_define_const(xb_mXML, "INDEX_VALUES", INT2NUM(DBXML_INDEX_VALUES));
+	rb_define_const(xb_mXML, "NO_INDEX_NODES", INT2NUM(DBXML_NO_INDEX_NODES));
+#endif
+
 	{
 	    VALUE name = rb_hash_new();
 	    rb_define_const(xb_mXML, "Name", name);
@@ -3740,6 +4586,15 @@ extern "C" {
         rb_define_method(xb_cMan, "query", RMF(xb_man_query), -1);
         rb_define_method(xb_cMan, "resolver=", RMF(xb_man_resolver), 1);
         rb_define_method(xb_cMan, "close", RMF(xb_man_close), 0);
+#if BDBXML_VERSION >= 20200
+        rb_define_method(xb_cMan, "create_index_lookup", RMF(xb_man_create_look), -1);
+        rb_define_method(xb_cMan, "container_version", RMF(xb_man_con_version), 1);
+	rb_define_method(xb_cMan, "reindex_container", RMF(xb_man_reindex), -1);
+        rb_define_method(xb_cMan, "sequence_incr", RMF(xb_man_increment_get), 0);
+        rb_define_method(xb_cMan, "sequence_increment", RMF(xb_man_increment_get), 0);
+        rb_define_method(xb_cMan, "sequence_incr=", RMF(xb_man_increment_set), 0);
+        rb_define_method(xb_cMan, "sequence_increment=", RMF(xb_man_increment_set), 0);
+#endif
 
 	xb_cCon = rb_define_class_under(xb_mXML, "Container", rb_cObject);
         rb_define_const(xb_cCon, "NodeContainer", INT2NUM(XmlContainer::NodeContainer));
@@ -3757,6 +4612,7 @@ extern "C" {
 	rb_define_private_method(xb_cCon, "initialize", RMF(xb_con_init), -1);
 	rb_define_private_method(xb_cCon, "__txn_dup__", RMF(xb_con_txn_dup), 1);
 	rb_define_private_method(xb_cCon, "__txn_close__", RMF(xb_con_txn_close), 2);
+	rb_define_method(xb_cCon, "each", RMF(xb_con_each), 0);
 	rb_define_method(xb_cCon, "manager", RMF(xb_con_manager), 0);
 	rb_define_method(xb_cCon, "close", RMF(xb_con_close), 0);
 	rb_define_method(xb_cCon, "transaction", RMF(xb_con_txn), 0);
@@ -3767,6 +4623,10 @@ extern "C" {
 	rb_define_method(xb_cCon, "in_txn?", RMF(xb_con_txn_p), 0);
 	rb_define_method(xb_cCon, "index", RMF(xb_con_index), -1);
 	rb_define_method(xb_cCon, "index=", RMF(xb_con_index_set), -1);
+#if BDBXML_VERSION >= 20200
+        rb_define_method(xb_cCon, "index?", RMF(xb_con_index_p), 0);
+        rb_define_method(xb_cCon, "pagesize", RMF(xb_con_pagesize), 0);
+#endif
 	rb_define_method(xb_cCon, "name", RMF(xb_con_name), 0);
         rb_define_method(xb_cCon, "alias=", RMF(xb_con_alias_set), 1);
         rb_define_method(xb_cCon, "delete_alias", RMF(xb_con_alias_del), 1);
@@ -3783,6 +4643,12 @@ extern "C" {
 	rb_define_method(xb_cCon, "sync", RMF(xb_con_sync), 0);
 	rb_define_method(xb_cCon, "statistics", RMF(xb_con_stat), -1);
 	rb_define_method(xb_cCon, "lookup_index", RMF(xb_con_lookup), -1);
+	rb_define_method(xb_cCon, "add_index", RMF(xb_con_add_index), -1);
+	rb_define_method(xb_cCon, "delete_index", RMF(xb_con_delete_index), -1);
+	rb_define_method(xb_cCon, "replace_index", RMF(xb_con_replace_index), -1);
+	rb_define_method(xb_cCon, "add_default_index", RMF(xb_con_add_def_index), -1);
+	rb_define_method(xb_cCon, "delete_default_index", RMF(xb_con_delete_def_index), -1);
+	rb_define_method(xb_cCon, "replace_default_index", RMF(xb_con_replace_def_index), -1);
 
 	xb_cInd = rb_define_class_under(xb_mXML, "Index", rb_cObject);
 	rb_undef_method(CLASS_OF(xb_cInd), "allocate");
@@ -3813,6 +4679,42 @@ extern "C" {
 	rb_define_method(xb_cInd, "each_type", RMF(xb_ind_each_type), 0);
 	rb_define_method(xb_cInd, "find", RMF(xb_ind_find), -1);
 	rb_define_method(xb_cInd, "to_a", RMF(xb_ind_to_a), 0);
+
+#if BDBXML_VERSION >= 20200
+        xb_cLook = rb_define_class_under(xb_mXML, "IndexLookup", rb_cObject);
+	rb_undef_method(CLASS_OF(xb_cLook), "allocate");
+	rb_undef_method(CLASS_OF(xb_cLook), "new");
+        rb_define_const(xb_cLook, "NONE", INT2NUM(XmlIndexLookup::NONE));
+        rb_define_const(xb_cLook, "EQ", INT2NUM(XmlIndexLookup::EQ));
+        rb_define_const(xb_cLook, "GT", INT2NUM(XmlIndexLookup::GT));
+        rb_define_const(xb_cLook, "GTE", INT2NUM(XmlIndexLookup::GTE));
+        rb_define_const(xb_cLook, "LT", INT2NUM(XmlIndexLookup::LT));
+        rb_define_const(xb_cLook, "LTE", INT2NUM(XmlIndexLookup::LTE));
+	rb_define_method(xb_cLook, "manager", RMF(xb_look_manager), 0);
+	rb_define_method(xb_cLook, "transaction", RMF(xb_look_transaction), 0);
+	rb_define_method(xb_cLook, "transaction?", RMF(xb_look_transaction_p), 0);
+        rb_define_method(xb_cLook, "execute", RMF(xb_look_execute), -1);
+        rb_define_method(xb_cLook, "container", RMF(xb_look_container_get), 0);
+        rb_define_method(xb_cLook, "container=", RMF(xb_look_container_set), 1);
+        rb_define_method(xb_cLook, "high_bound", RMF(xb_look_highbound_get), 0);
+        rb_define_method(xb_cLook, "high_bound=", RMF(xb_look_highbound_set), 1);
+        rb_define_method(xb_cLook, "low_bound", RMF(xb_look_lowbound_get), 0);
+        rb_define_method(xb_cLook, "low_bound=", RMF(xb_look_lowbound_set), 1);
+        rb_define_method(xb_cLook, "index", RMF(xb_look_index_get), 0);
+        rb_define_method(xb_cLook, "index=", RMF(xb_look_index_set), 1);
+        rb_define_method(xb_cLook, "node", RMF(xb_look_node_get), 0);
+        rb_define_method(xb_cLook, "node_uri", RMF(xb_look_node_uri_get), 0);
+        rb_define_method(xb_cLook, "node_name", RMF(xb_look_node_name_get), 0);
+        rb_define_method(xb_cLook, "node=", RMF(xb_look_node_set), 1);
+        rb_define_method(xb_cLook, "node_uri=", RMF(xb_look_node_uri_set), 1);
+        rb_define_method(xb_cLook, "node_name=", RMF(xb_look_node_name_set), 1);
+        rb_define_method(xb_cLook, "parent", RMF(xb_look_parent_get), 0);
+        rb_define_method(xb_cLook, "parent_uri", RMF(xb_look_parent_uri_get), 0);
+        rb_define_method(xb_cLook, "parent_name", RMF(xb_look_parent_name_get), 0);
+        rb_define_method(xb_cLook, "parent=", RMF(xb_look_parent_set), 1);
+        rb_define_method(xb_cLook, "parent_uri=", RMF(xb_look_parent_uri_set), 1);
+        rb_define_method(xb_cLook, "parent_name=", RMF(xb_look_parent_name_set), 1);
+#endif
 
 	xb_cUpd = rb_define_class_under(xb_mXML, "UpdateContext", rb_cObject);
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
@@ -3884,6 +4786,11 @@ extern "C" {
 	rb_define_method(xb_cCxt, "uri=", RMF(xb_cxt_uri_set), 1);
 	rb_define_method(xb_cCxt, "base_uri", RMF(xb_cxt_uri_get), 0);
 	rb_define_method(xb_cCxt, "base_uri=", RMF(xb_cxt_uri_set), 1);
+#if BDBXML_VERSION >= 20200
+        rb_define_method(xb_cCxt, "get_results", RMF(xb_cxt_get_results), 1);
+        rb_define_method(xb_cCxt, "collection", RMF(xb_cxt_coll_get), 0);
+        rb_define_method(xb_cCxt, "collection=", RMF(xb_cxt_coll_set), 1);
+#endif
 
 	xb_cQue = rb_define_class_under(xb_mXML, "Query", rb_cObject);
 	rb_const_set(xb_mXML, rb_intern("QueryExpression"), xb_cQue);

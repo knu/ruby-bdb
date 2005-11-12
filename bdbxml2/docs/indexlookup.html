@@ -1,0 +1,139 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/indexlookup.rd</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::IndexLookup</a></h2><!-- RDLabel: "BDB::XML::IndexLookup" -->
+<p>The XML::IndexLookup class encapsulates the context within which an
+index lookup operation can be performed on an XML::Container object. The
+lookup is performed using an XML::IndexLookup object, and a series of
+methods of that object that specify how the lookup is to be
+performed. Using these methods, it is possible to specify inequality
+lookups, range lookups, and simple value lookups, as well as the sort
+order of the results. By default, results are returned in the sort
+order of the index.</p>
+<p>XML::IndexLookup objects are created using XML::Manager::create_index_lookup,
+or Txn::create_index_lookup</p>
+<p>The following constant are defined <var>NONE</var>, <var>EQ</var>, <var>GT</var>,
+<var>GTE</var>, <var>LT</var>, <var>LTE</var></p>
+<h3><a name="label-1" id="label-1">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>container</code></a></dt><!-- RDLabel: "container" -->
+<dd>
+Retrieve the current container</dd>
+<dt><a name="label-3" id="label-3"><code>container=(<var>con</var>)</code></a></dt><!-- RDLabel: "container=" -->
+<dd>
+Sets the container to be used for the index lookup operation. 
+The same object may be used for lookup in multiple containers by changing 
+this configuration.</dd>
+<dt><a name="label-4" id="label-4"><code>execute(<var>context</var> = <var>nil</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "execute" -->
+<dd>
+Executes the index lookup operation specified by the configuration.
+<dl>
+<dt><a name="label-5" id="label-5"><var>context</var></a></dt><!-- RDLabel: "context" -->
+<dd>
+a XML::QueryContext object to use for this query
+</dd>
+<dt><a name="label-6" id="label-6"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
+<dd>
+the flags must be set to <var>0</var>, OR'ing one of the value
+<var>BDB::XML::LAZY_DOCS</var>, <var>BDB::XML::REVERSE_ORDER</var>,
+<var>BDB::XML::CACHE_DOCUMENTS</var>, <var>BDB::DEGREE_2</var>,
+<var>BDB::DIRTY_READ</var>, <var>BDB::RMW</var>
+</dd>
+</dl></dd>
+<dt><a name="label-7" id="label-7"><code>high_bound</code></a></dt><!-- RDLabel: "high_bound" -->
+<dd>
+Retrieve the operation and value used for the upper bound</dd>
+<dt><a name="label-8" id="label-8"><code>high_bound=([<var>value</var>, <var>operation</var>])</code></a></dt><!-- RDLabel: "high_bound=" -->
+<dd>
+<p>call-seq:</p>
+<pre>self.high_bound = [value, operation]</pre>
+<p>Sets the operation and value to be used for the upper bound for a range 
+index lookup operation. The high bound must be specified to indicate a 
+range lookup.</p></dd>
+<dt><a name="label-9" id="label-9"><code>index</code></a></dt><!-- RDLabel: "index" -->
+<dd>
+Retrieve the indexing strategy</dd>
+<dt><a name="label-10" id="label-10"><code>index=(<var>string</var>)</code></a></dt><!-- RDLabel: "index=" -->
+<dd>
+Set the indexing strategy to be used for the index lookup operation. 
+Only one index may be specified, and substring indexes are not supported.</dd>
+<dt><a name="label-11" id="label-11"><code>low_bound</code></a></dt><!-- RDLabel: "low_bound" -->
+<dd>
+Retrieve the operation and value used for the lower bound</dd>
+<dt><a name="label-12" id="label-12"><code>low_bound=([<var>value</var>, <var>operation</var>])</code></a></dt><!-- RDLabel: "low_bound=" -->
+<dd>
+<p>call-seq:</p>
+<pre>self.low_bound = [value, operation]</pre>
+<p>Sets the operation and value to be used for the index lookup operation.
+If the operation is a simple inequality lookup, the lower bound is used as 
+the single value and operation for the lookup. If the operation is a range
+lookup, in which an upper bound is specified, the lower bound is used 
+as the lower boundary value and operation for the lookup.</p></dd>
+<dt><a name="label-13" id="label-13"><code>manager</code></a></dt><!-- RDLabel: "manager" -->
+<dd>
+Return the manager associated with the IndexLookup</dd>
+<dt><a name="label-14" id="label-14"><code>node</code></a></dt><!-- RDLabel: "node" -->
+<dd>
+Retrieve the namespace and the name of the node</dd>
+<dt><a name="label-15" id="label-15"><code>node_uri</code></a></dt><!-- RDLabel: "node_uri" -->
+<dd>
+Retrieve the namespace of the node</dd>
+<dt><a name="label-16" id="label-16"><code>node_name</code></a></dt><!-- RDLabel: "node_name" -->
+<dd>
+Retrieve the name of the node</dd>
+<dt><a name="label-17" id="label-17"><code>node=([<var>uri</var>, <var>name</var>])</code></a></dt><!-- RDLabel: "node=" -->
+<dd>
+Sets the name of the node to be used along with the indexing strategy
+for the index lookup operation.
+<dl>
+<dt><a name="label-18" id="label-18"><var>uri</var></a></dt><!-- RDLabel: "uri" -->
+<dd>
+The namespace of the node to be used. The default namespace is selected 
+by passing an empty string for the namespace
+</dd>
+<dt><a name="label-19" id="label-19"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+The name of the element or attribute node to be used.
+</dd>
+</dl></dd>
+<dt><a name="label-20" id="label-20"><code>parent</code></a></dt><!-- RDLabel: "parent" -->
+<dd>
+Retrieve the namespace and the name of the parent node</dd>
+<dt><a name="label-21" id="label-21"><code>parent_uri</code></a></dt><!-- RDLabel: "parent_uri" -->
+<dd>
+Retrieve the namespace of the parent node</dd>
+<dt><a name="label-22" id="label-22"><code>parent_name</code></a></dt><!-- RDLabel: "parent_name" -->
+<dd>
+Retrieve the name of the parent node</dd>
+<dt><a name="label-23" id="label-23"><code>parent=([<var>uri</var>, <var>name</var>])</code></a></dt><!-- RDLabel: "parent=" -->
+<dd>
+Sets the name of the parent node to be used for an edge index lookup
+operation. If the index is not an edge index, this configuration is ignored.
+<dl>
+<dt><a name="label-24" id="label-24"><var>uri</var></a></dt><!-- RDLabel: "uri" -->
+<dd>
+The namespace of the parent node to be used. The default namespace is 
+selected  by passing an empty string for the namespace
+</dd>
+<dt><a name="label-25" id="label-25"><var>name</var></a></dt><!-- RDLabel: "name" -->
+<dd>
+The name of the parent element node to be used.
+</dd>
+</dl></dd>
+<dt><a name="label-26" id="label-26"><code>transaction</code></a></dt><!-- RDLabel: "transaction" -->
+<dd>
+Return the transaction associated with the IndexLookup, if it was opened
+in a transaction</dd>
+<dt><a name="label-27" id="label-27"><code>transaction?</code></a></dt><!-- RDLabel: "transaction?" -->
+<dd>
+Return true if the IndexLookup was opened in a transaction</dd>
+</dl>
+
+</body>
+</html>

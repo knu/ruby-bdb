@@ -15,7 +15,7 @@
 
 VERIFY 'myconfig' then comment this line
 
-.... This version must be used with [db-4.3.*, DbXml 2.0.*]
+.... This version must be used with [db-4.3.*, DbXml 2.*]
 
 .... ruby extconf.rb
      make
