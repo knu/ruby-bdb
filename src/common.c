@@ -21,9 +21,7 @@ static void bdb_mark _((bdb_DB *));
 } while (0)
 
 void
-bdb_ary_push(db_ary, obj)
-    struct ary_st *db_ary;
-    VALUE obj;
+bdb_ary_push(struct ary_st *db_ary, VALUE obj)
 {
     if (db_ary->mark) {
         rb_warning("db_ary in mark phase");
@@ -43,9 +41,7 @@ bdb_ary_push(db_ary, obj)
 }
 
 void
-bdb_ary_unshift(db_ary, obj)
-    struct ary_st *db_ary;
-    VALUE obj;
+bdb_ary_unshift(struct ary_st *db_ary, VALUE obj)
 {
     if (db_ary->mark) {
         rb_warning("db_ary in mark phase");
@@ -68,9 +64,7 @@ bdb_ary_unshift(db_ary, obj)
 }
 
 VALUE
-bdb_ary_delete(db_ary, val)
-    struct ary_st *db_ary;
-    VALUE val;
+bdb_ary_delete(struct ary_st *db_ary, VALUE val)
 {
     int i, pos;
 
@@ -88,8 +82,7 @@ bdb_ary_delete(db_ary, val)
 }
 
 void
-bdb_ary_mark(db_ary)
-    struct ary_st *db_ary;
+bdb_ary_mark(struct ary_st *db_ary)
 {
     int i;
 
@@ -99,10 +92,7 @@ bdb_ary_mark(db_ary)
 }
 
 VALUE
-bdb_test_dump(obj, key, a, type_kv)
-    VALUE obj, a;
-    DBT *key;
-    int type_kv;
+bdb_test_dump(VALUE obj, DBT *key, VALUE a, int type_kv)
 {
     bdb_DB *dbst;
     int is_nil = 0;
@@ -139,9 +129,7 @@ bdb_test_dump(obj, key, a, type_kv)
 }
 
 VALUE
-bdb_test_ret(obj, tmp, a, type_kv)
-    VALUE obj, tmp, a;
-    int type_kv;
+bdb_test_ret(VALUE obj, VALUE tmp, VALUE a, int type_kv)
 {
     bdb_DB *dbst;
     Data_Get_Struct(obj, bdb_DB, dbst);
@@ -159,10 +147,7 @@ bdb_test_ret(obj, tmp, a, type_kv)
 }
 
 VALUE
-bdb_test_recno(obj, key, recno, a)
-    VALUE obj, a;
-    DBT *key;
-    db_recno_t *recno;
+bdb_test_recno(VALUE obj, DBT *key, db_recno_t *recno, VALUE a)
 {
     bdb_DB *dbst;
     Data_Get_Struct(obj, bdb_DB, dbst);
@@ -178,10 +163,7 @@ bdb_test_recno(obj, key, recno, a)
 }
 
 VALUE
-bdb_test_load(obj, a, type_kv)
-    VALUE obj;
-    DBT *a;
-    int type_kv;
+bdb_test_load(VALUE obj, DBT *a, int type_kv)
 {
     VALUE res;
     int i, posi;
@@ -243,9 +225,7 @@ bdb_test_load(obj, a, type_kv)
 }
 
 static VALUE
-test_load_dyna1(obj, key, val)
-    VALUE obj;
-    DBT *key, *val;
+test_load_dyna1(VALUE obj, DBT *key, DBT *val)
 {
     bdb_DB *dbst;
     VALUE del, res, tmp;
@@ -283,9 +263,7 @@ test_load_dyna1(obj, key, val)
 }
 
 static VALUE
-test_load_dyna(obj, key, val)
-    VALUE obj;
-    DBT *key, *val;
+test_load_dyna(VALUE obj, DBT *key, DBT *val)
 {
     VALUE res = test_load_dyna1(obj, key, val);
     if (key->flags & DB_DBT_MALLOC) {
@@ -297,20 +275,17 @@ test_load_dyna(obj, key, val)
 
 static int
 #if BDB_VERSION >= 30200
-bdb_bt_compare(dbbd, a, b)
-    DB *dbbd;
-    DBT *a, *b;
+bdb_bt_compare(DB *dbbd, const DBT *a, const DBT *b)
 #else
-bdb_bt_compare(a, b)
-    DBT *a, *b;
+bdb_bt_compare(const DBT *a, const DBT *b)
 #endif
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
     GetIdDb(obj, dbst);
-    av = bdb_test_load(obj, a, FILTER_VALUE|FILTER_FREE);
-    bv = bdb_test_load(obj, b, FILTER_VALUE|FILTER_FREE);
+    av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
+    bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
     if (dbst->bt_compare == 0)
 	res = rb_funcall(obj, id_bt_compare, 2, av, bv);
     else
@@ -320,20 +295,17 @@ bdb_bt_compare(a, b)
 
 static size_t
 #if BDB_VERSION >= 30200
-bdb_bt_prefix(dbbd, a, b)
-    DB *dbbd;
-    DBT *a, *b;
+bdb_bt_prefix(DB *dbbd, const DBT *a, const DBT *b)
 #else
-bdb_bt_prefix(a, b)
-    DBT *a, *b;
+bdb_bt_prefix(const DBT *a, const DBT *b)
 #endif
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
     GetIdDb(obj, dbst);
-    av = bdb_test_load(obj, a, FILTER_VALUE|FILTER_FREE);
-    bv = bdb_test_load(obj, b, FILTER_VALUE|FILTER_FREE);
+    av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
+    bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
     if (dbst->bt_prefix == 0)
 	res = rb_funcall(obj, id_bt_prefix, 2, av, bv);
     else
@@ -343,20 +315,17 @@ bdb_bt_prefix(a, b)
 
 static int
 #if BDB_VERSION >= 30200
-bdb_dup_compare(dbbd, a, b)
-    DB * dbbd;
-    DBT *a, *b;
+bdb_dup_compare(DB *dbbd, const DBT *a, const DBT *b)
 #else
-bdb_dup_compare(a, b)
-    DBT *a, *b;
+bdb_dup_compare(const DBT *a, const DBT *b)
 #endif
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
     GetIdDb(obj, dbst);
-    av = bdb_test_load(obj, a, FILTER_VALUE|FILTER_FREE);
-    bv = bdb_test_load(obj, b, FILTER_VALUE|FILTER_FREE);
+    av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
+    bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
     if (dbst->dup_compare == 0)
 	res = rb_funcall(obj, id_dup_compare, 2, av, bv);
     else
@@ -366,14 +335,9 @@ bdb_dup_compare(a, b)
 
 static u_int32_t
 #if BDB_VERSION >= 30200
-bdb_h_hash(dbbd, bytes, length)
-    DB *dbbd;
-    void *bytes;
-    u_int32_t length;
+bdb_h_hash(DB *dbbd, const void *bytes, u_int32_t length)
 #else
-bdb_h_hash(bytes, length)
-    void *bytes;
-    u_int32_t length;
+bdb_h_hash(const void *bytes, u_int32_t length)
 #endif
 {
     VALUE obj, st, res;
@@ -434,8 +398,7 @@ bdb_feedback(DB *dbp, int opcode, int pct)
 #endif
 
 static VALUE
-bdb_i_options(obj, dbstobj)
-    VALUE obj, dbstobj;
+bdb_i_options(VALUE obj, VALUE dbstobj)
 {
     VALUE key, value;
     char *options, *str;
@@ -740,9 +703,7 @@ struct bdb_eiv {
 };
 
 static void
-bdb_i_close(dbst, flags)
-    bdb_DB *dbst;
-    int flags;
+bdb_i_close(bdb_DB *dbst, int flags)
 {
     bdb_ENV *envst;
 
@@ -789,16 +750,14 @@ bdb_local_aref()
 }
 
 static VALUE
-i_close(dbst)
-    bdb_DB *dbst;
+i_close(bdb_DB *dbst)
 {
     bdb_i_close(dbst, 0);
     return Qnil;
 }
 
 static VALUE
-bdb_final_aref(dbst)
-    bdb_DB *dbst;
+bdb_final_aref(bdb_DB *dbst)
 {
     VALUE obj;
 
@@ -811,19 +770,17 @@ bdb_final_aref(dbst)
 }
 
 static void
-bdb_free(dbst)
-    bdb_DB *dbst;
+bdb_free(bdb_DB *dbst)
 {
     if (dbst->dbp && !(dbst->options & BDB_NOT_OPEN)) {
-        rb_protect(i_close, (VALUE)dbst, 0);
-        rb_protect(bdb_final_aref, (VALUE)dbst, 0);
+        rb_protect((VALUE (*)(ANYARGS))i_close, (VALUE)dbst, 0);
+        rb_protect((VALUE (*)(ANYARGS))bdb_final_aref, (VALUE)dbst, 0);
     }
     free(dbst);
 }
 
 static void
-bdb_mark(dbst)
-    bdb_DB *dbst;
+bdb_mark(bdb_DB *dbst)
 {
     int i;
     rb_gc_mark(dbst->marshal);
@@ -849,8 +806,7 @@ bdb_mark(dbst)
 }
 
 static VALUE
-bdb_env(obj)
-    VALUE obj;
+bdb_env(VALUE obj)
 {
     bdb_DB *dbst;
 
@@ -862,8 +818,7 @@ bdb_env(obj)
 }
 
 VALUE
-bdb_env_p(obj)
-    VALUE obj;
+bdb_env_p(VALUE obj)
 {
     bdb_DB *dbst;
 
@@ -872,8 +827,7 @@ bdb_env_p(obj)
 }
 
 static VALUE
-bdb_txn(obj)
-    VALUE obj;
+bdb_txn(VALUE obj)
 {
     bdb_DB *dbst;
 
@@ -885,8 +839,7 @@ bdb_txn(obj)
 }
 
 VALUE
-bdb_txn_p(obj)
-    VALUE obj;
+bdb_txn_p(VALUE obj)
 {
     bdb_DB *dbst;
 
@@ -895,13 +848,10 @@ bdb_txn_p(obj)
 }
 
 static VALUE
-bdb_close(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_close(int argc, VALUE *argv, VALUE obj)
 {
     VALUE opt;
-    bdb_DB *dbst, *thst;
+    bdb_DB *dbst;
     int flags = 0;
 
     if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4) {
@@ -915,7 +865,7 @@ bdb_close(argc, argv, obj)
 	bdb_i_close(dbst, flags);
     }
     dbst->options |= BDB_NOT_OPEN;
-    rb_protect(bdb_final_aref, (VALUE)dbst, 0);
+    rb_protect((VALUE (*)(ANYARGS))bdb_final_aref, (VALUE)dbst, 0);
     RDATA(obj)->dfree = free;
     return Qnil;
 }
@@ -1033,9 +983,7 @@ bdb_recno_length(obj)
 }
 
 static VALUE
-bdb_s_new(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_s_new(int argc, VALUE *argv, VALUE obj)
 {
     VALUE res;
     bdb_TXN *txnst = NULL;
@@ -1123,10 +1071,7 @@ bdb_s_new(argc, argv, obj)
 }
 
 VALUE
-bdb_init(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_init(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     DB *dbp;
@@ -1306,8 +1251,13 @@ bdb_init(argc, argv, obj)
     {
 	DB_TXN *txnid = NULL;
 
-	if (name == NULL && subname == NULL && (flags & DB_RDONLY)) {
-	    flags &= ~DB_RDONLY;
+	if (name == NULL && subname == NULL) {
+	    if (flags & DB_RDONLY) {
+		flags &= ~DB_RDONLY;
+	    }
+#if BDB_VERSION >= 40416
+	    flags |= DB_CREATE;
+#endif
 	}
 #if BDB_VERSION >= 40100
 	if (RTEST(dbst->txn)) {
@@ -1410,7 +1360,7 @@ bdb_init(argc, argv, obj)
 
 	if ((count = bdb_is_recnum(dbst->dbp)) != -1) {
 	    VALUE len = bdb_recno_length(obj);
-	    dbst->len = count;
+	    dbst->len = NUM2LONG(len);
 	}
 	else {
 	    if (flags & DB_TRUNCATE) {
@@ -1484,10 +1434,7 @@ bdb_i_s_create(obj, db)
 } 
 
 static VALUE
-bdb_s_create(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_s_create(int argc, VALUE *argv, VALUE obj)
 {
     VALUE res;
     int i;
@@ -1507,10 +1454,7 @@ bdb_s_create(argc, argv, obj)
 }
 
 static VALUE
-bdb_s_open(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_s_open(int argc, VALUE *argv, VALUE obj)
 {
     VALUE res = rb_funcall2(obj, rb_intern("new"), argc, argv);
     if (rb_block_given_p()) {
@@ -1558,10 +1502,7 @@ bdb_queue_i_search_re_len(obj, restobj)
 #define DEFAULT_RECORD_PAD 0x20
 
 static VALUE
-bdb_queue_s_new(argc, argv, obj) 
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_queue_s_new(int argc, VALUE *argv, VALUE obj) 
 {
     VALUE *nargv, ret, restobj;
     struct re *rest;
@@ -1610,7 +1551,7 @@ bdb_append_internal(argc, argv, obj, flag, retval)
     DBT key, data;
     db_recno_t recno;
     int i;
-    VALUE *a, ary;
+    VALUE *a, ary = Qnil;
     volatile VALUE res = Qnil;
 
     rb_secure(4);
@@ -1653,9 +1594,7 @@ bdb_append_internal(argc, argv, obj, flag, retval)
 }
 
 static VALUE
-bdb_append_m(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_append_m(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_append_internal(argc, argv, obj, DB_APPEND, Qtrue);
 }
@@ -1668,9 +1607,7 @@ bdb_append(obj, val)
 }
 
 static VALUE
-bdb_unshift(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_unshift(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -1687,10 +1624,7 @@ bdb_unshift(argc, argv, obj)
 }
 
 VALUE
-bdb_put(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_put(int argc, VALUE *argv, VALUE obj)
 {
     volatile VALUE a0 = Qnil;
     volatile VALUE b0 = Qnil;
@@ -1870,27 +1804,19 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
 }
 
 VALUE
-bdb_get(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_get(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_get_internal(argc, argv, obj, Qnil, 0);
 }
 
 static VALUE
-bdb_get_dyna(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_get_dyna(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_get_internal(argc, argv, obj, Qnil, 1);
 }
 
 static VALUE
-bdb_fetch(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_fetch(int argc, VALUE *argv, VALUE obj)
 {
     VALUE key, if_none;
     VALUE val;
@@ -1915,10 +1841,7 @@ bdb_fetch(argc, argv, obj)
 #if BDB_VERSION >= 30300
 
 static VALUE
-bdb_pget(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_pget(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a = Qnil;
     VALUE b = Qnil;
@@ -1987,6 +1910,109 @@ bdb_btree_key_range(obj, a)
 			 rb_float_new(key_range.greater));
 }
 #endif
+
+#if BDB_VERSION >= 40416
+
+
+struct data_flags {
+    DB_COMPACT *cdata;
+    int flags;
+};
+
+static VALUE
+bdb_compact_i(obj, dataobj)
+    VALUE obj, dataobj;
+{
+    VALUE key, value;
+    char *str;
+    struct data_flags *dtf;
+
+    Data_Get_Struct(dataobj, struct data_flags, dtf);
+    key = rb_ary_entry(obj, 0);
+    value = rb_ary_entry(obj, 1);
+    key = rb_obj_as_string(key);
+    str = StringValuePtr(key);
+    if (strcmp(str, "compact_timeout") == 0) {
+	dtf->cdata->compact_timeout = NUM2LONG(value);
+    }
+    else if (strcmp(str, "compact_fillpercent") == 0) {
+	dtf->cdata->compact_fillpercent = NUM2INT(value);
+    }
+    else if (strcmp(str, "flags") == 0) {
+	dtf->flags = NUM2INT(value);
+    }
+    else {
+	rb_warning("Unknown option %s", str);
+    }
+    return Qnil;
+}
+    
+static VALUE
+bdb_treerec_compact(int argc, VALUE *argv, VALUE obj)
+{
+    bdb_DB *dbst;
+    DB_TXN *txnid;
+    DBT start, stop, end;
+    DBT *pstart, *pstop;
+    DB_COMPACT cdata;
+    db_recno_t recno_start, recno_stop;
+    int flags;
+    VALUE a, b, c, result;
+
+    pstop = pstart = NULL;
+    MEMZERO(&cdata, DB_COMPACT, 1);
+    flags = 0;
+    INIT_TXN(txnid, obj, dbst);
+    switch (rb_scan_args(argc, argv, "03", &a, &b, &c)) {
+    case 3:
+	if (FIXNUM_P(c)) {
+	    flags = NUM2INT(c);
+	}
+	else {
+	    struct data_flags *dtf;
+	    VALUE dtobj;
+		
+	    dtobj = Data_Make_Struct(rb_cData, struct data_flags, 0, free, dtf);
+	    dtf->cdata = &cdata;
+	    dtf->flags = 0;
+	    rb_iterate(rb_each, c, bdb_compact_i, dtobj);
+	    flags = dtf->flags;
+	}
+	/* ... */
+    case 2:
+	if (!NIL_P(b)) {
+	    MEMZERO(&stop, DBT, 1);
+	    b = bdb_test_recno(obj, &start, &recno_stop, b);
+	    pstop = &stop;
+	}
+	/* ... */
+    case 1:
+	if (!NIL_P(a)) {
+	    MEMZERO(&start, DBT, 1);
+	    a = bdb_test_recno(obj, &start, &recno_start, a);
+	    pstart = &start;
+	}
+    }
+    MEMZERO(&end, DBT, 1);
+    bdb_test_error(dbst->dbp->compact(dbst->dbp, txnid, pstart, pstop, &cdata,
+				      flags, &end));
+    result = rb_hash_new();
+    rb_hash_aset(result, rb_tainted_str_new2("end"), bdb_test_load_key(obj, &end));
+    rb_hash_aset(result, rb_tainted_str_new2("compact_deadlock"),
+		 INT2NUM(cdata.compact_deadlock));
+    rb_hash_aset(result, rb_tainted_str_new2("compact_levels"),
+		 INT2NUM(cdata.compact_levels));
+    rb_hash_aset(result, rb_tainted_str_new2("compact_pages_free"),
+		 INT2NUM(cdata.compact_pages_free));
+    rb_hash_aset(result, rb_tainted_str_new2("compact_pages_examine"),
+		 INT2NUM(cdata.compact_pages_examine));
+    rb_hash_aset(result, rb_tainted_str_new2("compact_pages_truncated"),
+		 INT2NUM(cdata.compact_pages_truncated));
+    return result;
+}
+
+#endif
+
 
 #if BDB_VERSION >= 20600
 
@@ -2678,9 +2704,7 @@ bdb_each_kvc(argc, argv, obj, sens, replace, type)
 #if BDB_VERSION >= 20600
 
 static VALUE
-bdb_get_dup(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_get_dup(int argc, VALUE *argv, VALUE obj)
 {
     VALUE result = Qfalse;
     if (!rb_block_given_p()) {
@@ -2690,9 +2714,7 @@ bdb_get_dup(argc, argv, obj)
 }
 
 static VALUE
-bdb_common_each_dup(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_common_each_dup(int argc, VALUE *argv, VALUE obj)
 {
     if (!rb_block_given_p()) {
 	rb_raise(bdb_eFatal, "each_dup called out of an iterator");
@@ -2701,9 +2723,7 @@ bdb_common_each_dup(argc, argv, obj)
 }
 
 static VALUE
-bdb_common_each_dup_val(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_common_each_dup_val(int argc, VALUE *argv, VALUE obj)
 {
     if (!rb_block_given_p()) {
 	rb_raise(bdb_eFatal, "each_dup called out of an iterator");
@@ -2712,9 +2732,7 @@ bdb_common_each_dup_val(argc, argv, obj)
 }
 
 static VALUE
-bdb_common_dups(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_common_dups(int argc, VALUE *argv, VALUE obj)
 {
     VALUE result = rb_ary_new();
     return bdb_each_kvc(argc, argv, obj, DB_NEXT_DUP, result, BDB_ST_DUPVAL);
@@ -2723,90 +2741,68 @@ bdb_common_dups(argc, argv, obj)
 #endif
 
 static VALUE
-bdb_delete_if(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_delete_if(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_DELETE | BDB_ST_ONE);
 }
 
 static VALUE
-bdb_reject(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_reject(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, rb_hash_new(), BDB_ST_REJECT);
 }
 
 VALUE
-bdb_each_value(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_each_value(int argc, VALUE *argv, VALUE obj)
 { 
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_VALUE);
 }
 
 VALUE
-bdb_each_eulav(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_each_eulav(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_VALUE | BDB_ST_ONE);
 }
 
 VALUE
-bdb_each_key(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_each_key(int argc, VALUE *argv, VALUE obj)
 { 
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KEY); 
 }
 
 static VALUE
-bdb_each_yek(argc, argv, obj) 
-    int argc;
-    VALUE *argv, obj;
+bdb_each_yek(int argc, VALUE *argv, VALUE obj) 
 { 
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_KEY | BDB_ST_ONE);
 }
 
 static VALUE
-bdb_each_pair(argc, argv, obj) 
-    int argc;
-    VALUE obj, *argv;
+bdb_each_pair(int argc, VALUE *argv, VALUE obj) 
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KV);
 }
 
 static VALUE
-bdb_each_prefix(argc, argv, obj) 
-    int argc;
-    VALUE obj, *argv;
+bdb_each_prefix(int argc, VALUE *argv, VALUE obj) 
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KV | BDB_ST_PREFIX);
 }
 
 static VALUE
-bdb_each_riap(argc, argv, obj) 
-    int argc;
-    VALUE obj, *argv;
+bdb_each_riap(int argc, VALUE *argv, VALUE obj) 
 {
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_KV | BDB_ST_ONE);
 }
 
 static VALUE
-bdb_each_xiferp(argc, argv, obj) 
-    int argc;
-    VALUE obj, *argv;
+bdb_each_xiferp(int argc, VALUE *argv, VALUE obj) 
 {
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, 
                         BDB_ST_KV | BDB_ST_ONE | BDB_ST_PREFIX);
 }
 
 static VALUE
-bdb_each_pair_prim(argc, argv, obj) 
-    int argc;
-    VALUE obj, *argv;
+bdb_each_pair_prim(int argc, VALUE *argv, VALUE obj) 
 {
     VALUE tmp[2] = {Qnil, Qtrue};
     rb_scan_args(argc, argv, "01", tmp);
@@ -2814,9 +2810,7 @@ bdb_each_pair_prim(argc, argv, obj)
 }
 
 static VALUE
-bdb_each_riap_prim(argc, argv, obj) 
-    int argc;
-    VALUE obj, *argv;
+bdb_each_riap_prim(int argc, VALUE *argv, VALUE obj) 
 {
     VALUE tmp[2] = {Qnil, Qtrue};
     rb_scan_args(argc, argv, "01", tmp);
@@ -2913,9 +2907,7 @@ bdb_update(obj, other)
 }
 
 VALUE
-bdb_clear(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_clear(int argc, VALUE *argv, VALUE obj)
 {
 #if BDB_VERSION >= 30300
     bdb_DB *dbst;
@@ -2950,9 +2942,7 @@ bdb_clear(argc, argv, obj)
 }
 
 static VALUE
-bdb_replace(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_replace(int argc, VALUE *argv, VALUE obj)
 {
     VALUE g;
     int flags;
@@ -3112,9 +3102,7 @@ bdb_index(obj, a)
 }
 
 static VALUE
-bdb_indexes(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_indexes(int argc, VALUE *argv, VALUE obj)
 {
     VALUE indexes;
     int i;
@@ -3132,10 +3120,7 @@ bdb_indexes(argc, argv, obj)
 }
 
 static VALUE
-bdb_values_at(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_values_at(int argc, VALUE *argv, VALUE obj)
 {
     VALUE result = rb_ary_new2(argc);
     long i;
@@ -3147,10 +3132,7 @@ bdb_values_at(argc, argv, obj)
 }
 
 static VALUE
-bdb_select(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_select(int argc, VALUE *argv, VALUE obj)
 {
     VALUE result = rb_ary_new();
 
@@ -3186,9 +3168,7 @@ bdb_sync(obj)
 
 #if BDB_VERSION >= 30000
 static VALUE
-bdb_hash_stat(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_hash_stat(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     DB_HASH_STAT *bdb_stat;
@@ -3247,9 +3227,7 @@ bdb_hash_stat(argc, argv, obj)
 #endif
 
 VALUE
-bdb_tree_stat(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_tree_stat(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     DB_BTREE_STAT *bdb_stat;
@@ -3310,9 +3288,7 @@ bdb_tree_stat(argc, argv, obj)
 
 #if BDB_VERSION >= 30000
 static VALUE
-bdb_queue_stat(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_queue_stat(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     DB_QUEUE_STAT *bdb_stat;
@@ -3475,10 +3451,7 @@ bdb_i_create(obj)
 #endif
 
 static VALUE
-bdb_s_upgrade(argc, argv, obj)
-    VALUE obj;
-    int argc;
-    VALUE *argv;
+bdb_s_upgrade(int argc, VALUE *argv, VALUE obj)
 {
 #if BDB_VERSION >= 30000
     bdb_DB *dbst;
@@ -3502,10 +3475,7 @@ bdb_s_upgrade(argc, argv, obj)
 }
 
 static VALUE
-bdb_s_remove(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_s_remove(int argc, VALUE *argv, VALUE obj)
 {
 #if BDB_VERSION >= 30000
     bdb_DB *dbst;
@@ -3533,10 +3503,7 @@ bdb_s_remove(argc, argv, obj)
 }
 
 static VALUE
-bdb_s_rename(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_s_rename(int argc, VALUE *argv, VALUE obj)
 {
 #if BDB_VERSION >= 30114
     bdb_DB *dbst;
@@ -3605,10 +3572,7 @@ bdb_i_join(st)
 }
  
 static VALUE
-bdb_join(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_join(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     bdb_DBC *dbcst;
@@ -3740,9 +3704,7 @@ bdb_call_secondary(secst, pkey, pdata, skey)
 }
 
 static VALUE
-bdb_associate(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_associate(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst, *secondst;
     VALUE second, flag;
@@ -3762,6 +3724,19 @@ bdb_associate(argc, argv, obj)
 	rb_raise(bdb_eFatal, "associate with a primary index");
     }
     GetDB(obj, dbst);
+
+    dbst->options |= BDB_NEED_CURRENT;
+    if (!dbst->secondary) {
+	dbst->secondary = rb_ary_new();
+    }
+    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, obj);
+#if RUBY_VERSION_CODE >= 180
+    rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_block_proc()));
+#else
+    rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_f_lambda()));
+#endif
+    secondst->secondary = Qnil;
+
 #if BDB_VERSION >= 40100
     {
 	DB_TXN *txnid = NULL;
@@ -3781,16 +3756,6 @@ bdb_associate(argc, argv, obj)
     bdb_test_error(dbst->dbp->associate(dbst->dbp, secondst->dbp, 
 					bdb_call_secondary, flags));
 #endif
-    dbst->options |= BDB_NEED_CURRENT;
-    if (!dbst->secondary) {
-	dbst->secondary = rb_ary_new();
-    }
-#if RUBY_VERSION_CODE >= 180
-    rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_block_proc()));
-#else
-    rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_f_lambda()));
-#endif
-    secondst->secondary = Qnil;
     return obj;
 }
 
@@ -3816,9 +3781,7 @@ bdb_database(obj)
 
 #if BDB_VERSION >= 30300
 static VALUE
-bdb_verify(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_verify(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     char *file, *database;
@@ -4060,9 +4023,7 @@ bdb_intern_conf(optp)
 }
 
 static VALUE
-bdb_conf(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_conf(int argc, VALUE *argv, VALUE obj)
 {
     int i, state;
     VALUE res, val;
@@ -4229,6 +4190,9 @@ void bdb_init_common()
     rb_define_method(bdb_cBtree, "stat", bdb_tree_stat, -1);
     rb_define_method(bdb_cBtree, "each_by_prefix", bdb_each_prefix, -1);
     rb_define_method(bdb_cBtree, "reverse_each_by_prefix", bdb_each_xiferp, -1);
+#if BDB_VERSION >= 40416
+    rb_define_method(bdb_cBtree, "compact", bdb_treerec_compact, -1);
+#endif
 #if BDB_VERSION >= 30100
     bdb_sKeyrange = rb_struct_define("Keyrange", "less", "equal", "greater", 0);
     rb_global_variable(&bdb_sKeyrange);
@@ -4244,6 +4208,9 @@ void bdb_init_common()
     rb_define_method(bdb_cRecno, "<<", bdb_append, 1);
     rb_define_method(bdb_cRecno, "push", bdb_append_m, -1);
     rb_define_method(bdb_cRecno, "stat", bdb_tree_stat, -1);
+#if BDB_VERSION >= 40416
+    rb_define_method(bdb_cRecno, "compact", bdb_treerec_compact, -1);
+#endif
 #if BDB_VERSION >= 30000
     bdb_cQueue = rb_define_class_under(bdb_mDb, "Queue", bdb_cCommon);
     rb_define_singleton_method(bdb_cQueue, "new", bdb_queue_s_new, -1);

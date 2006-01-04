@@ -75,8 +75,7 @@ db_strerror(int err)
 #endif
 
 int
-bdb_test_error(comm)
-    int comm;
+bdb_test_error(int comm)
 {
     VALUE error;
 
@@ -223,6 +222,12 @@ Init_bdb()
     rb_define_const(bdb_mDb, "DIRTY_READ", INT2FIX(DB_DIRTY_READ));
 #else
     rb_define_const(bdb_mDb, "DIRTY_READ", INT2FIX(0));
+#endif
+#if BDB_VERSION >= 40416
+    rb_define_const(bdb_mDb, "READ_COMMITTED", INT2FIX(DB_READ_COMMITTED));
+    rb_define_const(bdb_mDb, "READ_UNCOMMITTED", INT2FIX(DB_READ_UNCOMMITTED));
+    rb_define_const(bdb_mDb, "STAT_ALL", INT2FIX(DB_STAT_ALL));
+    rb_define_const(bdb_mDb, "STAT_SUBSYSTEM", INT2FIX(DB_STAT_SUBSYSTEM));
 #endif
     rb_define_const(bdb_mDb, "DBT_MALLOC", INT2FIX(DB_DBT_MALLOC));
     rb_define_const(bdb_mDb, "DBT_PARTIAL", INT2FIX(DB_DBT_PARTIAL));

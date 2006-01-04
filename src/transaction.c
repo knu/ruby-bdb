@@ -13,9 +13,7 @@ txn_close_i(VALUE ary)
 }
 
 static void
-clean_ary(txnst, result)
-    bdb_TXN *txnst;
-    VALUE result;
+clean_ary(bdb_TXN *txnst, VALUE result)
 {
     VALUE *ary, tmp;
     int i, len;
@@ -51,8 +49,7 @@ clean_ary(txnst, result)
 }
 
 static VALUE 
-txn_free(txnst)
-    bdb_TXN *txnst;
+txn_free(bdb_TXN *txnst)
 {
     if (txnst->txnid && txnst->parent == NULL) {
 #if BDB_VERSION >= 40000
@@ -70,16 +67,14 @@ txn_free(txnst)
 }
 
 static void
-bdb_txn_free(txnst)
-    bdb_TXN *txnst;
+bdb_txn_free(bdb_TXN *txnst)
 {
-    rb_protect(txn_free, (VALUE)txnst, 0);
+    rb_protect((VALUE (*)(ANYARGS))txn_free, (VALUE)txnst, 0);
     free(txnst);
 }
 
 static void 
-bdb_txn_mark(txnst)
-    bdb_TXN *txnst;
+bdb_txn_mark(bdb_TXN *txnst)
 {
     rb_gc_mark(txnst->marshal);
     rb_gc_mark(txnst->mutex);
@@ -91,10 +86,7 @@ bdb_txn_mark(txnst)
 }
 
 static VALUE
-bdb_txn_assoc(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_txn_assoc(int argc, VALUE *argv, VALUE obj)
 {
     int i;
     VALUE ary, a;
@@ -115,9 +107,7 @@ bdb_txn_assoc(argc, argv, obj)
 }
 
 static void
-bdb_txn_close_all(obj, result)
-    VALUE obj;
-    VALUE result;
+bdb_txn_close_all(VALUE obj, VALUE result)
 {
     bdb_TXN *txnst;
     bdb_ENV *envst;
@@ -133,10 +123,7 @@ bdb_txn_close_all(obj, result)
 #define ROLLBACK 3
 
 static VALUE
-bdb_txn_commit(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_txn_commit(int argc, VALUE *argv, VALUE obj)
 {
     bdb_TXN *txnst;
     VALUE a;
@@ -167,8 +154,7 @@ bdb_txn_commit(argc, argv, obj)
 }
 
 static VALUE
-bdb_txn_abort(obj)
-    VALUE obj;
+bdb_txn_abort(VALUE obj)
 {
     bdb_TXN *txnst;
 
@@ -188,8 +174,7 @@ bdb_txn_abort(obj)
 }
 
 static VALUE
-bdb_txn_unlock(txnv)
-    VALUE txnv;
+bdb_txn_unlock(VALUE txnv)
 {
     bdb_TXN *txnst;
     Data_Get_Struct(txnv, bdb_TXN, txnst);
@@ -200,16 +185,14 @@ bdb_txn_unlock(txnv)
 }
 
 static VALUE
-bdb_catch(val, args, self)
-    VALUE val, args, self;
+bdb_catch(VALUE val, VALUE args, VALUE self)
 {
     rb_yield(args);
     return Qtrue;
 }
 
 static VALUE
-bdb_txn_lock(obj)
-    VALUE obj;
+bdb_txn_lock(VALUE obj)
 {
     VALUE result;
     bdb_TXN *txnst;
@@ -257,8 +240,7 @@ struct dbtxnopt {
 };
 
 static VALUE
-bdb_txn_i_options(obj, dbstobj)
-    VALUE obj, dbstobj;
+bdb_txn_i_options(VALUE obj, VALUE dbstobj)
 {
     struct dbtxnopt *opt = (struct dbtxnopt *)dbstobj;
     VALUE key, value;
@@ -306,11 +288,7 @@ static VALUE bdb_txn_set_lock_timeout _((VALUE, VALUE));
 #endif
 
 VALUE
-bdb_env_rslbl_begin(origin, argc, argv, obj)
-    VALUE origin;
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_env_rslbl_begin(VALUE origin, int argc, VALUE *argv, VALUE obj)
 {
     bdb_TXN *txnst, *txnstpar;
     DB_TXN *txn, *txnpar;
@@ -450,8 +428,7 @@ bdb_env_begin(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_txn_id(obj)
-    VALUE obj;
+bdb_txn_id(VALUE obj)
 {
     bdb_TXN *txnst;
     int res;
@@ -467,11 +444,9 @@ bdb_txn_id(obj)
 
 static VALUE
 #if BDB_VERSION >= 30300
-bdb_txn_prepare(obj, txnid)
-    VALUE obj, txnid;
+bdb_txn_prepare(VALUE obj, VALUE txnid)
 #else
-bdb_txn_prepare(obj)
-    VALUE obj;
+bdb_txn_prepare(VALUE obj)
 #endif
 {
     bdb_TXN *txnst;
@@ -493,10 +468,7 @@ bdb_txn_prepare(obj)
 }
 
 static VALUE
-bdb_env_check(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_env_check(int argc, VALUE *argv, VALUE obj)
 {
     unsigned int kbyte, min, flag;
     bdb_ENV *envst;
@@ -541,8 +513,7 @@ bdb_env_check(argc, argv, obj)
 #if BDB_VERSION >= 30300
 
 static VALUE
-bdb_env_recover(obj)
-    VALUE obj;
+bdb_env_recover(VALUE obj)
 {
     unsigned int flags;
     long retp;
@@ -578,8 +549,7 @@ bdb_env_recover(obj)
 }
 
 static VALUE
-bdb_txn_discard(obj)
-    VALUE obj;
+bdb_txn_discard(VALUE obj)
 {
     bdb_TXN *txnst;
     int flags;
@@ -599,9 +569,7 @@ bdb_txn_discard(obj)
 #endif
 
 static VALUE
-bdb_env_stat(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_env_stat(int argc, VALUE *argv, VALUE obj)
 {
     bdb_ENV *envst;
     VALUE a, b;
@@ -675,6 +643,10 @@ bdb_env_stat(argc, argv, obj)
 	    Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	    MEMCPY(lsnst->lsn, &bdb_stat->st_txnarray[i].lsn, DB_LSN, 1);
 	    rb_hash_aset(hash, rb_tainted_str_new2("lsn"), lsn);
+#if BDB_VERSION >= 40416
+	    rb_hash_aset(hash, rb_tainted_str_new2("thread_id"), INT2NUM(bdb_stat->st_txnarray[i].tid));
+	    rb_hash_aset(hash, rb_tainted_str_new2("name"), rb_tainted_str_new2(bdb_stat->st_txnarray[i].name));
+#endif
 	    rb_ary_push(ary, hash);
 	}
     }
@@ -686,8 +658,7 @@ bdb_env_stat(argc, argv, obj)
 #if BDB_VERSION >= 40000
 
 static VALUE
-bdb_txn_set_txn_timeout(obj, a)
-    VALUE obj, a;
+bdb_txn_set_txn_timeout(VALUE obj, VALUE a)
 {
     bdb_TXN *txnst;
 
@@ -699,8 +670,7 @@ bdb_txn_set_txn_timeout(obj, a)
 }
 
 static VALUE
-bdb_txn_set_lock_timeout(obj, a)
-    VALUE obj, a;
+bdb_txn_set_lock_timeout(VALUE obj, VALUE a)
 {
     bdb_TXN *txnst;
 
@@ -712,8 +682,7 @@ bdb_txn_set_lock_timeout(obj, a)
 }
 
 static VALUE
-bdb_txn_set_timeout(obj, a)
-    VALUE obj, a;
+bdb_txn_set_timeout(VALUE obj, VALUE a)
 {
     if (!NIL_P(a)) {
 	if (TYPE(a) == T_ARRAY) {
@@ -734,9 +703,7 @@ bdb_txn_set_timeout(obj, a)
 #if BDB_VERSION >= 40100
 
 static VALUE
-bdb_env_dbremove(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_env_dbremove(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b, c;
     char *file, *database;
@@ -779,9 +746,7 @@ bdb_env_dbremove(argc, argv, obj)
 }
 
 static VALUE
-bdb_env_dbrename(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_env_dbrename(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b, c, d;
     char *file, *database, *newname;
@@ -834,6 +799,31 @@ bdb_env_dbrename(argc, argv, obj)
 }
 
 #endif
+
+#endif
+
+#if BDB_VERSION >= 40416
+
+static VALUE
+bdb_txn_set_name(VALUE obj, VALUE a)
+{
+    bdb_TXN *txnst;
+
+    GetTxnDB(obj, txnst);
+    bdb_test_error(txnst->txnid->set_name(txnst->txnid, StringValuePtr(a)));
+    return a;
+}
+
+static VALUE
+bdb_txn_get_name(VALUE obj)
+{
+    bdb_TXN *txnst;
+    const char *name;
+
+    GetTxnDB(obj, txnst);
+    bdb_test_error(txnst->txnid->get_name(txnst->txnid, &name));
+    return rb_tainted_str_new2(name);
+}
 
 #endif
 
@@ -895,4 +885,8 @@ void bdb_init_transaction()
     rb_define_method(bdb_cTxn, "dbrename", bdb_env_dbrename, -1);
 #endif
 #endif    
+#if BDB_VERSION >= 40416
+    rb_define_method(bdb_cTxn, "name", bdb_txn_get_name, 0);
+    rb_define_method(bdb_cTxn, "name=", bdb_txn_set_name, 1);
+#endif
 }

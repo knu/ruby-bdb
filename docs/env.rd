@@ -329,6 +329,74 @@ environment can then be identified by the name of that directory.
     ((|flags|)) must be one of ((|BDB::REP_CLIENT|)), ((|BDB::REP_MASTER|))
     or ((|BDB::REP_LOGSONLY|))
 
+--- lsn_reset(file, flags = 0)
+    Only for DB >= 4.4
+    
+    Reset database file LSN
+    
+    The Env#lsn_reset method allows database files to be moved from one transactional 
+    database environment to another.
+    
+    ((|file|))The name of the physical file in which the LSNs are to be cleared.
+    ((|flags|)) must be set to 0 or ((|BDB::ENCRYPT|))
+    
+--- fileid_reset(file, flags = 0)
+    Only for DB >= 4.4
+    
+    Reset database file ID
+    
+    The Env#fileid_reset method allows database files to be copied, and then the copy 
+    used in the same database environment as the original.
+    
+    ((|file|))The name of the physical file in which new file IDs are to be created.
+    ((|flags|)) must be set to 0 or ((|BDB::ENCRYPT|))
+    
+--- msgcall=(call_proc)
+    Only for DB >= 4.4
+    
+    There are interfaces in the Berkeley DB library which either directly output informational 
+    messages or statistical information : Env#msgcall is used to set callback which will
+    called by BDB
+    
+    The value given must be ((|nil|)) to unconfigure the callback, or and object
+    which respond to ((|#call|)) : it will called with a String as argument
+    
+--- thread_id=(call_proc)
+    Only for DB >= 4.4
+    
+    Declare a proc object which returns a unique identifier pair for the current 
+    thread of control.
+    
+    The proc must return a pair
+     *((|pid|)): process ID of the current thread
+     *((|tid|)): thread ID of the current thread
+    
+--- thread_id_string=(call_proc)
+    Only for DB >= 4.4
+    
+    Declare a proc that formats a process ID and thread ID identifier pair for display.
+    
+    The proc will be called with 2 arguments and must return a String
+    
+--- is_alive=(call_proc)
+    Only for DB >= 4.4
+    
+    Declare a proc that returns if a thread of control (either a true thread or
+    a process) is still running. 
+    
+    The proc will be called with 2 arguments (pid, tid)
+    
+--- failcheck(flag = 0)
+    Only for DB >= 4.4
+    
+    The method checks for threads of control (either a true 
+    thread or a process) that have exited while manipulating Berkeley DB library 
+    data structures
+    
+    ((|flag|)) is actually unused and must be set to 0
+    
+
+
 # end
 # end
 

@@ -13,7 +13,7 @@
 <ul>
 <li><a href="#label-1">Class Methods</a></li>
 <li><a href="#label-45">Methods</a></li>
-<li><a href="#label-119">Methods specific to BDB::Recno and BDB::Queue</a></li>
+<li><a href="#label-120">Methods specific to BDB::Recno and BDB::Queue</a></li>
 </ul>
 <h3><a name="label-1" id="label-1">Class Methods</a></h3><!-- RDLabel: "Class Methods" -->
 <dl>
@@ -238,7 +238,7 @@ key don't exist.</p></dd>
 <dt><a name="label-76" id="label-76"><code>reject!(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reject!" -->
 <dd>
 <p>Deletes associations if the evaluation of the block returns true. </p>
-<p><a href="#label-124">set</a></p></dd>
+<p><a href="#label-125">set</a></p></dd>
 <dt><a name="label-77" id="label-77"><code>duplicates(<var>key</var> , <var>assoc</var> = <var>true</var>)</code></a></dt><!-- RDLabel: "duplicates" -->
 <dd>
 <p>Return an array of all duplicate associations for <var>key</var></p>
@@ -247,22 +247,22 @@ key don't exist.</p></dd>
 <dt><a name="label-79" id="label-79"><code>each_pair(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_pair" -->
 <dd>
 <p>Iterates over associations.</p>
-<p><a href="#label-124">set</a> <a href="#label-125">bulk</a></p></dd>
+<p><a href="#label-125">set</a> <a href="#label-126">bulk</a></p></dd>
 <dt><a name="label-80" id="label-80"><code>each_by_prefix(<var>prefix</var>) {|<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_by_prefix" -->
 <dd>
 Iterate over associations, where the key begin with <var>prefix</var></dd>
 <dt><a name="label-81" id="label-81"><code>each_dup(<var>key</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup" -->
 <dd>
 <p>Iterates over each duplicate associations for <var>key</var></p>
-<p><a href="#label-125">bulk</a></p></dd>
+<p><a href="#label-126">bulk</a></p></dd>
 <dt><a name="label-82" id="label-82"><code>each_dup_value(<var>key</var>, <var>bulk</var> = <var>0</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_dup_value" -->
 <dd>
 <p>Iterates over each duplicate values for <var>key</var></p>
-<p><a href="#label-125">bulk</a></p></dd>
+<p><a href="#label-126">bulk</a></p></dd>
 <dt><a name="label-83" id="label-83"><code>each_key(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "each_key" -->
 <dd>
 <p>Iterates over keys. </p>
-<p><a href="#label-124">set</a> <a href="#label-125">bulk</a></p></dd>
+<p><a href="#label-125">set</a> <a href="#label-126">bulk</a></p></dd>
 <dt><a name="label-84" id="label-84"><code>each_primary(<var>set</var> = <var>nil</var>) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "each_primary" -->
 <dd>
 Iterates over secondary indexes and give secondary key, primary key
@@ -270,7 +270,7 @@ and value</dd>
 <dt><a name="label-85" id="label-85"><code>each_value(<var>set</var> = <var>nil</var>, <var>bulk</var> = <var>0</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "each_value" -->
 <dd>
 <p>Iterates over values. </p>
-<p><a href="#label-124">set</a> <a href="#label-125">bulk</a></p></dd>
+<p><a href="#label-125">set</a> <a href="#label-126">bulk</a></p></dd>
 <dt><a name="label-86" id="label-86"><code>empty?()</code></a></dt><!-- RDLabel: "empty?" -->
 <dd>
 Returns true if the database is empty. </dd>
@@ -321,7 +321,7 @@ block returns true. </dd>
 <dt><a name="label-106" id="label-106"><code>reverse_each_pair(<var>set</var> = <var>nil</var>) { |<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_pair" -->
 <dd>
 <p>Iterates over associations in reverse order </p>
-<p><a href="#label-124">set</a></p></dd>
+<p><a href="#label-125">set</a></p></dd>
 <dt><a name="label-107" id="label-107"><code>reverse_each_by_prefix(<var>prefix</var>) {|<var>key</var>, <var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_by_prefix" -->
 <dd>
 Iterate over associations in reverse order, where the key begin
@@ -329,7 +329,7 @@ with <var>prefix</var></dd>
 <dt><a name="label-108" id="label-108"><code>reverse_each_key(<var>set</var> = <var>nil</var>) { |<var>key</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_key" -->
 <dd>
 <p>Iterates over keys in reverse order </p>
-<p><a href="#label-124">set</a></p></dd>
+<p><a href="#label-125">set</a></p></dd>
 <dt><a name="label-109" id="label-109"><code>reverse_each_primary(<var>set</var> = <var>nil</var>) { |<var>skey</var>, <var>pkey</var>, <var>pvalue</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_primary" -->
 <dd>
 Iterates over secondary indexes in reverse order and give secondary
@@ -337,7 +337,7 @@ key, primary key and value</dd>
 <dt><a name="label-110" id="label-110"><code>reverse_each_value(<var>set</var> = <var>nil</var>) { |<var>value</var>| ... }</code></a></dt><!-- RDLabel: "reverse_each_value" -->
 <dd>
 <p>Iterates over values in reverse order.</p>
-<p><a href="#label-124">set</a></p></dd>
+<p><a href="#label-125">set</a></p></dd>
 <dt><a name="label-111" id="label-111"><code>set_partial(<var>len</var>, <var>offset</var>)</code></a></dt><!-- RDLabel: "set_partial" -->
 <dd>
 Set the partial value <var>len</var> and <var>offset</var></dd>
@@ -361,25 +361,45 @@ Returns the array of the values in the database.</dd>
 <dd>
 Verify the integrity of the DB file, and optionnally output the
 key/data to <var>file</var> (file must respond to #to_io)</dd>
+<dt><a name="label-119" id="label-119"><code>compact(<var>start</var> = <var>nil</var>, <var>stop</var> = <var>nil</var>, <var>options</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "compact" -->
+<dd>
+Only for Btree and Recno (DB VERSION &gt;= 4.4)
+<ul>
+<li><var>start</var> starting point for compaction in a Btree or Recno database.
+      Compaction will start at the smallest key greater than or equal to the
+      specified key. </li>
+<li><var>stop</var> the stopping point for compaction in a Btree or Recno database.
+      Compaction will stop at the page with the smallest key greater 
+      than the specified key</li>
+<li><var>options</var> hash with the possible keys
+<ul>
+<li><var>flags</var> with the value 0, <var>BDB::FREELIST_ONLY</var>, or
+        <var>BDB::FREE_SPACE</var></li>
+<li><var>compact_fillpercent</var>the goal for filling pages, specified as a
+        percentage between 1 and 100.</li>
+<li><var>compact_timeout</var> the lock timeout set for implicit transactions, 
+        in microseconds.</li>
+</ul></li>
+</ul></dd>
 </dl>
-<h3><a name="label-119" id="label-119">Methods specific to BDB::Recno and BDB::Queue</a></h3><!-- RDLabel: "Methods specific to BDB::Recno and BDB::Queue" -->
+<h3><a name="label-120" id="label-120">Methods specific to BDB::Recno and BDB::Queue</a></h3><!-- RDLabel: "Methods specific to BDB::Recno and BDB::Queue" -->
 <dl>
-<dt><a name="label-120" id="label-120"><code>pop</code></a></dt><!-- RDLabel: "pop" -->
+<dt><a name="label-121" id="label-121"><code>pop</code></a></dt><!-- RDLabel: "pop" -->
 <dd>
 Returns the last couple [key, val] (only for BDB::Recno)</dd>
-<dt><a name="label-121" id="label-121"><code>push <var>values</var></code></a></dt><!-- RDLabel: "push values" -->
+<dt><a name="label-122" id="label-122"><code>push <var>values</var></code></a></dt><!-- RDLabel: "push values" -->
 <dd>
 Push the values</dd>
-<dt><a name="label-122" id="label-122"><code>shift</code></a></dt><!-- RDLabel: "shift" -->
+<dt><a name="label-123" id="label-123"><code>shift</code></a></dt><!-- RDLabel: "shift" -->
 <dd>
 Removes and returns an association from the database.</dd>
 </dl>
-<h3><a name="label-123" id="label-123">Remark</a></h3><!-- RDLabel: "Remark" -->
-<h4><a name="label-124" id="label-124">set</a></h4><!-- RDLabel: "set" -->
+<h3><a name="label-124" id="label-124">Remark</a></h3><!-- RDLabel: "Remark" -->
+<h4><a name="label-125" id="label-125">set</a></h4><!-- RDLabel: "set" -->
 <p>If the parameter <var>set</var> is given, an initial call will be made
 with the option <var>BDB::SET_RANGE</var> to move the cursor to the specified
 key before iterating.</p>
-<h4><a name="label-125" id="label-125">bulk</a></h4><!-- RDLabel: "bulk" -->
+<h4><a name="label-126" id="label-126">bulk</a></h4><!-- RDLabel: "bulk" -->
 <p>Only with &gt;= 3.3.11 : if the parameter <var>bulk</var> is given, 
 an application buffer of size <var>bulk * 1024</var> will be used 
 (see "Retrieving records in bulk" in the documentation of BerkeleyDB)</p>

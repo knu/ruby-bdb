@@ -1,15 +1,13 @@
 #include "bdb.h"
 
 static void
-mark_lsn(lsnst)
-    struct dblsnst *lsnst;
+mark_lsn(struct dblsnst *lsnst)
 {
     rb_gc_mark(lsnst->env);
 }
 
 static void
-free_lsn(lsnst)
-    struct dblsnst *lsnst;
+free_lsn(struct dblsnst *lsnst)
 {
     if (BDB_VALID(lsnst->env, T_DATA)) {
 	bdb_clean_env(lsnst->env, lsnst->self);
@@ -30,8 +28,7 @@ free_lsn(lsnst)
 }
 
 VALUE
-bdb_makelsn(env)
-    VALUE env;
+bdb_makelsn(VALUE env)
 {
     bdb_ENV *envst;
     struct dblsnst *lsnst;
@@ -46,9 +43,7 @@ bdb_makelsn(env)
 }
 
 static VALUE
-bdb_s_log_put_internal(obj, a, flag)
-    VALUE obj, a;
-    int flag;
+bdb_s_log_put_internal(VALUE obj, VALUE a, int flag)
 {
     bdb_ENV *envst;
     VALUE ret;
@@ -77,10 +72,7 @@ bdb_s_log_put_internal(obj, a, flag)
 }
 
 static VALUE
-bdb_s_log_put(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_s_log_put(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b;
     int flag = 0;
@@ -98,8 +90,7 @@ bdb_s_log_put(argc, argv, obj)
 }
 
 static VALUE
-bdb_s_log_checkpoint(obj, a)
-    VALUE obj, a;
+bdb_s_log_checkpoint(VALUE obj, VALUE a)
 {
 #ifdef DB_CHECKPOINT
     return bdb_s_log_put_internal(obj, a, DB_CHECKPOINT);
@@ -110,9 +101,7 @@ bdb_s_log_checkpoint(obj, a)
 }
 
 static VALUE
-bdb_s_log_flush(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_s_log_flush(int argc, VALUE *argv, VALUE obj)
 {
     bdb_ENV *envst;
 
@@ -141,8 +130,7 @@ bdb_s_log_flush(argc, argv, obj)
 }
 
 static VALUE
-bdb_s_log_curlsn(obj, a)
-    VALUE obj, a;
+bdb_s_log_curlsn(VALUE obj, VALUE a)
 {
 #ifdef DB_CURSLN
     return bdb_s_log_put_internal(obj, a, DB_CURLSN);
@@ -154,9 +142,7 @@ bdb_s_log_curlsn(obj, a)
   
 
 static VALUE
-bdb_env_log_stat(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_env_log_stat(int argc, VALUE *argv, VALUE obj)
 {
     DB_LOG_STAT *bdb_stat;
     bdb_ENV *envst;
@@ -235,8 +221,7 @@ bdb_env_log_stat(argc, argv, obj)
 #if BDB_VERSION < 40000
 
 static VALUE
-bdb_env_log_get(obj, a)
-    VALUE obj, a;
+bdb_env_log_get(VALUE obj, VALUE a)
 {
     bdb_ENV *envst;
     DBT data;
@@ -277,9 +262,7 @@ static VALUE bdb_log_cursor _((VALUE));
 #define BDB_LOG_NEXT 2
 
 static VALUE
-bdb_i_each_log_get(obj, flag)
-    VALUE obj;
-    int flag;
+bdb_i_each_log_get(VALUE obj, int flag)
 {
 #if BDB_VERSION < 40000
     bdb_ENV *envst;
@@ -356,15 +339,13 @@ bdb_i_each_log_get(obj, flag)
 #if BDB_VERSION < 40000
  
 static VALUE
-bdb_env_log_each(obj) 
-    VALUE obj;
+bdb_env_log_each(VALUE obj) 
 { 
     return bdb_i_each_log_get(obj, DB_NEXT);
 }
 
 static VALUE
-bdb_env_log_hcae(obj)
-    VALUE obj;
+bdb_env_log_hcae(VALUE obj)
 { 
     return bdb_i_each_log_get(obj, DB_PREV);
 }
@@ -372,8 +353,7 @@ bdb_env_log_hcae(obj)
 #else
 
 static VALUE
-log_cursor_close(obj)
-    VALUE obj;
+log_cursor_close(VALUE obj)
 {
     struct dblsnst *lsnst;
 
@@ -386,8 +366,7 @@ log_cursor_close(obj)
 }
 
 static VALUE
-bdb_log_cursor_close(obj)
-    VALUE obj;
+bdb_log_cursor_close(VALUE obj)
 {
     struct dblsnst *lsnst;
 
@@ -398,8 +377,7 @@ bdb_log_cursor_close(obj)
 }
 
 static VALUE
-bdb_log_cursor(lsn)
-    VALUE lsn;
+bdb_log_cursor(VALUE lsn)
 {
     bdb_ENV *envst;
     struct dblsnst *lsnst;
@@ -414,15 +392,13 @@ bdb_log_cursor(lsn)
 }
     
 static VALUE
-bdb_env_log_cursor(obj)
-    VALUE obj;
+bdb_env_log_cursor(VALUE obj)
 {
     return bdb_log_cursor(bdb_makelsn(obj));
 }
 
 static VALUE
-bdb_env_i_get(obj)
-    VALUE obj;
+bdb_env_i_get(VALUE obj)
 {
     bdb_ENV *envst;
     struct dblsnst *lsnst;
@@ -436,8 +412,7 @@ bdb_env_i_get(obj)
 
 
 static VALUE
-bdb_env_log_each(obj)
-    VALUE obj;
+bdb_env_log_each(VALUE obj)
 {
     VALUE lsn;
     struct dblsnst *lsnst;
@@ -449,8 +424,7 @@ bdb_env_log_each(obj)
 }
 
 static VALUE
-bdb_env_log_hcae(obj)
-    VALUE obj;
+bdb_env_log_hcae(VALUE obj)
 {
     VALUE lsn;
     struct dblsnst *lsnst;
@@ -462,8 +436,7 @@ bdb_env_log_hcae(obj)
 }
 
 static VALUE
-bdb_log_i_get(obj)
-    VALUE obj;
+bdb_log_i_get(VALUE obj)
 {
     struct dblsnst *lsnst;
 
@@ -473,8 +446,7 @@ bdb_log_i_get(obj)
 }
 
 static VALUE
-bdb_log_each(lsn)
-    VALUE lsn;
+bdb_log_each(VALUE lsn)
 {
     struct dblsnst *lsnst;
 
@@ -484,8 +456,7 @@ bdb_log_each(lsn)
 }
 
 static VALUE
-bdb_log_hcae(lsn)
-    VALUE lsn;
+bdb_log_hcae(VALUE lsn)
 {
     struct dblsnst *lsnst;
 
@@ -498,9 +469,7 @@ bdb_log_hcae(lsn)
 #endif
  
 static VALUE
-bdb_env_log_archive(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_env_log_archive(int argc, VALUE *argv, VALUE obj)
 {
     char **list, **file;
     bdb_ENV *envst;
@@ -544,8 +513,7 @@ bdb_env_log_archive(argc, argv, obj)
 }
 
 static VALUE
-bdb_lsn_env(obj)
-    VALUE obj;
+bdb_lsn_env(VALUE obj)
 {
     struct dblsnst *lsnst;
     bdb_ENV *envst;
@@ -554,8 +522,7 @@ bdb_lsn_env(obj)
 }
 
 static VALUE
-bdb_lsn_log_file(obj)
-    VALUE obj;
+bdb_lsn_log_file(VALUE obj)
 {
     struct dblsnst *lsnst;
     bdb_ENV *envst;
@@ -578,8 +545,7 @@ bdb_lsn_log_file(obj)
 }
 
 static VALUE
-bdb_lsn_log_flush(obj)
-    VALUE obj;
+bdb_lsn_log_flush(VALUE obj)
 {
     struct dblsnst *lsnst;
     bdb_ENV *envst;
@@ -601,8 +567,7 @@ bdb_lsn_log_flush(obj)
 }
 
 static VALUE
-bdb_lsn_log_compare(obj, a)
-    VALUE obj, a;
+bdb_lsn_log_compare(VALUE obj, VALUE a)
 {
     struct dblsnst *lsnst1, *lsnst2;
     bdb_ENV *envst1, *envst2;
@@ -616,9 +581,7 @@ bdb_lsn_log_compare(obj, a)
 }
 
 static VALUE
-bdb_lsn_log_get(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_lsn_log_get(int argc, VALUE *argv, VALUE obj)
 {
     struct dblsnst *lsnst;
     DBT data;
@@ -662,8 +625,7 @@ bdb_lsn_log_get(argc, argv, obj)
 }
 
 static VALUE
-bdb_log_register(obj, a)
-    VALUE obj, a;
+bdb_log_register(VALUE obj, VALUE a)
 {
 #if BDB_VERSION >= 40100
     rb_warn("log_register is obsolete");
@@ -701,8 +663,7 @@ bdb_log_register(obj, a)
 }
 
 static VALUE
-bdb_log_unregister(obj)
-    VALUE obj;
+bdb_log_unregister(VALUE obj)
 {
 #if BDB_VERSION >= 40100
     rb_warn("log_unregister is obsolete");

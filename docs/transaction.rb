@@ -174,5 +174,20 @@ class BDB::Txn
    #same than <em> prepare</em>
    def  txn_prepare(id)    # version 3.3.11
    end
+
+   #Only with DB >= 4.4
+   #
+   #Return the string associated with a transaction
+   #
+   def name
+   end
+
+   #Only with DB >= 4.4
+   #
+   #Set the string associated with a transaction
+   #
+   def name=(string)
+   end
+   
 end
 

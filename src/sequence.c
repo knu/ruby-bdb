@@ -5,8 +5,7 @@
 static VALUE bdb_cSeq;
 
 static void
-bdb_seq_free(seqst)
-    bdb_SEQ *seqst;
+bdb_seq_free(bdb_SEQ *seqst)
 {
     if (seqst->seqp) {
         seqst->seqp->close(seqst->seqp, 0);
@@ -16,8 +15,7 @@ bdb_seq_free(seqst)
 }
 
 static void
-bdb_seq_mark(seqst)
-    bdb_SEQ *seqst;
+bdb_seq_mark(bdb_SEQ *seqst)
 {
     rb_gc_mark(seqst->db);
     rb_gc_mark(seqst->txn);
@@ -25,8 +23,7 @@ bdb_seq_mark(seqst)
 }
 
 static VALUE
-bdb_seq_close(obj)
-    VALUE obj;
+bdb_seq_close(VALUE obj)
 {
     bdb_SEQ *seqst;
 
@@ -37,8 +34,7 @@ bdb_seq_close(obj)
 }
 
 static VALUE
-bdb_seq_txn_dup(obj, a)
-    VALUE obj, a;
+bdb_seq_txn_dup(VALUE obj, VALUE a)
 {
     bdb_SEQ *seq0, *seq1;
     bdb_TXN *txnst;
@@ -55,8 +51,7 @@ bdb_seq_txn_dup(obj, a)
 }
 
 static VALUE
-bdb_seq_txn_close(obj, commit, real)
-    VALUE obj, commit, real;
+bdb_seq_txn_close(VALUE obj, VALUE commit, VALUE real)
 {
     bdb_SEQ *seqst;
 
@@ -71,8 +66,7 @@ bdb_seq_txn_close(obj, commit, real)
 }
 
 static VALUE
-bdb_seq_i_options(obj, seqobj)
-    VALUE obj, seqobj;
+bdb_seq_i_options(VALUE obj, VALUE seqobj)
 {
     VALUE key, value;
     bdb_SEQ *seqst;
@@ -98,8 +92,6 @@ bdb_seq_i_options(obj, seqobj)
         }
     }
     else if (strcmp(options, "set_range") == 0) {
-        long deb, fin;
-
         Check_Type(value, T_ARRAY);
         if (RARRAY(value)->len != 2) { 
             rb_raise(bdb_eFatal, "expected 2 values for range");
@@ -120,10 +112,7 @@ bdb_seq_i_options(obj, seqobj)
 }
 
 static VALUE
-bdb_seq_open(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_seq_open(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b, c, res;
     int flags = 0, count;
@@ -175,10 +164,7 @@ bdb_seq_open(argc, argv, obj)
 }
 
 static VALUE
-bdb_seq_s_open(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_seq_s_open(int argc, VALUE *argv, VALUE obj)
 {
     VALUE args[4];
 
@@ -198,10 +184,7 @@ bdb_seq_s_open(argc, argv, obj)
 
         
 static VALUE
-bdb_seq_remove(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_seq_remove(int argc, VALUE *argv, VALUE obj)
 {
     bdb_SEQ *seqst;
     VALUE a;
@@ -219,10 +202,7 @@ bdb_seq_remove(argc, argv, obj)
 }
 
 static VALUE
-bdb_seq_get(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_seq_get(int argc, VALUE *argv, VALUE obj)
 {
     bdb_SEQ *seqst;
     int delta = 1, flags = 0;
@@ -242,8 +222,7 @@ bdb_seq_get(argc, argv, obj)
 }
 
 static VALUE
-bdb_seq_cachesize(obj)
-    VALUE obj;
+bdb_seq_cachesize(VALUE obj)
 {
 
     bdb_SEQ *seqst;
@@ -255,8 +234,7 @@ bdb_seq_cachesize(obj)
 }
 
 static VALUE
-bdb_seq_flags(obj)
-    VALUE obj;
+bdb_seq_flags(VALUE obj)
 {
 
     bdb_SEQ *seqst;
@@ -268,8 +246,7 @@ bdb_seq_flags(obj)
 }
 
 static VALUE
-bdb_seq_range(obj)
-    VALUE obj;
+bdb_seq_range(VALUE obj)
 {
     bdb_SEQ *seqst;
     db_seq_t deb, fin;
@@ -280,10 +257,7 @@ bdb_seq_range(obj)
 }
 
 static VALUE
-bdb_seq_stat(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_seq_stat(int argc, VALUE *argv, VALUE obj)
 {
     bdb_SEQ *seqst;
     int  flags = 0;
@@ -309,8 +283,7 @@ bdb_seq_stat(argc, argv, obj)
 }
 
 static VALUE
-bdb_seq_db(obj)
-    VALUE obj;
+bdb_seq_db(VALUE obj)
 {
     bdb_SEQ *seqst;
 
@@ -319,8 +292,7 @@ bdb_seq_db(obj)
 }
 
 static VALUE
-bdb_seq_key(obj)
-    VALUE obj;
+bdb_seq_key(VALUE obj)
 {
     bdb_SEQ *seqst;
     DBT key;

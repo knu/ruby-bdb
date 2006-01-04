@@ -468,6 +468,29 @@ These are the common methods for ((|BDB::Btree|)), ((|BDB::Hash|)),
     Verify the integrity of the DB file, and optionnally output the
     key/data to ((|file|)) (file must respond to #to_io)
 
+--- compact(start = nil, stop = nil, options = nil)
+    Only for Btree and Recno (DB VERSION >= 4.4)
+    
+    * ((|start|)) starting point for compaction in a Btree or Recno database.
+      Compaction will start at the smallest key greater than or equal to the
+      specified key. 
+    
+    * ((|stop|)) the stopping point for compaction in a Btree or Recno database.
+      Compaction will stop at the page with the smallest key greater 
+      than the specified key
+    
+    * ((|options|)) hash with the possible keys
+    
+      * ((|flags|)) with the value 0, ((|BDB::FREELIST_ONLY|)), or
+        ((|BDB::FREE_SPACE|))
+    
+      * ((|compact_fillpercent|))the goal for filling pages, specified as a
+        percentage between 1 and 100.
+    
+      * ((|compact_timeout|)) the lock timeout set for implicit transactions, 
+        in microseconds.
+    
+
 # end
 # class Recno < Common ## class Queue < Common
 

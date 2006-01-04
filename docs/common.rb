@@ -300,7 +300,31 @@ class BDB::Common
    #same than <em> close</em>
    def  db_close(flags = 0)
    end
-   
+
+   #Only for Btree and Recno (DB VERSION >= 4.4)
+   #
+   #* <em>start</em> starting point for compaction in a Btree or Recno database.
+   #  Compaction will start at the smallest key greater than or equal to the
+   #  specified key. 
+   #
+   #* <em>stop</em> the stopping point for compaction in a Btree or Recno database.
+   #  Compaction will stop at the page with the smallest key greater 
+   #  than the specified key
+   #
+   #* <em>options</em> hash with the possible keys
+   #
+   #  * <em>flags</em> with the value 0, <em>BDB::FREELIST_ONLY</em>, or
+   #    <em>BDB::FREE_SPACE</em>
+   #
+   #  * <em>compact_fillpercent</em>the goal for filling pages, specified as a
+   #    percentage between 1 and 100.
+   #
+   #  * <em>compact_timeout</em> the lock timeout set for implicit transactions, 
+   #    in microseconds.
+   #
+   def compact(start = nil, stop = nil, options = nil)
+   end
+
    #Return the count of duplicate for <em>key</em>
    #
    def  count(key)

@@ -260,3 +260,8 @@
 * patch bdb_TXN (Thanks akira yamada <akira@debian.org>)
 
 
+--- 0.5.8
+
+* patch #associate (Thanks Dan Janowsky <danj@3skel.com>
+* adapted to db 4.4
+

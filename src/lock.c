@@ -1,15 +1,13 @@
 #include "bdb.h"
 
 static void 
-lockid_mark(dblockid)
-    bdb_LOCKID *dblockid;
+lockid_mark( bdb_LOCKID *dblockid)
 {
     rb_gc_mark(dblockid->env);
 }
 
 void
-bdb_clean_env(env, obj)
-    VALUE env, obj;
+bdb_clean_env(VALUE env, VALUE obj)
 {
     bdb_ENV *envst;
     Data_Get_Struct(env, bdb_ENV, envst);
@@ -17,8 +15,7 @@ bdb_clean_env(env, obj)
 }
     
 static void 
-lockid_free(dblockid)
-    bdb_LOCKID *dblockid;
+lockid_free( bdb_LOCKID *dblockid)
 {
 #if BDB_VERSION >= 40000
     bdb_ENV *envst;
@@ -33,8 +30,7 @@ lockid_free(dblockid)
 }
 
 static VALUE
-bdb_env_lockid(obj)
-    VALUE obj;
+bdb_env_lockid(VALUE obj)
 {
     unsigned int idp;
     bdb_ENV *envst;
@@ -65,8 +61,7 @@ bdb_env_lockid(obj)
 }
 
 static VALUE
-bdb_env_lockid_close(obj)
-    VALUE obj;
+bdb_env_lockid_close(VALUE obj)
 {
     bdb_ENV *envst;
     bdb_LOCKID *dblockid;
@@ -85,10 +80,7 @@ bdb_env_lockid_close(obj)
 }
 
 static VALUE
-bdb_env_lockdetect(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_env_lockdetect(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b;
     bdb_ENV *envst;
@@ -116,9 +108,7 @@ bdb_env_lockdetect(argc, argv, obj)
 }
 
 static VALUE
-bdb_env_lockstat(argc, argv, obj)
-    int argc;
-    VALUE obj, *argv;
+bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
 {
     bdb_ENV *envst;
     DB_LOCK_STAT *statp;
@@ -173,8 +163,13 @@ bdb_env_lockstat(argc, argv, obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_maxnobjects"), INT2NUM(statp->st_maxnobjects));
     rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
     rb_hash_aset(a, rb_tainted_str_new2("st_nreleases"), INT2NUM(statp->st_nreleases));
+#if BDB_VERSION >= 40416
+    rb_hash_aset(a, rb_tainted_str_new2("st_lock_nowait"), INT2NUM(statp->st_lock_nowait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_lock_wait"), INT2NUM(statp->st_lock_wait));
+#else
     rb_hash_aset(a, rb_tainted_str_new2("st_nnowaits"), INT2NUM(statp->st_nnowaits));
     rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
+#endif
     rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
     rb_hash_aset(a, rb_tainted_str_new2("st_nlocktimeouts"), INT2NUM(statp->st_nlocktimeouts));
     rb_hash_aset(a, rb_tainted_str_new2("st_ntxntimeouts"), INT2NUM(statp->st_ntxntimeouts));
@@ -226,15 +221,13 @@ bdb_env_lockstat(argc, argv, obj)
 #endif
 
 static void
-lock_mark(lock)
-    bdb_LOCK *lock;
+lock_mark(bdb_LOCK *lock)
 {
     rb_gc_mark(lock->env);
 }
 
 static void
-lock_free(lock)
-    bdb_LOCK *lock;
+lock_free(bdb_LOCK *lock)
 {
 #if BDB_VERSION < 30000
     bdb_ENV *envst;
@@ -249,10 +242,7 @@ lock_free(lock)
 }
 
 static VALUE
-bdb_lockid_get(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_lockid_get(int argc, VALUE *argv, VALUE obj)
 {
     bdb_LOCKID *lockid;
     bdb_ENV *envst;
@@ -328,8 +318,7 @@ struct lockreq {
 };
 
 static VALUE
-bdb_lockid_each(obj, listobj)
-    VALUE obj, listobj;
+bdb_lockid_each(VALUE obj, VALUE listobj)
 {
     VALUE key, value;
     DB_LOCKREQ *list;
@@ -378,10 +367,7 @@ bdb_lockid_each(obj, listobj)
 }
 
 static VALUE
-bdb_lockid_vec(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
 {
     DB_LOCKREQ *list;
     bdb_LOCKID *lockid;
@@ -464,8 +450,7 @@ bdb_lockid_vec(argc, argv, obj)
 }
 
 static VALUE
-bdb_lock_put(obj)
-    VALUE obj;
+bdb_lock_put(VALUE obj)
 {
     bdb_LOCK *lockst;
     bdb_ENV *envst;

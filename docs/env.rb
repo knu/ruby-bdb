@@ -382,5 +382,86 @@ class BDB::Env
    #same than <em> start</em>
    def  rep_start(cdata, flags)
    end
+
+   #Only for DB >= 4.4
+   #
+   #Reset database file LSN
+   #
+   #The Env#lsn_reset method allows database files to be moved from one transactional 
+   #database environment to another.
+   #
+   #<em>file</em>The name of the physical file in which the LSNs are to be cleared.
+   #<em>flags</em> must be set to 0 or <em>BDB::ENCRYPT</em>
+   #
+   def lsn_reset(file, flags = 0)
+   end
+
+   #Only for DB >= 4.4
+   #
+   #Reset database file ID
+   #
+   #The Env#fileid_reset method allows database files to be copied, and then the copy 
+   #used in the same database environment as the original.
+   #
+   #<em>file</em>The name of the physical file in which new file IDs are to be created.
+   #<em>flags</em> must be set to 0 or <em>BDB::ENCRYPT</em>
+   #
+   def fileid_reset(file, flags = 0)
+   end
+
+   #Only for DB >= 4.4
+   #
+   #There are interfaces in the Berkeley DB library which either directly output informational 
+   #messages or statistical information : Env#msgcall is used to set callback which will
+   #called by BDB
+   #
+   #The value given must be <em>nil</em> to unconfigure the callback, or and object
+   #which respond to <em>#call</em> : it will called with a String as argument
+   #
+   def msgcall=(call_proc)
+   end
+
+   #Only for DB >= 4.4
+   #
+   #Declare a proc object which returns a unique identifier pair for the current 
+   #thread of control.
+   #
+   #The proc must return a pair
+   # *<em>pid</em>: process ID of the current thread
+   # *<em>tid</em>: thread ID of the current thread
+   #
+   def thread_id=(call_proc)
+   end
+
+   #Only for DB >= 4.4
+   #
+   #Declare a proc that formats a process ID and thread ID identifier pair for display.
+   #
+   #The proc will be called with 2 arguments and must return a String
+   #
+   def thread_id_string=(call_proc)
+   end
+  
+   #Only for DB >= 4.4
+   #
+   #Declare a proc that returns if a thread of control (either a true thread or
+   #a process) is still running. 
+   #
+   #The proc will be called with 2 arguments (pid, tid)
+   #
+   def is_alive=(call_proc)
+   end
+
+   #Only for DB >= 4.4
+   #
+   #The method checks for threads of control (either a true 
+   #thread or a process) that have exited while manipulating Berkeley DB library 
+   #data structures
+   #
+   #<em>flag</em> is actually unused and must be set to 0
+   #
+   def failcheck(flag = 0)
+   end
+
 end
 

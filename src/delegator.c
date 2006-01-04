@@ -3,27 +3,23 @@
 static ID id_send;
 
 void
-bdb_deleg_mark(delegst)
-    struct deleg_class *delegst;
+bdb_deleg_mark(struct deleg_class *delegst)
 {
-    if (delegst->db) rb_gc_mark(delegst->db);
-    if (delegst->key) rb_gc_mark(delegst->key);
-    if (delegst->obj) rb_gc_mark(delegst->obj);
+    rb_gc_mark(delegst->db);
+    rb_gc_mark(delegst->key);
+    rb_gc_mark(delegst->obj);
 }
 
 extern VALUE bdb_put _((int, VALUE *, VALUE));
 
 static VALUE
-bdb_deleg_each(tmp)
-    VALUE *tmp;
+bdb_deleg_each(VALUE *tmp)
 {
     return rb_funcall2(tmp[0], id_send, (int)tmp[1], (VALUE *)tmp[2]);
 }
 
 static VALUE
-bdb_deleg_missing(argc, argv, obj)
-    int argc;
-    VALUE *argv, obj;
+bdb_deleg_missing(int argc, VALUE *argv, VALUE obj)
 {
     struct deleg_class *delegst, *newst;
     bdb_DB *dbst;
@@ -71,28 +67,26 @@ bdb_deleg_missing(argc, argv, obj)
 }
 
 #define DELEG_0(id)						\
-   VALUE obj;							\
    {								\
        struct deleg_class *delegst;				\
        Data_Get_Struct(obj, struct deleg_class, delegst);	\
        return rb_funcall2(delegst->obj, id, 0, 0);		\
    }
 
-static VALUE bdb_deleg_inspect(obj) DELEG_0(rb_intern("inspect"))
-static VALUE bdb_deleg_to_s(obj)    DELEG_0(rb_intern("to_s"))
-static VALUE bdb_deleg_to_str(obj)  DELEG_0(rb_intern("to_str"))
-static VALUE bdb_deleg_to_a(obj)    DELEG_0(rb_intern("to_a"))
-static VALUE bdb_deleg_to_ary(obj)  DELEG_0(rb_intern("to_ary"))
-static VALUE bdb_deleg_to_i(obj)    DELEG_0(rb_intern("to_i"))
-static VALUE bdb_deleg_to_int(obj)  DELEG_0(rb_intern("to_int"))
-static VALUE bdb_deleg_to_f(obj)    DELEG_0(rb_intern("to_f"))
-static VALUE bdb_deleg_to_hash(obj) DELEG_0(rb_intern("to_hash"))
-static VALUE bdb_deleg_to_io(obj)   DELEG_0(rb_intern("to_io"))
-static VALUE bdb_deleg_to_proc(obj) DELEG_0(rb_intern("to_proc"))
+static VALUE bdb_deleg_inspect(VALUE obj) DELEG_0(rb_intern("inspect"))
+static VALUE bdb_deleg_to_s(VALUE obj)    DELEG_0(rb_intern("to_s"))
+static VALUE bdb_deleg_to_str(VALUE obj)  DELEG_0(rb_intern("to_str"))
+static VALUE bdb_deleg_to_a(VALUE obj)    DELEG_0(rb_intern("to_a"))
+static VALUE bdb_deleg_to_ary(VALUE obj)  DELEG_0(rb_intern("to_ary"))
+static VALUE bdb_deleg_to_i(VALUE obj)    DELEG_0(rb_intern("to_i"))
+static VALUE bdb_deleg_to_int(VALUE obj)  DELEG_0(rb_intern("to_int"))
+static VALUE bdb_deleg_to_f(VALUE obj)    DELEG_0(rb_intern("to_f"))
+static VALUE bdb_deleg_to_hash(VALUE obj) DELEG_0(rb_intern("to_hash"))
+static VALUE bdb_deleg_to_io(VALUE obj)   DELEG_0(rb_intern("to_io"))
+static VALUE bdb_deleg_to_proc(VALUE obj) DELEG_0(rb_intern("to_proc"))
 
 VALUE
-bdb_deleg_to_orig(obj)
-    VALUE obj;
+bdb_deleg_to_orig(VALUE obj)
 {
     struct deleg_class *delegst;
     Data_Get_Struct(obj, struct deleg_class, delegst);
@@ -100,15 +94,13 @@ bdb_deleg_to_orig(obj)
 }
 
 static VALUE
-bdb_deleg_orig(obj)
-    VALUE obj;
+bdb_deleg_orig(VALUE obj)
 {
     return obj;
 }
 
 static VALUE
-bdb_deleg_dump(obj, limit)
-    VALUE obj, limit;
+bdb_deleg_dump(VALUE obj, VALUE limit)
 {
     struct deleg_class *delegst;
     bdb_DB *dbst;
@@ -118,8 +110,7 @@ bdb_deleg_dump(obj, limit)
 }
 
 static VALUE
-bdb_deleg_load(obj, str)
-    VALUE obj, str;
+bdb_deleg_load(VALUE obj, VALUE str)
 {
     bdb_DB *dbst;
 
@@ -127,8 +118,6 @@ bdb_deleg_load(obj, str)
     Data_Get_Struct(obj, bdb_DB, dbst);
     return rb_funcall(dbst->marshal, bdb_id_load, 1, str);
 }
-
-
 
 void bdb_init_delegator()
 {

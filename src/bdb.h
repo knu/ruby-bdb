@@ -133,6 +133,12 @@ typedef struct  {
 #if BDB_VERSION >= 40100
     VALUE app_dispatch;
 #endif
+#if BDB_VERSION >= 40416
+    VALUE msgcall;
+    VALUE thread_id;
+    VALUE thread_id_string;
+    VALUE isalive;
+#endif
 } bdb_ENV;
 
 #if BDB_VERSION >= 40000

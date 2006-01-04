@@ -59,7 +59,7 @@ unique = if with_config("db-uniquename")
 	    ""
 	 end
 
-version  = with_config('db-version', "-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
+version  = with_config('db-version', "-4.4,44,-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
 version << "" if version.empty?
 
 catch(:done) do

@@ -158,6 +158,12 @@ See also ((<BDB::Env#txn_stat|URL:env.html#txn_stat>)) and
     successful responses from all of its prepare messages should it issue
     any commit messages.
 
+--- name    # version 4.4
+    Return the string associated with a transaction
+    
+--- name=(string)  # version 4.4
+    Set the string associated with a transaction
+
 # end
 # end
 

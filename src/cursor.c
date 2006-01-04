@@ -1,8 +1,7 @@
 #include "bdb.h"
 
 static void 
-bdb_cursor_free(dbcst)
-    bdb_DBC *dbcst;
+bdb_cursor_free(bdb_DBC *dbcst)
 {
     bdb_DB *dbst;
     if (dbcst->dbc && BDB_VALID(dbcst->db, T_DATA)) {
@@ -17,9 +16,7 @@ bdb_cursor_free(dbcst)
 }
 
 static VALUE
-bdb_cursor(argc, argv, obj)
-    VALUE obj, *argv;
-    int argc;
+bdb_cursor(int argc, VALUE *argv, VALUE obj)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -53,8 +50,7 @@ bdb_cursor(argc, argv, obj)
 }
 
 static VALUE
-bdb_write_cursor(obj)
-    VALUE obj;
+bdb_write_cursor(VALUE obj)
 {
     VALUE f;
 #if BDB_VERSION >= 30000
@@ -66,8 +62,7 @@ bdb_write_cursor(obj)
 }
 
 static VALUE
-bdb_cursor_close(obj)
-    VALUE obj;
+bdb_cursor_close(VALUE obj)
 {
     bdb_DBC *dbcst;
     bdb_DB *dbst;
@@ -81,8 +76,7 @@ bdb_cursor_close(obj)
 }
   
 static VALUE
-bdb_cursor_del(obj)
-    VALUE obj;
+bdb_cursor_del(VALUE obj)
 {
     int flags = 0;
     bdb_DBC *dbcst;
@@ -97,10 +91,7 @@ bdb_cursor_del(obj)
 #if BDB_VERSION >= 30000
 
 static VALUE
-bdb_cursor_dup(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_cursor_dup(int argc, VALUE *argv, VALUE obj)
 {
     int flags = 0;
     VALUE a, b;
@@ -121,8 +112,7 @@ bdb_cursor_dup(argc, argv, obj)
 #endif
 
 static VALUE
-bdb_cursor_count(obj)
-    VALUE obj;
+bdb_cursor_count(VALUE obj)
 {
 #if BDB_VERSION < 20600
     rb_raise(bdb_eFatal, "DB_NEXT_DUP needs Berkeley DB 2.6 or later");
@@ -130,11 +120,11 @@ bdb_cursor_count(obj)
 #if BDB_VERSION < 30100
     DBT key, data;
     DBT key_o, data_o;
+    int ret;
 #endif
     bdb_DBC *dbcst;
     bdb_DB *dbst;
     db_recno_t count;
-    int ret;
 
     GetCursorDB(obj, dbcst, dbst);
 #if BDB_VERSION >= 30100
@@ -174,11 +164,7 @@ bdb_cursor_count(obj)
 }
 
 static VALUE
-bdb_cursor_get_common(argc, argv, obj, c_pget)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
-    int c_pget;
+bdb_cursor_get_common(int argc, VALUE *argv, VALUE obj, int c_pget)
 {
     volatile VALUE a = Qnil;
     VALUE b = Qnil;
@@ -261,16 +247,14 @@ bdb_cursor_get(int argc, VALUE *argv, VALUE obj)
 
 #if BDB_VERSION >= 30300
 static VALUE
-bdb_cursor_pget(argc, argv, obj)
+bdb_cursor_pget(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_cursor_get_common(argc, argv, obj, 1);
 }
 #endif
 
 static VALUE
-bdb_cursor_set_xxx(obj, a, flag)
-    VALUE obj, a;
-    int flag;
+bdb_cursor_set_xxx(VALUE obj, VALUE a, int flag)
 {
     VALUE *b;
     b = ALLOCA_N(VALUE, 2);
@@ -280,30 +264,25 @@ bdb_cursor_set_xxx(obj, a, flag)
 }
 
 static VALUE 
-bdb_cursor_set(obj, a)
-    VALUE obj, a;
+bdb_cursor_set(VALUE obj, VALUE a)
 { 
     return bdb_cursor_set_xxx(obj, a, DB_SET);
 }
 
 static VALUE 
-bdb_cursor_set_range(obj, a)
-    VALUE obj, a;
+bdb_cursor_set_range(VALUE obj, VALUE a)
 { 
     return bdb_cursor_set_xxx(obj, a, DB_SET_RANGE);
 }
 
 static VALUE 
-bdb_cursor_set_recno(obj, a)
-    VALUE obj, a;
+bdb_cursor_set_recno(VALUE obj, VALUE a)
 { 
     return bdb_cursor_set_xxx(obj, a, DB_SET_RECNO);
 }
 
 static VALUE
-bdb_cursor_xxx(obj, val)
-    VALUE obj;
-    int val;
+bdb_cursor_xxx(VALUE obj, int val)
 {
     VALUE b;
     b = INT2NUM(val);
@@ -311,8 +290,7 @@ bdb_cursor_xxx(obj, val)
 }
 
 static VALUE
-bdb_cursor_next(obj)
-    VALUE obj;
+bdb_cursor_next(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_NEXT);
 }
@@ -320,8 +298,7 @@ bdb_cursor_next(obj)
 #if BDB_VERSION >= 20600
 
 static VALUE
-bdb_cursor_next_dup(obj)
-    VALUE obj;
+bdb_cursor_next_dup(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_NEXT_DUP);
 }
@@ -329,38 +306,31 @@ bdb_cursor_next_dup(obj)
 #endif
 
 static VALUE
-bdb_cursor_prev(obj)
-    VALUE obj;
+bdb_cursor_prev(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_PREV);
 }
 
 static VALUE
-bdb_cursor_first(obj)
-    VALUE obj;
+bdb_cursor_first(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_FIRST);
 }
 
 static VALUE
-bdb_cursor_last(obj)
-    VALUE obj;
+bdb_cursor_last(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_LAST);
 }
 
 static VALUE
-bdb_cursor_current(obj)
-    VALUE obj;
+bdb_cursor_current(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_CURRENT);
 }
 
 static VALUE
-bdb_cursor_put(argc, argv, obj)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
+bdb_cursor_put(int argc, VALUE *argv, VALUE obj)
 {
     int flags, cnt;
     DBT key, data;
