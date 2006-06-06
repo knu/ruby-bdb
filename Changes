@@ -265,3 +265,6 @@
 * patch #associate (Thanks Dan Janowsky <danj@3skel.com>
 * adapted to db 4.4
 
+--- 0.5.9
+
+* rb_frame_last_func(), GetWriteFile() (Thanks akira yamada <akira@debian.org>)

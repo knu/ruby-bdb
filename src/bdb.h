@@ -273,27 +273,37 @@ struct dblsnst {
     GetDB(dbcst->db, dbst);			\
 }
 
-#define GetEnvDBErr(obj, envst, id_c, eErr)			\
-{								\
-    Data_Get_Struct(obj, bdb_ENV, envst);			\
-    if (envst->envp == 0)					\
-        rb_raise(eErr, "closed environment");			\
-    if (envst->options & BDB_NEED_ENV_CURRENT) {		\
-    	rb_thread_local_aset(rb_thread_current(), id_c, obj);	\
-    }								\
+#define GetEnvDBErr(obj, envst, id_c, eErr)				\
+{									\
+    Data_Get_Struct(obj, bdb_ENV, envst);				\
+    if (envst->envp == 0)						\
+        rb_raise(eErr, "closed environment");				\
+    if (envst->options & BDB_NEED_ENV_CURRENT) {			\
+	VALUE th = rb_thread_current();					\
+									\
+	if (!RTEST(th) || !RBASIC(th)->flags) {				\
+	    rb_raise(eErr, "invalid thread object");			\
+	}								\
+    	rb_thread_local_aset(th, id_c, obj);				\
+    }									\
 }
 
 #define GetEnvDB(obj, envst)	GetEnvDBErr(obj, envst, bdb_id_current_env, bdb_eFatal)
 
-#define GetDB(obj, dbst)						   \
-{									   \
-    Data_Get_Struct(obj, bdb_DB, dbst);					   \
-    if (dbst->dbp == 0) {						   \
-        rb_raise(bdb_eFatal, "closed DB");				   \
-    }									   \
-    if (dbst->options & BDB_NEED_CURRENT) {				   \
-    	rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, obj); \
-    }									   \
+#define GetDB(obj, dbst)						   	\
+{									   	\
+    Data_Get_Struct(obj, bdb_DB, dbst);					   	\
+    if (dbst->dbp == 0) {						   	\
+        rb_raise(bdb_eFatal, "closed DB");				   	\
+    }									   	\
+    if (dbst->options & BDB_NEED_CURRENT) {				   	\
+	VALUE th = rb_thread_current();						\
+										\
+	if (!RTEST(th) || !RBASIC(th)->flags) {					\
+	    rb_raise(bdb_eFatal, "invalid thread object");			\
+	}									\
+    	rb_thread_local_aset(th, bdb_id_current_db, obj); 			\
+    }									   	\
 }
 
 

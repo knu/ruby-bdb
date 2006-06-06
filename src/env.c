@@ -9,13 +9,18 @@ static ID id_feedback;
 ID bdb_id_current_env;
 static void bdb_env_mark _((bdb_ENV *));
 
-#define GetIdEnv(obj, envst) do {					   \
-    (obj) = rb_thread_local_aref(rb_thread_current(), bdb_id_current_env); \
-    if (TYPE(obj) != T_DATA ||						   \
-	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_env_mark) {		   \
-	rb_raise(bdb_eFatal, "BUG : current_env not set");		   \
-    }									   \
-    GetEnvDB(obj, envst);						   \
+#define GetIdEnv(obj, envst) do {					   	\
+    VALUE th = rb_thread_current();						\
+										\
+    if (!RTEST(th) || !RBASIC(th)->flags) {					\
+	rb_raise(bdb_eFatal, "invalid thread object");				\
+    }										\
+    (obj) = rb_thread_local_aref(th, bdb_id_current_env); 			\
+    if (TYPE(obj) != T_DATA ||						   	\
+	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_env_mark) {		   	\
+	rb_raise(bdb_eFatal, "BUG : current_env not set");		   	\
+    }									   	\
+    GetEnvDB(obj, envst);						   	\
 } while (0)
 
 #if BDB_VERSION >= 40100

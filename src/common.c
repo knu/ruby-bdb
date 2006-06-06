@@ -11,13 +11,18 @@ static ID id_feedback;
 
 static void bdb_mark _((bdb_DB *));
 
-#define GetIdDb(obj, dbst) do {						  \
-    (obj) = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db); \
-    if (TYPE(obj) != T_DATA ||						  \
-	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_mark) {		  \
-	rb_raise(bdb_eFatal, "BUG : current_db not set");		  \
-    }									  \
-    Data_Get_Struct(obj, bdb_DB, dbst);					  \
+#define GetIdDb(obj, dbst) do {							\
+    VALUE th = rb_thread_current();						\
+										\
+    if (!RTEST(th) || !RBASIC(th)->flags) {					\
+	rb_raise(bdb_eFatal, "invalid thread object");				\
+    }										\
+    (obj) = rb_thread_local_aref(th, bdb_id_current_db); 			\
+    if (TYPE(obj) != T_DATA ||						  	\
+	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_mark) {		  	\
+	rb_raise(bdb_eFatal, "BUG : current_db not set");		  	\
+    }									  	\
+    Data_Get_Struct(obj, bdb_DB, dbst);					  	\
 } while (0)
 
 void
@@ -708,7 +713,7 @@ bdb_i_close(bdb_DB *dbst, int flags)
     bdb_ENV *envst;
 
     if (dbst->dbp) {
-	if (RTEST(dbst->txn)) {
+	if (RTEST(dbst->txn) && RBASIC(dbst->txn)->flags) {
 	    bdb_TXN *txnst;
 	    int opened = 0;
 
@@ -727,7 +732,7 @@ bdb_i_close(bdb_DB *dbst, int flags)
 	    }
 	}
 	else {
-	    if (dbst->env) {
+	    if (dbst->env && RBASIC(dbst->env)->flags) {
 		Data_Get_Struct(dbst->env, bdb_ENV, envst);
 		bdb_ary_delete(&envst->db_ary, dbst->ori_val);
 	    }
@@ -759,12 +764,15 @@ i_close(bdb_DB *dbst)
 static VALUE
 bdb_final_aref(bdb_DB *dbst)
 {
-    VALUE obj;
+    VALUE obj, th;
 
-    obj = rb_thread_local_aref(rb_thread_current(), bdb_id_current_db);
-    if (!NIL_P(obj) && RDATA(obj)->dmark == (RUBY_DATA_FUNC)bdb_mark &&
-        DATA_PTR(obj) == dbst) {
-        rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, Qnil);
+    th = rb_thread_current();
+    if (RTEST(th) && RBASIC(th)->flags) {
+	obj = rb_thread_local_aref(th, bdb_id_current_db);
+	if (!NIL_P(obj) && RDATA(obj)->dmark == (RUBY_DATA_FUNC)bdb_mark &&
+	    DATA_PTR(obj) == dbst) {
+	    rb_thread_local_aset(th, bdb_id_current_db, Qnil);
+	}
     }
     return Qnil;
 }
@@ -1826,7 +1834,7 @@ bdb_fetch(int argc, VALUE *argv, VALUE obj)
     if (val == Qundef) {
 	if (rb_block_given_p()) {
 	    if (argc > 1) {
-		rb_raise(rb_eArgError, "wrong # of arguments", argc);
+		rb_raise(rb_eArgError, "wrong # of arguments");
 	    }
 	    return rb_yield(key);
 	}
@@ -3107,9 +3115,13 @@ bdb_indexes(int argc, VALUE *argv, VALUE obj)
     VALUE indexes;
     int i;
 
-#if RUBY_VERSION_CODE >= 172
+#if HAVE_RB_ARY_VALUES_AT
     rb_warn("Common#%s is deprecated; use Common#values_at",
+#if HAVE_RB_FRAME_THIS_FUNC
+	    rb_id2name(rb_frame_this_func()));
+#else
 	    rb_id2name(rb_frame_last_func()));
+#endif
 #endif
     indexes = rb_ary_new2(argc);
     for (i = 0; i < argc; i++) {
@@ -3600,7 +3612,7 @@ bdb_join(int argc, VALUE *argv, VALUE obj)
 
 	for (dbs = dbcarr, i = 0; i < RARRAY(a)->len; i++, dbs++) {
 	    if (!rb_obj_is_kind_of(RARRAY(a)->ptr[i], bdb_cCursor)) {
-		rb_raise(bdb_eFatal, "element %d is not a cursor");
+		rb_raise(bdb_eFatal, "element %d is not a cursor", i);
 	    }
 	    GetCursorDB(RARRAY(a)->ptr[i], dbcst, tmp);
 	    *dbs = dbcst->dbc;
@@ -3730,7 +3742,7 @@ bdb_associate(int argc, VALUE *argv, VALUE obj)
 	dbst->secondary = rb_ary_new();
     }
     rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, obj);
-#if RUBY_VERSION_CODE >= 180
+#if HAVE_RB_BLOCK_PROC
     rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_block_proc()));
 #else
     rb_ary_push(dbst->secondary, rb_assoc_new(second, rb_f_lambda()));
@@ -3800,7 +3812,11 @@ bdb_verify(int argc, VALUE *argv, VALUE obj)
 	    iov = rb_convert_type(iov, T_FILE, "IO", "to_io");
 	    GetOpenFile(iov, fptr);
 	    rb_io_check_writable(fptr);
+#if HAVE_RB_IO_STDIO_FILE
+	    io = rb_io_stdio_file(fptr);
+#else
 	    io = GetWriteFile(fptr);
+#endif
 	}
 	break;
     case 0:

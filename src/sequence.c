@@ -100,7 +100,7 @@ bdb_seq_i_options(VALUE obj, VALUE seqobj)
                                    NUM2LONG(RARRAY(value)->ptr[0]),
                                    NUM2LONG(RARRAY(value)->ptr[1]))) {
             seqst->seqp->remove(seqst->seqp, 0, 0);
-            rb_raise(rb_eArgError, "Invalid value (%d, %d) for set_range",
+            rb_raise(rb_eArgError, "Invalid value (%ld, %ld) for set_range",
                      NUM2LONG(RARRAY(value)->ptr[0]),
                      NUM2LONG(RARRAY(value)->ptr[1]));
         }

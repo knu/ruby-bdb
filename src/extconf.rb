@@ -79,6 +79,22 @@ catch(:done) do
    raise "libdb#{version[-1]} not found"
 end
 
+["rb_frame_this_func", "rb_block_proc", "rb_io_stdio_file"].each do |f|
+   if have_func(f)
+      $CFLAGS += " -DHAVE_#{f.upcase}"
+   end
+end
+
+["insert", "values_at"].each do |f|
+   print "checking for Array##{f}... "
+   if [].respond_to?(f)
+      puts "yes"
+      $CFLAGS += " -DHAVE_RB_ARY_#{f.upcase}"
+   else
+      puts "no"
+   end
+end
+
 create_makefile("bdb")
 if unknown
    begin
