@@ -266,7 +266,7 @@ bdb_lockid_get(int argc, VALUE *argv, VALUE obj)
     SafeStringValue(a);
     MEMZERO(&objet, DBT, 1);
     objet.data = StringValuePtr(a);
-    objet.size = RSTRING(a)->len;
+    objet.size = RSTRING_LEN(a);
     lock_mode = NUM2INT(b);
     GetLockid(obj, lockid, envst);
 #if BDB_VERSION < 30000
@@ -340,7 +340,7 @@ bdb_lockid_each(VALUE obj, VALUE listobj)
 	list->obj = ALLOC(DBT);
 	MEMZERO(list->obj, DBT, 1);
 	list->obj->data = StringValuePtr(value);
-	list->obj->size = RSTRING(value)->len;
+	list->obj->size = RSTRING_LEN(value);
     }
     else if (strcmp(options, "mode") == 0) {
 	list->mode = NUM2INT(value);
@@ -389,11 +389,11 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
 	}
     }
     Check_Type(a, T_ARRAY);
-    list = ALLOCA_N(DB_LOCKREQ, RARRAY(a)->len);
-    MEMZERO(list, DB_LOCKREQ, RARRAY(a)->len);
+    list = ALLOCA_N(DB_LOCKREQ, RARRAY_LEN(a));
+    MEMZERO(list, DB_LOCKREQ, RARRAY_LEN(a));
     listobj = Data_Make_Struct(obj, struct lockreq, 0, free, listst);
-    for (i = 0; i < RARRAY(a)->len; i++) {
-	b = RARRAY(a)->ptr[i];
+    for (i = 0; i < RARRAY_LEN(a); i++) {
+	b = RARRAY_PTR(a)[i];
 	Check_Type(b, T_HASH);
 	listst->list = &list[i];
 	rb_iterate(rb_each, b, bdb_lockid_each, listobj);
@@ -404,18 +404,18 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
 	rb_raise(bdb_eLock, "lock region not open");
     }
     err = lock_vec(envst->envp->lk_info, lockid->lock, flags,
-		   list, RARRAY(a)->len, NULL);
+		   list, RARRAY_LEN(a), NULL);
 #else
 #if BDB_VERSION >= 40000
     err = envst->envp->lock_vec(envst->envp, lockid->lock, flags,
-				list, RARRAY(a)->len, NULL);
+				list, RARRAY_LEN(a), NULL);
 #else    
     err = lock_vec(envst->envp, lockid->lock, flags,
-		   list, RARRAY(a)->len, NULL);
+		   list, RARRAY_LEN(a), NULL);
 #endif
 #endif
     if (err != 0) {
-	for (i = 0; i < RARRAY(a)->len; i++) {
+	for (i = 0; i < RARRAY_LEN(a); i++) {
 	    if (list[i].obj)
 		free(list[i].obj);
 	}
@@ -427,9 +427,9 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
         else
             rb_raise(res, "%s", db_strerror(err));
     }			
-    res = rb_ary_new2(RARRAY(a)->len);
+    res = rb_ary_new2(RARRAY_LEN(a));
     n = 0;
-    for (i = 0; i < RARRAY(a)->len; i++) {
+    for (i = 0; i < RARRAY_LEN(a); i++) {
 	if (list[i].op == DB_LOCK_GET) {
 	    c = Data_Make_Struct(bdb_cLock, bdb_LOCK, lock_mark, lock_free, lockst);
 #if BDB_VERSION < 30000

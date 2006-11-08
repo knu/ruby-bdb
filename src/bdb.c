@@ -247,6 +247,9 @@ Init_bdb()
 #ifdef DB_EXCL
     rb_define_const(bdb_mDb, "EXCL", INT2FIX(DB_EXCL));
 #endif
+#ifdef DB_MULTIVERSION
+    rb_define_const(bdb_mDb, "MULTIVERSION", INT2FIX(DB_MULTIVERSION));
+#endif
 #ifdef DB_FAST_STAT
     rb_define_const(bdb_mDb, "FAST_STAT", INT2FIX(DB_FAST_STAT));
 #endif
@@ -332,7 +335,9 @@ Init_bdb()
 #ifdef DB_LOCK_MINWRITE
     rb_define_const(bdb_mDb, "LOCK_MINWRITE", INT2FIX(DB_LOCK_MINWRITE));
 #endif
+#ifdef DB_MPOOL_CLEAN
     rb_define_const(bdb_mDb, "MPOOL_CLEAN", INT2FIX(DB_MPOOL_CLEAN));
+#endif
     rb_define_const(bdb_mDb, "MPOOL_CREATE", INT2FIX(DB_MPOOL_CREATE));
     rb_define_const(bdb_mDb, "MPOOL_DIRTY", INT2FIX(DB_MPOOL_DIRTY));
     rb_define_const(bdb_mDb, "MPOOL_DISCARD", INT2FIX(DB_MPOOL_DISCARD));
@@ -397,7 +402,9 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "RDONLY", INT2FIX(DB_RDONLY));
     rb_define_const(bdb_mDb, "RECNUM", INT2FIX(DB_RECNUM));
+#ifdef DB_RECORDCOUNT
     rb_define_const(bdb_mDb, "RECORDCOUNT", INT2FIX(DB_RECORDCOUNT));
+#endif
     rb_define_const(bdb_mDb, "RECOVER", INT2FIX(DB_RECOVER));
     rb_define_const(bdb_mDb, "RECOVER_FATAL", INT2FIX(DB_RECOVER_FATAL));
     rb_define_const(bdb_mDb, "RENUMBER", INT2FIX(DB_RENUMBER));
@@ -439,6 +446,9 @@ Init_bdb()
     rb_define_const(bdb_mDb, "TXN_PRINT", INT2FIX(DB_TXN_PRINT));
     rb_define_const(bdb_mDb, "TXN_WRITE_NOSYNC", INT2FIX(DB_TXN_WRITE_NOSYNC));
 #endif
+#endif
+#ifdef DB_TXN_SNAPSHOT
+    rb_define_const(bdb_mDb, "TXN_SNAPSHOT", INT2FIX(DB_TXN_SNAPSHOT));
 #endif
 #ifdef DB_UPGRADE
     rb_define_const(bdb_mDb, "UPGRADE", INT2FIX(DB_UPGRADE));
@@ -539,6 +549,63 @@ Init_bdb()
 #endif
 #ifdef DB_REP_NOBUFFER
     rb_define_const(bdb_mDb, "REP_NOBUFFER", INT2FIX(DB_REP_NOBUFFER));
+#endif
+#ifdef DB_MUTEX_PROCESS_ONLY
+    rb_define_const(bdb_mDb, "MUTEX_PROCESS_ONLY", INT2FIX(DB_MUTEX_PROCESS_ONLY));
+#endif
+#ifdef DB_EVENT_REP_STARTUPDONE
+    rb_define_const(bdb_mDb, "EVENT_REP_STARTUPDONE", INT2FIX(DB_EVENT_REP_STARTUPDONE));
+#endif
+#ifdef DB_REP_CONF_BULK
+    rb_define_const(bdb_mDb, "REP_CONF_BULK", INT2FIX(DB_REP_CONF_BULK));
+#endif
+#ifdef DB_REP_CONF_DELAYCLIENT
+    rb_define_const(bdb_mDb, "REP_CONF_DELAYCLIENT", INT2FIX(DB_REP_CONF_DELAYCLIENT));
+#endif
+#ifdef DB_REP_CONF_NOAUTOINIT
+    rb_define_const(bdb_mDb, "REP_CONF_NOAUTOINIT", INT2FIX(DB_REP_CONF_NOAUTOINIT));
+#endif
+#ifdef DB_REP_CONF_NOWAIT
+    rb_define_const(bdb_mDb, "REP_CONF_NOWAIT", INT2FIX(DB_REP_CONF_NOWAIT));
+#endif
+#ifdef DB_REP_ACK_TIMEOUT
+    rb_define_const(bdb_mDb, "REP_ACK_TIMEOUT", INT2FIX(DB_REP_ACK_TIMEOUT));
+#endif
+#ifdef DB_REPMGR_PEER
+    rb_define_const(bdb_mDb, "REPMGR_PEER", INT2FIX(DB_REPMGR_PEER));
+#endif
+#ifdef DB_REPMGR_ACKS_ALL
+    rb_define_const(bdb_mDb, "REPMGR_ACKS_ALL", INT2FIX(DB_REPMGR_ACKS_ALL));
+#endif
+#ifdef DB_REPMGR_ACKS_ALL_PEERS
+    rb_define_const(bdb_mDb, "REPMGR_ACKS_ALL_PEERS", INT2FIX(DB_REPMGR_ACKS_ALL_PEERS));
+#endif
+#ifdef DB_REPMGR_ACKS_NONE
+    rb_define_const(bdb_mDb, "REPMGR_ACKS_NONE", INT2FIX(DB_REPMGR_ACKS_NONE));
+#endif
+#ifdef DB_REPMGR_ACKS_ONE
+    rb_define_const(bdb_mDb, "REPMGR_ACKS_ONE", INT2FIX(DB_REPMGR_ACKS_ONE));
+#endif
+#ifdef DB_REPMGR_ACKS_ONE_PEER
+    rb_define_const(bdb_mDb, "REPMGR_ACKS_ONE_PEER", INT2FIX(DB_REPMGR_ACKS_ONE_PEER));
+#endif
+#ifdef DB_REPMGR_ACKS_QUORUM
+    rb_define_const(bdb_mDb, "REPMGR_ACKS_QUORUM", INT2FIX(DB_REPMGR_ACKS_QUORUM));
+#endif
+#ifdef DB_REP_ELECTION
+    rb_define_const(bdb_mDb, "REP_ELECTION", INT2FIX(DB_REP_ELECTION));
+#endif
+#ifdef DB_REP_FULL_ELECTION
+    rb_define_const(bdb_mDb, "REP_FULL_ELECTION", INT2FIX(DB_REP_FULL_ELECTION));
+#endif
+#ifdef DB_REP_ELECTION_TIMEOUT
+    rb_define_const(bdb_mDb, "REP_ELECTION_TIMEOUT", INT2FIX(DB_REP_ELECTION_TIMEOUT));
+#endif
+#ifdef DB_REP_ELECTION_RETRY
+    rb_define_const(bdb_mDb, "REP_ELECTION_RETRY", INT2FIX(DB_REP_ELECTION_RETRY));
+#endif
+#ifdef DB_REP_CONNECTION_RETRY
+    rb_define_const(bdb_mDb, "REP_CONNECTION_RETRY", INT2FIX(DB_REP_CONNECTION_RETRY));
 #endif
     bdb_init_env();
     bdb_init_common();

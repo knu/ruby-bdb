@@ -56,7 +56,7 @@ bdb_env_rep_transport(DB_ENV *env, const DBT *control, const DBT *rec,
 			 INT2FIX(envid), INT2FIX(flags));
     }
     else {
-	res = rb_funcall(envst->rep_transport, bdb_id_call, 4, 
+	res = rb_funcall(envst->rep_transport, bdb_id_call, 5, 
 			 av, bv, lsnobj, INT2FIX(envid), INT2FIX(flags));
     }
     return NUM2INT(res);
@@ -92,19 +92,32 @@ bdb_env_rep_elect(int argc, VALUE *argv, VALUE env)
     int envid = 0, nvotes = 0;
 
     GetEnvDB(env, envst);
+#if BDB_VERSION >= 40500
+    pri = ti = 0;
+    if (rb_scan_args(argc, argv, "11", &nb, &nvo) == 2) {
+        nvotes = NUM2INT(nvo);
+    }
+#else
     if (rb_scan_args(argc, argv, "31", &nb, &pri, &ti, &nvo) == 4) {
         nvotes = NUM2INT(nvo);
     }
+#endif
     
 #if BDB_VERSION >= 40300
+#if BDB_VERSION >= 40500
+    bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb), nvotes, &envid, 0));
+#else
     bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb), nvotes,
 					  NUM2INT(pri), NUM2INT(ti), &envid, 0));
+#endif
 #else
     bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb),
 					  NUM2INT(pri), NUM2INT(ti), &envid));
 #endif
     return INT2NUM(envid);
 }
+
+#if BDB_VERSION < 40500
 
 static VALUE
 bdb_env_rep_process_message(VALUE env, VALUE av, VALUE bv, VALUE ev)
@@ -124,9 +137,9 @@ bdb_env_rep_process_message(VALUE env, VALUE av, VALUE bv, VALUE ev)
     bv = rb_str_to_str(bv);
     MEMZERO(&control, DBT, 1);
     MEMZERO(&rec, DBT, 1);
-    control.size = RSTRING(av)->len;
+    control.size = RSTRING_LEN(av);
     control.data = StringValuePtr(av);
-    rec.size = RSTRING(bv)->len;
+    rec.size = RSTRING_LEN(bv);
     rec.data = StringValuePtr(bv);
     envid = NUM2INT(ev);
 #if BDB_VERSION >= 40200
@@ -154,6 +167,8 @@ bdb_env_rep_process_message(VALUE env, VALUE av, VALUE bv, VALUE ev)
     return result;
 }
 
+#endif
+
 static VALUE
 bdb_env_rep_start(VALUE env, VALUE ident, VALUE flags)
 {
@@ -164,7 +179,7 @@ bdb_env_rep_start(VALUE env, VALUE ident, VALUE flags)
     if (!NIL_P(ident)) {
 	ident = rb_str_to_str(ident);
 	MEMZERO(&cdata, DBT, 1);
-	cdata.size = RSTRING(ident)->len;
+	cdata.size = RSTRING_LEN(ident);
 	cdata.data = StringValuePtr(ident);
     }
     bdb_test_error(envst->envp->rep_start(envst->envp, 
@@ -187,14 +202,14 @@ bdb_env_rep_limit(int argc, VALUE *argv, VALUE obj)
     switch(rb_scan_args(argc, argv, "11", &a, &b)) {
     case 1:
 	if (TYPE(a) == T_ARRAY) {
-	    if (RARRAY(a)->len != 2) {
+	    if (RARRAY_LEN(a) != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    gbytes = NUM2UINT(RARRAY(a)->ptr[0]);
-	    bytes = NUM2UINT(RARRAY(a)->ptr[1]);
+	    gbytes = NUM2UINT(RARRAY_PTR(a)[0]);
+	    bytes = NUM2UINT(RARRAY_PTR(a)[1]);
 	}
 	else {
-	    bytes = NUM2UINT(RARRAY(a)->ptr[1]);
+	    bytes = NUM2UINT(RARRAY_PTR(a)[1]);
 	}
 	break;
     case 2:
@@ -202,7 +217,11 @@ bdb_env_rep_limit(int argc, VALUE *argv, VALUE obj)
 	bytes = NUM2UINT(b);
 	break;
     }
+#if BDB_VERSION >= 40500
+    bdb_test_error(envst->envp->rep_set_limit(envst->envp, gbytes, bytes));
+#else
     bdb_test_error(envst->envp->set_rep_limit(envst->envp, gbytes, bytes));
+#endif
     return obj;
 }
 #endif
@@ -299,11 +318,11 @@ bdb_env_thread_id(DB_ENV *dbenv, pid_t *pid, db_threadid_t *tid)
 	res = rb_funcall2(envst->thread_id, bdb_id_call, 0, 0);
     }
     res = rb_Array(res);
-    if (TYPE(res) != T_ARRAY || RARRAY(res)->len != 2) {
+    if (TYPE(res) != T_ARRAY || RARRAY_LEN(res) != 2) {
 	rb_raise(bdb_eFatal, "expected [pid, threadid]");
     }
-    *pid = NUM2INT(RARRAY(res)->ptr[0]);
-    *tid = NUM2INT(RARRAY(res)->ptr[0]);
+    *pid = NUM2INT(RARRAY_PTR(res)[0]);
+    *tid = NUM2INT(RARRAY_PTR(res)[0]);
     return;
 }
 
@@ -335,6 +354,36 @@ bdb_env_thread_id_string(DB_ENV *dbenv, pid_t pid, db_threadid_t tid, char *buf)
 
 static ID id_isalive;
 
+#if BDB_VERSION >= 40500
+
+static int
+bdb_env_isalive(DB_ENV *dbenv, pid_t pid, db_threadid_t tid, u_int32_t flags)
+{
+    VALUE obj;
+    bdb_ENV *envst;
+    VALUE res, a ,b, c;
+
+    GetIdEnv(obj, envst);
+    if (NIL_P(envst->isalive)) {
+	return 0;
+    }
+    a = INT2NUM(pid);
+    b = INT2NUM(tid);
+    c = INT2NUM(flags);
+    if (envst->isalive == 0) {
+	res = rb_funcall(obj, id_isalive, 3, a, b, c);
+    }
+    else {
+	res = rb_funcall(envst->isalive, bdb_id_call, 3, a, b, c);
+    }
+    if (RTEST(res)) {
+	return 1;
+    }
+    return 0;
+}
+
+#else
+
 static int
 bdb_env_isalive(DB_ENV *dbenv, pid_t pid, db_threadid_t tid)
 {
@@ -349,10 +398,10 @@ bdb_env_isalive(DB_ENV *dbenv, pid_t pid, db_threadid_t tid)
     a = INT2NUM(pid);
     b = INT2NUM(tid);
     if (envst->isalive == 0) {
-	res = rb_funcall(obj, id_isalive, 2, INT2NUM(pid), INT2NUM(tid));
+	res = rb_funcall(obj, id_isalive, 2, a, b);
     }
     else {
-	res = rb_funcall(envst->isalive, bdb_id_call, 2, INT2NUM(pid), INT2NUM(tid));
+	res = rb_funcall(envst->isalive, bdb_id_call, 2, a, b);
     }
     if (RTEST(res)) {
 	return 1;
@@ -360,6 +409,7 @@ bdb_env_isalive(DB_ENV *dbenv, pid_t pid, db_threadid_t tid)
     return 0;
 }
 
+#endif
 
 #endif
 
@@ -393,16 +443,16 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	    break;
 	default:
 	    Check_Type(value, T_ARRAY);
-	    if (RARRAY(value)->len < 3) {
+	    if (RARRAY_LEN(value) < 3) {
 		rb_raise(bdb_eFatal, "expected 3 values for cachesize");
 	    }
 #if BDB_VERSION < 30000
-	    envp->mp_size = NUM2INT(RARRAY(value)->ptr[1]);
+	    envp->mp_size = NUM2INT(RARRAY_PTR(value)[1]);
 #else
 	    bdb_test_error(envp->set_cachesize(envp, 
-					       NUM2UINT(RARRAY(value)->ptr[0]),
-					       NUM2UINT(RARRAY(value)->ptr[1]),
-					       NUM2INT(RARRAY(value)->ptr[2])));
+					       NUM2UINT(RARRAY_PTR(value)[0]),
+					       NUM2UINT(RARRAY_PTR(value)[1]),
+					       NUM2INT(RARRAY_PTR(value)[2])));
 #endif
 	    break;
 	}
@@ -472,6 +522,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
         bdb_test_error(envp->set_lk_detect(envp, NUM2INT(value)));
 #endif
     }
+#if BDB_VERSION < 40500
     else if (strcmp(options, "set_lk_max") == 0) {
 #if BDB_VERSION < 30000
 	envp->lk_max = NUM2INT(value);
@@ -479,25 +530,26 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
         bdb_test_error(envp->set_lk_max(envp, NUM2INT(value)));
 #endif
     }
+#endif
     else if (strcmp(options, "set_lk_conflicts") == 0) {
 	int i, j, l, v;
 	unsigned char *conflits, *p;
 
 	Check_Type(value, T_ARRAY);
-	l = RARRAY(value)->len;
+	l = RARRAY_LEN(value);
 	p = conflits = ALLOC_N(unsigned char, l * l);
 	for (i = 0; i < l; i++) {
-	    if (TYPE(RARRAY(value)->ptr[i]) != T_ARRAY ||
-		RARRAY(RARRAY(value)->ptr[i])->len != l) {
+	    if (TYPE(RARRAY_PTR(value)[i]) != T_ARRAY ||
+		RARRAY_LEN(RARRAY_PTR(value)[i]) != l) {
 		free(conflits);
 		rb_raise(bdb_eFatal, "invalid array for lk_conflicts");
 	    }
 	    for (j = 0; j < l; j++, p++) {
-		if (TYPE(RARRAY(RARRAY(value)->ptr[i])->ptr[j]) != T_FIXNUM) {
+		if (TYPE(RARRAY_PTR(RARRAY_PTR(value)[i])[j]) != T_FIXNUM) {
 		    free(conflits);
 		    rb_raise(bdb_eFatal, "invalid value for lk_conflicts");
 		}
-		v = NUM2INT(RARRAY(RARRAY(value)->ptr[i])->ptr[j]);
+		v = NUM2INT(RARRAY_PTR(RARRAY_PTR(value)[i])[j]);
 		if (v != 0 && v != 1) {
 		    free(conflits);
 		    rb_raise(bdb_eFatal, "invalid value for lk_conflicts");
@@ -528,7 +580,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	{
 	    char *tmp;
 
-	    tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + RSTRING(value)->len + 2);
+	    tmp = ALLOCA_N(char, strlen("DB_DATA_DIR") + RSTRING_LEN(value) + 2);
 	    sprintf(tmp, "DB_DATA_DIR %s", StringValuePtr(value));
 	    rb_ary_push(db_st->config, rb_str_new2(tmp));
 	}
@@ -542,7 +594,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	{
 	    char *tmp;
 
-	    tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + RSTRING(value)->len + 2);
+	    tmp = ALLOCA_N(char, strlen("DB_LOG_DIR") + RSTRING_LEN(value) + 2);
 	    sprintf(tmp, "DB_LOG_DIR %s", StringValuePtr(value));
 	    rb_ary_push(db_st->config, rb_str_new2(tmp));
 	}
@@ -556,7 +608,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	{
 	    char *tmp;
 
-	    tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + RSTRING(value)->len + 2);
+	    tmp = ALLOCA_N(char, strlen("DB_TMP_DIR") + RSTRING_LEN(value) + 2);
 	    sprintf(tmp, "DB_TMP_DIR %s", StringValuePtr(value));
 	    rb_ary_push(db_st->config, rb_str_new2(tmp));
 	}
@@ -578,15 +630,15 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	    host = StringValuePtr(value);
 	    break;
 	case T_ARRAY:
-	    switch (RARRAY(value)->len) {
+	    switch (RARRAY_LEN(value)) {
 	    default:
 	    case 3:
-		sv_timeout = NUM2INT(RARRAY(value)->ptr[2]);
+		sv_timeout = NUM2INT(RARRAY_PTR(value)[2]);
 	    case 2:
-		cl_timeout = NUM2INT(RARRAY(value)->ptr[1]);
+		cl_timeout = NUM2INT(RARRAY_PTR(value)[1]);
 	    case 1:
-		SafeStringValue(RARRAY(value)->ptr[0]);
-		host = StringValuePtr(RARRAY(value)->ptr[0]);
+		SafeStringValue(RARRAY_PTR(value)[0]);
+		host = StringValuePtr(RARRAY_PTR(value)[0]);
 		break;
 	    case 0:
 		rb_raise(bdb_eFatal, "Empty array for \"set_server\"");
@@ -614,8 +666,8 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
         case Qtrue: envst->marshal = bdb_mMarshal; break;
         case Qfalse: envst->marshal = Qfalse; break;
         default: 
-	    if (!rb_respond_to(value, bdb_id_load) ||
-		!rb_respond_to(value, bdb_id_dump)) {
+	    if (!bdb_respond_to(value, bdb_id_load) ||
+		!bdb_respond_to(value, bdb_id_dump)) {
 		rb_raise(bdb_eFatal, "marshal value must be true or false");
 	    }
 	    envst->marshal = value;
@@ -631,31 +683,36 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	}
     }
 #if BDB_VERSION >= 40000
-    else if (strcmp(options, "set_rep_transport") == 0) {
-	if (TYPE(value) != T_ARRAY || RARRAY(value)->len != 2) {
+    else if (strcmp(options, "set_rep_transport") == 0 ||
+	strcmp(options, "rep_set_transport") == 0) {
+	if (TYPE(value) != T_ARRAY || RARRAY_LEN(value) != 2) {
 	    rb_raise(bdb_eFatal, "expected an Array of length 2 for set_rep_transport");
 	}
-	if (!FIXNUM_P(RARRAY(value)->ptr[0])) {
+	if (!FIXNUM_P(RARRAY_PTR(value)[0])) {
 	    rb_raise(bdb_eFatal, "expected a Fixnum for the 1st arg of set_rep_transport");
 	}
-	if (!rb_respond_to(RARRAY(value)->ptr[1], bdb_id_call)) {
+	if (!rb_respond_to(RARRAY_PTR(value)[1], bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "2nd arg must respond to #call");
 	}
-	envst->rep_transport = RARRAY(value)->ptr[1];
-	bdb_test_error(envst->envp->set_rep_transport(envst->envp, NUM2INT(RARRAY(value)->ptr[0]), bdb_env_rep_transport));
+	envst->rep_transport = RARRAY_PTR(value)[1];
+#if BDB_VERSION >= 40500
+	bdb_test_error(envst->envp->rep_set_transport(envst->envp, NUM2INT(RARRAY_PTR(value)[0]), bdb_env_rep_transport));
+#else
+	bdb_test_error(envst->envp->set_rep_transport(envst->envp, NUM2INT(RARRAY_PTR(value)[0]), bdb_env_rep_transport));
+#endif
 	envst->options |= BDB_REP_TRANSPORT;
     }
     else if (strcmp(options, "set_timeout") == 0) {
 	if (TYPE(value) == T_ARRAY) {
-	    if (RARRAY(value)->len >= 1 && !NIL_P(RARRAY(value)->ptr[0])) {
+	    if (RARRAY_LEN(value) >= 1 && !NIL_P(RARRAY_PTR(value)[0])) {
 
 		bdb_test_error(envst->envp->set_timeout(envst->envp, 
-							NUM2UINT(RARRAY(value)->ptr[0]),
+							NUM2UINT(RARRAY_PTR(value)[0]),
 							DB_SET_TXN_TIMEOUT));
 	    }
-	    if (RARRAY(value)->len == 2 && !NIL_P(RARRAY(value)->ptr[1])) {
+	    if (RARRAY_LEN(value) == 2 && !NIL_P(RARRAY_PTR(value)[1])) {
 		bdb_test_error(envst->envp->set_timeout(envst->envp, 
-							NUM2UINT(RARRAY(value)->ptr[0]),
+							NUM2UINT(RARRAY_PTR(value)[0]),
 							DB_SET_LOCK_TIMEOUT));
 	    }
 	}
@@ -681,11 +738,11 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	char *passwd;
 	int flags = DB_ENCRYPT_AES;
 	if (TYPE(value) == T_ARRAY) {
-	    if (RARRAY(value)->len != 2) {
+	    if (RARRAY_LEN(value) != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
-	    flags = NUM2INT(RARRAY(value)->ptr[1]);
+	    passwd = StringValuePtr(RARRAY_PTR(value)[0]);
+	    flags = NUM2INT(RARRAY_PTR(value)[1]);
 	}
 	else {
 	    passwd = StringValuePtr(value);
@@ -693,20 +750,25 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	bdb_test_error(envst->envp->set_encrypt(envst->envp, passwd, flags));
 	envst->options |= BDB_ENV_ENCRYPT;
     }
-    else if (strcmp(options, "set_rep_limit") == 0) {
+    else if (strcmp(options, "set_rep_limit") == 0 ||
+	strcmp(options, "rep_set_limit") == 0) {
 	u_int32_t gbytes, bytes;
 	gbytes = bytes = 0;
 	if (TYPE(value) == T_ARRAY) {
-	    if (RARRAY(value)->len != 2) {
+	    if (RARRAY_LEN(value) != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    gbytes = NUM2UINT(RARRAY(value)->ptr[0]);
-	    bytes = NUM2UINT(RARRAY(value)->ptr[1]);
+	    gbytes = NUM2UINT(RARRAY_PTR(value)[0]);
+	    bytes = NUM2UINT(RARRAY_PTR(value)[1]);
 	}
 	else {
-	    bytes = NUM2UINT(RARRAY(value)->ptr[1]);
+	    bytes = NUM2UINT(RARRAY_PTR(value)[1]);
 	}
+#if BDB_VERSION >= 40500
+	bdb_test_error(envst->envp->rep_set_limit(envst->envp, gbytes, bytes));
+#else
 	bdb_test_error(envst->envp->set_rep_limit(envst->envp, gbytes, bytes));
+#endif
     }
 #endif
 #if BDB_VERSION >= 30000
@@ -762,6 +824,46 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 #if BDB_VERSION >= 40250
     else if (strcmp(options, "set_shm_key") == 0) {
 	bdb_test_error(envst->envp->set_shm_key(envst->envp, NUM2INT(value)));
+    }
+#endif
+#if BDB_VERSION >= 40500
+    else if (strcmp(options, "set_rep_nsites") == 0 ||
+	strcmp(options, "rep_set_nsites") == 0) {
+	bdb_test_error(envst->envp->rep_set_nsites(envst->envp, NUM2INT(value)));
+    }
+    else if (strcmp(options, "set_rep_priority") == 0 ||
+	strcmp(options, "rep_set_priority") == 0) {
+	bdb_test_error(envst->envp->rep_set_priority(envst->envp, NUM2INT(value)));
+    }
+    else if (strcmp(options, "set_rep_config") == 0 ||
+	strcmp(options, "rep_set_config") == 0) {
+	int onoff = 0;
+
+	if (TYPE(value) != T_ARRAY || RARRAY_LEN(value) != 2) {
+	    rb_raise(bdb_eFatal, "Expected an Array with 2 values");
+	}
+	if (RARRAY_PTR(value)[1] == Qtrue) {
+	    onoff = 1;
+	}
+	else if (RARRAY_PTR(value)[1] == Qfalse ||
+		 RARRAY_PTR(value)[1] == Qnil) {
+	    onoff = 0;
+	}
+	else {
+	    onoff = NUM2UINT(RARRAY_PTR(value)[1]);
+	}
+	bdb_test_error(envst->envp->rep_set_config(envst->envp, 
+						   NUM2UINT(RARRAY_PTR(value)[0]),
+						   onoff));
+    }
+    else if (strcmp(options, "set_rep_timeout") == 0 ||
+	strcmp(options, "rep_set_timeout") == 0) {
+	if (TYPE(value) != T_ARRAY || RARRAY_LEN(value) != 2) {
+	    rb_raise(bdb_eFatal, "Expected an Array with 2 values");
+	}
+	bdb_test_error(envst->envp->rep_set_timeout(envst->envp, 
+						    NUM2UINT(RARRAY_PTR(value)[0]),
+						    NUM2UINT(RARRAY_PTR(value)[1])));
     }
 #endif
     return Qnil;
@@ -1149,11 +1251,11 @@ bdb_env_init(int argc, VALUE *argv, VALUE obj)
 	int flags = DB_ENCRYPT_AES;
 	VALUE value = rb_const_get(CLASS_OF(obj), rb_intern("BDB_ENCRYPT"));
 	if (TYPE(value) == T_ARRAY) {
-	    if (RARRAY(value)->len != 2) {
+	    if (RARRAY_LEN(value) != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
-	    flags = NUM2INT(RARRAY(value)->ptr[1]);
+	    passwd = StringValuePtr(RARRAY_PTR(value)[0]);
+	    flags = NUM2INT(RARRAY_PTR(value)[1]);
 	}
 	else {
 	    passwd = StringValuePtr(value);
@@ -1172,12 +1274,12 @@ bdb_env_init(int argc, VALUE *argv, VALUE obj)
 	db_st->env = envst;
 	db_st->config = st_config;
 	bdb_env_each_options(argv[argc - 1], db_stobj);
-	if (RARRAY(st_config)->len > 0) {
-	    db_config = ALLOCA_N(char *, RARRAY(st_config)->len + 1);
-	    for (i = 0; i < RARRAY(st_config)->len; i++) {
-		db_config[i] = StringValuePtr(RARRAY(st_config)->ptr[i]);
+	if (RARRAY_LEN(st_config) > 0) {
+	    db_config = ALLOCA_N(char *, RARRAY_LEN(st_config) + 1);
+	    for (i = 0; i < RARRAY_LEN(st_config); i++) {
+		db_config[i] = StringValuePtr(RARRAY_PTR(st_config)[i]);
 	    }
-	    db_config[RARRAY(st_config)->len] = 0;
+	    db_config[RARRAY_LEN(st_config)] = 0;
 	}
 	argc--;
     }
@@ -1223,8 +1325,13 @@ bdb_env_init(int argc, VALUE *argv, VALUE obj)
 	    rb_raise(bdb_eFatal, "ENVID must be defined to use rep_transport");
 	}
 	envid = rb_const_get(CLASS_OF(obj), rb_intern("ENVID"));
+#if BDB_VERSION >= 40500
+	bdb_test_error(envp->rep_set_transport(envp, NUM2INT(envid),
+						 bdb_env_rep_transport));
+#else
 	bdb_test_error(envp->set_rep_transport(envp, NUM2INT(envid),
 						 bdb_env_rep_transport));
+#endif
 	envst->options |= BDB_REP_TRANSPORT;
     }
 #endif
@@ -1385,12 +1492,16 @@ bdb_env_home(VALUE obj)
 
 #if BDB_VERSION >= 40000
 
+#ifndef HAVE_RB_BLOCK_CALL
+
 static VALUE
 bdb_env_iterate(VALUE *tmp)
 {
     return rb_funcall2(tmp[0], rb_intern("__bdb_thread_init__"), 
 		       (int)tmp[1], (VALUE *)tmp[2]);
 }
+
+#endif
 
 static VALUE
 bdb_thread_init(int argc, VALUE *argv, VALUE obj)
@@ -1401,11 +1512,16 @@ bdb_thread_init(int argc, VALUE *argv, VALUE obj)
 	rb_thread_local_aset(obj, bdb_id_current_env, env);
     }
     if (rb_block_given_p()) {
+#if HAVE_RB_BLOCK_CALL
+	return rb_block_call(obj, rb_intern("__bdb_thread_init__"), argc, argv,
+			     rb_yield, obj);
+#else
 	VALUE tmp[3];
 	tmp[0] = obj;
 	tmp[1] = (VALUE)argc;
 	tmp[2] = (VALUE)argv;
 	return rb_iterate((VALUE (*)(VALUE))bdb_env_iterate, (VALUE)tmp, rb_yield, obj);
+#endif
     }
     return rb_funcall2(obj, rb_intern("__bdb_thread_init__"), argc, argv);
 }
@@ -1529,7 +1645,11 @@ bdb_env_i_conf(VALUE obj, VALUE a)
 	return INT2NUM(value);
     }
     if (strcmp(str, "rep_limit") == 0) {
+#if BDB_VERSION >= 40500
+	bdb_test_error(envst->envp->rep_get_limit(envst->envp, &gbytes, &bytes));
+#else
 	bdb_test_error(envst->envp->get_rep_limit(envst->envp, &gbytes, &bytes));
+#endif
 	res = rb_ary_new2(2);
 	rb_ary_push(res, INT2NUM(gbytes));
 	rb_ary_push(res, INT2NUM(bytes));
@@ -1571,6 +1691,16 @@ bdb_env_i_conf(VALUE obj, VALUE a)
 	bdb_test_error(envst->envp->get_tx_timestamp(envst->envp, &timeval));
 	return INT2NUM(timeval);
     }
+#if BDB_VERSION >= 40500
+    if (strcmp(str, "rep_priority") == 0) {
+	bdb_test_error(envst->envp->rep_get_priority(envst->envp, &size));
+	return INT2NUM(size);
+    }
+    if (strcmp(str, "rep_nsites") == 0) {
+	bdb_test_error(envst->envp->rep_get_nsites(envst->envp, &size));
+	return INT2NUM(size);
+    }
+#endif
     rb_raise(rb_eArgError, "Unknown option %s", str);
     return obj;
 }
@@ -1581,6 +1711,9 @@ options[] = {
     "lg_max", "lg_regionmax", "lk_detect", "lk_max_lockers", "lk_max_locks",
     "lk_max_objects", "mp_mmapsize", "open_flags", "rep_limit", "shm_key",
     "tas_spins", "txn_timeout", "lock_timeout", "tmp_dir", "tx_max",
+#if BDB_VERSION >= 40500
+    "rep_priority", "rep_nsites",
+#endif
     "tx_timestamp", 0
 };
 
@@ -1746,6 +1879,376 @@ bdb_env_failcheck(int argc, VALUE *argv, VALUE obj)
 
 #endif
 
+#if BDB_VERSION >= 40500
+
+static VALUE
+bdb_env_repmgr_add_remote(int argc, VALUE *argv, VALUE obj)
+{
+    bdb_ENV *envst;
+    VALUE a, b, c;
+    int eid, flags;
+
+    flags = 0;
+    if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
+	flags = NUM2INT(c);
+    }
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->repmgr_add_remote_site(envst->envp, 
+						       StringValuePtr(a),
+						       NUM2UINT(b),
+						       &eid, flags));
+    return INT2NUM(eid);
+}
+
+static VALUE
+bdb_env_repmgr_set_ack_policy(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->repmgr_set_ack_policy(envst->envp, 
+						      NUM2UINT(a)));
+    return a;
+}
+
+static VALUE
+bdb_env_repmgr_get_ack_policy(VALUE obj)
+{
+    bdb_ENV *envst;
+    int policy;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->repmgr_get_ack_policy(envst->envp, &policy));
+    return INT2NUM(policy);
+}
+
+static VALUE
+bdb_env_repmgr_set_local_site(int argc, VALUE *argv, VALUE obj)
+{
+    bdb_ENV *envst;
+    VALUE a, b, c;
+    int flags;
+
+    flags = 0;
+    if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
+	flags = NUM2INT(c);
+    }
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->repmgr_set_local_site(envst->envp, 
+						      StringValuePtr(a),
+						      NUM2UINT(b),
+						      flags));
+    return obj;
+}
+
+static VALUE
+bdb_env_repmgr_site_list(VALUE obj)
+{
+    bdb_ENV *envst;
+    VALUE res, tmp;
+    u_int count, i;
+    DB_REPMGR_SITE *list;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->repmgr_site_list(envst->envp, 
+						 &count, &list));
+    res = rb_ary_new();
+    for (i = 0; i < count; i++) {
+	tmp = rb_hash_new();
+	rb_hash_aset(tmp, rb_tainted_str_new2("eid"), INT2NUM(list[i].eid));
+	rb_hash_aset(tmp, rb_tainted_str_new2("host"), rb_tainted_str_new2(list[i].host));
+	rb_hash_aset(tmp, rb_tainted_str_new2("port"), INT2NUM(list[i].port));
+	rb_hash_aset(tmp, rb_tainted_str_new2("status"), INT2NUM(list[i].status));
+	rb_ary_push(res, tmp);
+    }
+    free(list);
+    return res;
+}
+
+static VALUE
+bdb_env_repmgr_start(VALUE obj, VALUE a, VALUE b)
+{
+    bdb_ENV *envst;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->repmgr_start(envst->envp, NUM2INT(a), NUM2INT(b)));
+    return obj;
+}
+
+static VALUE
+bdb_env_rep_set_config(VALUE obj, VALUE a, VALUE b)
+{
+    bdb_ENV *envst;
+    int onoff = 0;
+
+    if (b == Qtrue) {
+	onoff = 1;
+    }
+    else if (b == Qfalse || b == Qnil) {
+	onoff = 0;
+    }
+    else {
+	onoff = NUM2INT(b);
+    }
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_set_config(envst->envp, NUM2UINT(a), onoff));
+    return obj;
+}
+
+static VALUE
+bdb_env_rep_get_config(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+    int offon;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_get_config(envst->envp, NUM2UINT(a), &offon));
+    if (offon) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+bdb_env_rep_set_nsites(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_set_nsites(envst->envp, NUM2UINT(a)));
+    return a;
+}
+
+static VALUE
+bdb_env_rep_get_nsites(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+    int offon;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_get_nsites(envst->envp, &offon));
+    return INT2NUM(offon);
+}
+
+static VALUE
+bdb_env_rep_set_priority(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_set_priority(envst->envp, NUM2UINT(a)));
+    return a;
+}
+
+static VALUE
+bdb_env_rep_get_priority(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+    int offon;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_get_priority(envst->envp, &offon));
+    return INT2NUM(offon);
+}
+
+static VALUE
+bdb_env_rep_set_timeout(VALUE obj, VALUE a, VALUE b)
+{
+    bdb_ENV *envst;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_set_timeout(envst->envp,
+					       NUM2UINT(a),
+					       NUM2INT(b)));
+    return obj;
+}
+
+static VALUE
+bdb_env_rep_get_timeout(VALUE obj, VALUE a)
+{
+    bdb_ENV *envst;
+    int offon;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_get_timeout(envst->envp, NUM2UINT(a), &offon));
+    return INT2NUM(offon);
+}
+
+static VALUE
+bdb_env_rep_get_limit(VALUE obj)
+{
+    bdb_ENV *envst;
+    u_int32_t gbytes, bytes;
+    VALUE res;
+
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_get_limit(envst->envp, &gbytes, &bytes));
+    res = rb_ary_new2(2);
+    rb_ary_push(res, INT2NUM(gbytes));
+    rb_ary_push(res, INT2NUM(bytes));
+    return res;
+}
+
+static VALUE
+bdb_env_rep_sync(int argc, VALUE *argv, VALUE obj)
+{
+    bdb_ENV *envst;
+    VALUE a;
+    int flags;
+
+    flags = 0;
+    if (rb_scan_args(argc, argv, "01", &a) == 1) {
+	flags = NUM2INT(a);
+    }
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_sync(envst->envp, flags));
+    return obj;
+}
+
+static VALUE
+bdb_env_rep_stat(int argc, VALUE *argv, VALUE obj)
+{
+    bdb_ENV *envst;
+    VALUE a, lsn;
+    int flags;
+    struct dblsnst *lsnst;
+    DB_REP_STAT *bs;
+
+    flags = 0;
+    if (rb_scan_args(argc, argv, "01", &a) == 1) {
+	flags = NUM2INT(a);
+    }
+    GetEnvDB(obj, envst);
+    bdb_test_error(envst->envp->rep_stat(envst->envp, &bs, flags));
+    a = rb_hash_new();
+    rb_hash_aset(a, rb_tainted_str_new2("st_bulk_fills"), INT2NUM(bs->st_bulk_fills));
+    rb_hash_aset(a, rb_tainted_str_new2("st_bulk_overflows"), INT2NUM(bs->st_bulk_overflows));
+    rb_hash_aset(a, rb_tainted_str_new2("st_bulk_records"), INT2NUM(bs->st_bulk_records));
+    rb_hash_aset(a, rb_tainted_str_new2("st_bulk_transfers"), INT2NUM(bs->st_bulk_transfers));
+    rb_hash_aset(a, rb_tainted_str_new2("st_client_rerequests"), INT2NUM(bs->st_client_rerequests));
+    rb_hash_aset(a, rb_tainted_str_new2("st_client_svc_miss"), INT2NUM(bs->st_client_svc_miss));
+    rb_hash_aset(a, rb_tainted_str_new2("st_client_svc_req"), INT2NUM(bs->st_client_svc_req));
+    rb_hash_aset(a, rb_tainted_str_new2("st_dupmasters"), INT2NUM(bs->st_dupmasters));
+    rb_hash_aset(a, rb_tainted_str_new2("st_egen"), INT2NUM(bs->st_egen));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_cur_winner"), INT2NUM(bs->st_election_cur_winner));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_gen"), INT2NUM(bs->st_election_gen));
+
+    lsn = bdb_makelsn(obj);
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    MEMCPY(lsnst->lsn, &bs->st_election_lsn, DB_LSN, 1);
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_lsn"), lsn);
+
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_nsites"), INT2NUM(bs->st_election_nsites));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_nvotes"), INT2NUM(bs->st_election_nvotes));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_priority"), INT2NUM(bs->st_election_priority));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_sec"), INT2NUM(bs->st_election_sec));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_status"), INT2NUM(bs->st_election_status));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_tiebreaker"), INT2NUM(bs->st_election_tiebreaker));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_usec"), INT2NUM(bs->st_election_usec));
+    rb_hash_aset(a, rb_tainted_str_new2("st_election_votes"), INT2NUM(bs->st_election_votes));
+    rb_hash_aset(a, rb_tainted_str_new2("st_elections"), INT2NUM(bs->st_elections));
+    rb_hash_aset(a, rb_tainted_str_new2("st_elections_won"), INT2NUM(bs->st_elections_won));
+    rb_hash_aset(a, rb_tainted_str_new2("st_env_id"), INT2NUM(bs->st_env_id));
+    rb_hash_aset(a, rb_tainted_str_new2("st_env_priority"), INT2NUM(bs->st_env_priority));
+    rb_hash_aset(a, rb_tainted_str_new2("st_gen"), INT2NUM(bs->st_gen));
+    rb_hash_aset(a, rb_tainted_str_new2("st_log_duplicated"), INT2NUM(bs->st_log_duplicated));
+    rb_hash_aset(a, rb_tainted_str_new2("st_log_queued"), INT2NUM(bs->st_log_queued));
+    rb_hash_aset(a, rb_tainted_str_new2("st_log_queued_max"), INT2NUM(bs->st_log_queued_max));
+    rb_hash_aset(a, rb_tainted_str_new2("st_log_queued_total"), INT2NUM(bs->st_log_queued_total));
+    rb_hash_aset(a, rb_tainted_str_new2("st_log_records"), INT2NUM(bs->st_log_records));
+    rb_hash_aset(a, rb_tainted_str_new2("st_log_requested"), INT2NUM(bs->st_log_requested));
+    rb_hash_aset(a, rb_tainted_str_new2("st_master"), INT2NUM(bs->st_master));
+    rb_hash_aset(a, rb_tainted_str_new2("st_master_changes"), INT2NUM(bs->st_master_changes));
+    rb_hash_aset(a, rb_tainted_str_new2("st_msgs_badgen"), INT2NUM(bs->st_msgs_badgen));
+    rb_hash_aset(a, rb_tainted_str_new2("st_msgs_processed"), INT2NUM(bs->st_msgs_processed));
+    rb_hash_aset(a, rb_tainted_str_new2("st_msgs_recover"), INT2NUM(bs->st_msgs_recover));
+    rb_hash_aset(a, rb_tainted_str_new2("st_msgs_send_failures"), INT2NUM(bs->st_msgs_send_failures));
+    rb_hash_aset(a, rb_tainted_str_new2("st_msgs_sent"), INT2NUM(bs->st_msgs_sent));
+    rb_hash_aset(a, rb_tainted_str_new2("st_newsites"), INT2NUM(bs->st_newsites));
+
+    lsn = bdb_makelsn(obj);
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    MEMCPY(lsnst->lsn, &bs->st_next_lsn, DB_LSN, 1);
+    rb_hash_aset(a, rb_tainted_str_new2("st_next_lsn"), lsn);
+    rb_hash_aset(a, rb_tainted_str_new2("st_next_pg"), INT2NUM(bs->st_next_pg));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nsites"), INT2NUM(bs->st_nsites));
+    rb_hash_aset(a, rb_tainted_str_new2("st_nthrottles"), INT2NUM(bs->st_nthrottles));
+    rb_hash_aset(a, rb_tainted_str_new2("st_outdated"), INT2NUM(bs->st_outdated));
+    rb_hash_aset(a, rb_tainted_str_new2("st_pg_duplicated"), INT2NUM(bs->st_pg_duplicated));
+    rb_hash_aset(a, rb_tainted_str_new2("st_pg_records"), INT2NUM(bs->st_pg_records));
+    rb_hash_aset(a, rb_tainted_str_new2("st_pg_requested"), INT2NUM(bs->st_pg_requested));
+    rb_hash_aset(a, rb_tainted_str_new2("st_startup_complete"), INT2NUM(bs->st_startup_complete));
+    rb_hash_aset(a, rb_tainted_str_new2("st_status"), INT2NUM(bs->st_status));
+    rb_hash_aset(a, rb_tainted_str_new2("st_txns_applied"), INT2NUM(bs->st_txns_applied));
+    lsn = bdb_makelsn(obj);
+    Data_Get_Struct(lsn, struct dblsnst, lsnst);
+    MEMCPY(lsnst->lsn, &bs->st_waiting_lsn, DB_LSN, 1);
+    rb_hash_aset(a, rb_tainted_str_new2("st_waiting_lsn"), lsn);
+    rb_hash_aset(a, rb_tainted_str_new2("st_waiting_pg"), INT2NUM(bs->st_waiting_pg));
+    free(bs);
+    return a;
+}
+
+static VALUE bdb_cInt;
+
+struct bdb_intern {
+    VALUE obj;
+    int sstype;
+};
+
+#define BDB_INTERN_CONFIG 1
+#define BDB_INTERN_TIMEOUT 2
+
+#define REP_INTERN(str_, sstype_)				\
+static VALUE							\
+bdb_env_rep_intern_##str_(VALUE obj)				\
+{								\
+    struct bdb_intern *st_intern;				\
+    VALUE res;							\
+								\
+    res = Data_Make_Struct(bdb_cInt, struct bdb_intern, 0, free, st_intern);	\
+    st_intern->obj = obj;					\
+    st_intern->sstype = sstype_;				\
+    return res;							\
+}
+
+REP_INTERN(config, BDB_INTERN_CONFIG)
+REP_INTERN(timeout, BDB_INTERN_TIMEOUT)
+
+static VALUE
+bdb_intern_set(VALUE obj, VALUE a, VALUE b)
+{
+    struct bdb_intern *st_intern;
+
+    Data_Get_Struct(obj, struct bdb_intern, st_intern);
+    if (st_intern->sstype == BDB_INTERN_TIMEOUT) {
+	return bdb_env_rep_set_timeout(st_intern->obj, a, b);
+    }
+    if (st_intern->sstype == BDB_INTERN_CONFIG) {
+	return bdb_env_rep_set_config(st_intern->obj, a, b);
+    }
+    rb_raise(rb_eArgError, "Invalid argument for Intern__#[]=");
+    return Qnil;
+}
+
+static VALUE
+bdb_intern_get(VALUE obj, VALUE a)
+{
+    struct bdb_intern *st_intern;
+
+    Data_Get_Struct(obj, struct bdb_intern, st_intern);
+    if (st_intern->sstype == BDB_INTERN_TIMEOUT) {
+	return bdb_env_rep_get_timeout(st_intern->obj, a);
+    }
+    if (st_intern->sstype == BDB_INTERN_CONFIG) {
+	return bdb_env_rep_get_config(st_intern->obj, a);
+    }
+    rb_raise(rb_eArgError, "Invalid argument for Intern__#[]");
+    return Qnil;
+}
+
+#endif
+
 void bdb_init_env()
 {
     bdb_id_call = rb_intern("call");
@@ -1781,8 +2284,10 @@ void bdb_init_env()
 #if BDB_VERSION >= 40000
     rb_define_method(bdb_cEnv, "rep_elect", bdb_env_rep_elect, -1);
     rb_define_method(bdb_cEnv, "elect", bdb_env_rep_elect, -1);
+#if BDB_VERSION < 40500
     rb_define_method(bdb_cEnv, "rep_process_message", bdb_env_rep_process_message, 3);
     rb_define_method(bdb_cEnv, "process_message", bdb_env_rep_process_message, 3);
+#endif
     rb_define_method(bdb_cEnv, "rep_start", bdb_env_rep_start, 2);
     if (!rb_method_boundp(rb_cThread, rb_intern("__bdb_thread_init__"), 1)) {
 	rb_alias(rb_cThread, rb_intern("__bdb_thread_init__"), rb_intern("initialize"));
@@ -1808,4 +2313,53 @@ void bdb_init_env()
     rb_define_method(bdb_cEnv, "isalive=", bdb_env_set_isalive, 1);
     rb_define_method(bdb_cEnv, "failcheck", bdb_env_failcheck, -1);
 #endif
+#if BDB_VERSION >= 40500
+    bdb_cInt = rb_define_class_under(bdb_mDb, "Intern__", rb_cObject);
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+    rb_undef_alloc_func(bdb_cInt);
+#else
+    rb_undef_method(CLASS_OF(bdb_cInt), "allocate");
+#endif
+    rb_undef_method(CLASS_OF(bdb_cInt), "new");
+    rb_define_method(bdb_cInt, "[]", bdb_intern_get, 1);
+    rb_define_method(bdb_cInt, "[]=", bdb_intern_set, 2);
+
+    rb_define_method(bdb_cEnv, "repmgr_add_remote_site", 
+		     bdb_env_repmgr_add_remote, -1);
+    rb_define_method(bdb_cEnv, "repmgr_set_ack_policy",
+		     bdb_env_repmgr_set_ack_policy, 1);
+    rb_define_method(bdb_cEnv, "repmgr_ack_policy=",
+		     bdb_env_repmgr_set_ack_policy, 1);
+    rb_define_method(bdb_cEnv, "repmgr_get_ack_policy",
+		     bdb_env_repmgr_get_ack_policy, 0);
+    rb_define_method(bdb_cEnv, "repmgr_ack_policy",
+		     bdb_env_repmgr_get_ack_policy, 0);
+    rb_define_method(bdb_cEnv, "repmgr_set_local_site",
+		     bdb_env_repmgr_set_local_site, -1);
+    rb_define_method(bdb_cEnv, "repmgr_site_list", bdb_env_repmgr_site_list, 0);
+    rb_define_method(bdb_cEnv, "repmgr_start", bdb_env_repmgr_start, 2);
+
+
+    rb_define_method(bdb_cEnv, "rep_set_config", bdb_env_rep_set_config, 2);
+    rb_define_method(bdb_cEnv, "rep_get_config", bdb_env_rep_get_config, 1);
+    rb_define_method(bdb_cEnv, "rep_config", bdb_env_rep_intern_config, 0);
+    rb_define_method(bdb_cEnv, "rep_config?", bdb_env_rep_intern_config, 0);
+    rb_define_method(bdb_cEnv, "rep_set_nsites", bdb_env_rep_set_nsites, 1);
+    rb_define_method(bdb_cEnv, "rep_nsites=", bdb_env_rep_set_nsites, 1);
+    rb_define_method(bdb_cEnv, "rep_get_nsites", bdb_env_rep_get_nsites, 0);
+    rb_define_method(bdb_cEnv, "rep_nsites", bdb_env_rep_get_nsites, 0);
+    rb_define_method(bdb_cEnv, "rep_set_priority", bdb_env_rep_set_priority, 1);
+    rb_define_method(bdb_cEnv, "rep_priority=", bdb_env_rep_set_priority, 1);
+    rb_define_method(bdb_cEnv, "rep_get_priority", bdb_env_rep_get_priority, 0);
+    rb_define_method(bdb_cEnv, "rep_priority", bdb_env_rep_get_priority, 0);
+    rb_define_method(bdb_cEnv, "rep_get_limit", bdb_env_rep_get_limit, 0);
+    rb_define_method(bdb_cEnv, "rep_limit", bdb_env_rep_get_limit, 0);
+    rb_define_method(bdb_cEnv, "rep_set_timeout", bdb_env_rep_set_timeout, 2);
+    rb_define_method(bdb_cEnv, "rep_get_timeout", bdb_env_rep_get_timeout, 1);
+    rb_define_method(bdb_cEnv, "rep_timeout", bdb_env_rep_intern_timeout, 0);
+    rb_define_method(bdb_cEnv, "rep_stat", bdb_env_rep_stat, 0);
+    rb_define_method(bdb_cEnv, "rep_sync", bdb_env_rep_sync, -1);
+    
+#endif
 }
+

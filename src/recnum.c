@@ -135,8 +135,8 @@ bdb_intern_shift_pop(VALUE obj, int depart, int len)
 	if (dbst->len > 0) dbst->len--;
     }
     dbcp->c_close(dbcp);
-    if (RARRAY(res)->len == 0) return Qnil;
-    else if (RARRAY(res)->len == 1) return RARRAY(res)->ptr[0];
+    if (RARRAY_LEN(res) == 0) return Qnil;
+    else if (RARRAY_LEN(res) == 1) return RARRAY_PTR(res)[0];
     else return res;
 }
 
@@ -166,7 +166,7 @@ bdb_sary_replace(VALUE obj, VALUE beg, long len, long rpl)
     else if (TYPE(rpl) != T_ARRAY) {
 	rpl = rb_ary_new3(1, rpl);
     }
-    rlen = RARRAY(rpl)->len;
+    rlen = RARRAY_LEN(rpl);
 
     tmp[1] = Qnil;
     if (beg >= dbst->len) {
@@ -175,9 +175,9 @@ bdb_sary_replace(VALUE obj, VALUE beg, long len, long rpl)
 	    bdb_put(2, tmp, obj);
 	    dbst->len++;
 	}
-	for (i = beg, j = 0; j < RARRAY(rpl)->len; i++, j++) {
+	for (i = beg, j = 0; j < RARRAY_LEN(rpl); i++, j++) {
 	    tmp[0] = INT2NUM(i);
-	    tmp[1] = RARRAY(rpl)->ptr[j];
+	    tmp[1] = RARRAY_PTR(rpl)[j];
 	    bdb_put(2, tmp, obj);
 	    dbst->len++;
 	}
@@ -195,7 +195,7 @@ bdb_sary_replace(VALUE obj, VALUE beg, long len, long rpl)
 	}
 	for (i = beg, j = 0; j < rlen; i++, j++) {
 	    tmp[0] = INT2NUM(i);
-	    tmp[1] = RARRAY(rpl)->ptr[j];
+	    tmp[1] = RARRAY_PTR(rpl)[j];
 	    bdb_put(2, tmp, obj);
 	}
 	if (len > rlen) {
@@ -349,9 +349,9 @@ bdb_sary_concat(VALUE obj, VALUE y)
 
     y = rb_convert_type(y, T_ARRAY, "Array", "to_ary");
     GetDB(obj, dbst);
-    for (i = 0; i < RARRAY(y)->len; i++) {
+    for (i = 0; i < RARRAY_LEN(y); i++) {
 	tmp[0] = INT2NUM(dbst->len);
-	tmp[1] = RARRAY(y)->ptr[i];
+	tmp[1] = RARRAY_PTR(y)[i];
 	bdb_put(2, tmp, obj);
 	dbst->len++;
     }
@@ -762,8 +762,8 @@ bdb_sary_cmp(VALUE obj, VALUE obj2)
     len = dbst->len;
     if (!rb_obj_is_kind_of(obj2, bdb_cRecnum)) {
 	obj2 = rb_convert_type(obj2, T_ARRAY, "Array", "to_ary");
-	if (len > RARRAY(obj2)->len) {
-	    len = RARRAY(obj2)->len;
+	if (len > RARRAY_LEN(obj2)) {
+	    len = RARRAY_LEN(obj2);
 	}
 	ary = Qtrue;
     }
@@ -779,7 +779,7 @@ bdb_sary_cmp(VALUE obj, VALUE obj2)
 	tmp = INT2NUM(i);
 	a = bdb_get(1, &tmp, obj);
 	if (ary) {
-	    a2 = RARRAY(obj2)->ptr[i];
+	    a2 = RARRAY_PTR(obj2)[i];
 	}
 	else {
 	    a2 = bdb_get(1, &tmp, obj2);
@@ -789,7 +789,7 @@ bdb_sary_cmp(VALUE obj, VALUE obj2)
 	    return tmp;
 	}
     }
-    len = dbst->len - ary?RARRAY(obj2)->len:dbst2->len;
+    len = dbst->len - ary?RARRAY_LEN(obj2):dbst2->len;
     if (len == 0) return INT2FIX(0);
     if (len > 0) return INT2FIX(1);
     return INT2FIX(-1);

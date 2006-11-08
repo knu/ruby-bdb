@@ -20,6 +20,16 @@
 #define SafeStringValue(x) Check_SafeStr(x)
 #endif
 
+#ifndef RSTRING_PTR
+# define RSTRING_PTR(x_) RSTRING(x_)->ptr
+# define RSTRING_LEN(x_) RSTRING(x_)->len
+#endif
+
+#ifndef RARRAY_PTR
+# define RARRAY_PTR(x_) RARRAY(x_)->ptr
+# define RARRAY_LEN(x_) RARRAY(x_)->len
+#endif
+
 #ifdef close
 #undef close
 #endif
@@ -504,6 +514,7 @@ extern void bdb_ary_push _((struct ary_st *, VALUE));
 extern void bdb_ary_unshift _((struct ary_st *, VALUE));
 extern VALUE bdb_ary_delete _((struct ary_st *, VALUE));
 extern void bdb_ary_mark _((struct ary_st *));
+extern VALUE bdb_respond_to _((VALUE, ID));
 
 #if defined(__cplusplus)
 }

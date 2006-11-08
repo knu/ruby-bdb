@@ -74,6 +74,8 @@ if with_config("bdb-objs")
    $CFLAGS += " -DBDB_LINK_OBJ"
 end
 
+have_func("rb_block_call")
+
 create_makefile('bdbxml')
 
 begin

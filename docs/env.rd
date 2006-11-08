@@ -129,6 +129,10 @@ environment can then be identified by the name of that directory.
       : ((|set_lk_max_objects|)) : set maximum number of lock objects
       : ((|set_rep_transport|)) : configure replication transport (DB >= 4)
       : ((|set_rep_limit|)) : limit data sent in response to a single message (DB >= 4.1)
+      : ((|set_rep_nsites|)) : configure replication group site count (DB >= 4.5)
+      : ((|set_rep_priority|)) : configure replication site priority (DB >= 4.5)
+      : ((|set_rep_config|)) : configure the replication subsystem (DB >= 4.5)
+      : ((|set_rep_timeout|)) : configure replication timeouts (DB >= 4.5)
       : ((|set_rpc_server|)) : establish an RPC server connection (DB >= 3.1)
       : ((|set_tas_spins|)) : set the number of test-and-set spins (DB >= 3)
       : ((|set_tmp_dir|)) : set the environment temporary file directory (DB >= 3)
@@ -304,6 +308,96 @@ environment can then be identified by the name of that directory.
 --- txn_stat()
     Return transaction subsystem statistics
 
+--- repmgr_add_remote(host, port, flag = 0)
+    Only for DB >= 4.5
+
+    Adds a new replication site to the replication manager's list of known sites.
+
+    Return the environment ID assigned to the remote site
+
+--- repmgr_ack_policy=(policy)
+--- repmgr_set_ack_policy(policy)
+    Only for DB >= 4.5
+
+    Specifies how master and client sites will handle acknowledgment of replication
+    messages which are necessary for "permanent" records.
+
+    ((|policy|)) must be set to one of the following values 
+    ((|BDB::REPMGR_ACKS_ALL|)), ((|BDB::REPMGR_ACKS_ALL_PEERS|)),
+    ((|BDB::REPMGR_ACKS_NONE|)), ((|BDB::REPMGR_ACKS_ONE|)),
+    ((|BDB::REPMGR_ACKS_ONE_PEER|)), ((|BDB::REPMGR_ACKS_QUORUM|))
+
+--- repmgr_ack_policy
+--- repmgr_get_ack_policy
+    Only for DB >= 4.5
+
+    Returns the replication manager's client acknowledgment policy.
+
+--- repmgr_site_list
+    Only for DB >= 4.5
+
+    Returns an array with the status of the sites currently known by the
+    replication manager.
+
+--- repmgr_set_local_site(host, port, flag = 0)
+    Only for DB >= 4.5
+
+    Specifies the host identification string and port number for the local system.
+
+--- repmgr_start(count, flag)
+    Only for DB >= 4.5
+
+    Starts the replication manager.
+
+--- rep_config[]=(which, onoff)
+    Only for DB >= 4.5
+
+    Configures the Berkeley DB replication subsystem.
+
+    ((|which|)) can have the value ((|BDB::REP_CONF_BULK|)),
+    ((|BDB::REP_CONF_DELAYCLIENT|)), ((|BDB::REP_CONF_NOAUTOINIT|)),
+    ((|BDB::REP_CONF_NOWAIT|))
+
+    ((|onoff|)) can have the value ((|true|)) or ((|false|))
+
+--- rep_config?[](which)
+    Only for DB >= 4.5
+
+    Returns ((|true|)) if the specified ((|which|)) parameter is currently set or not.
+
+--- rep_nsites=(sites)
+    Only for DB >= 4.5
+
+    Specifies the total number of sites in a replication group.
+
+--- rep_nsites
+    Only for DB >= 4.5
+
+    Returns the total number of sites in a replication group.
+
+--- rep_priority=(priority)
+    Only for DB >= 4.5
+
+    Specifies the priority in the replication group elections.
+
+--- rep_priority
+    Only for DB >= 4.5
+
+    Returns the database environment priority.
+
+--- rep_timeout[]=(which, timeout)
+    Only for DB >= 4.5
+
+    Specifies the timeout in the replication group elections.
+
+    ((|which|)) can have the value ((|BDB::REP_ACK_TIMEOUT|)),
+    ((|BDB::REP_ELECTION_TIMEOUT|)), ((|BDB::REP_ELECTION_RETRY|)),
+    ((|BDB::REP_CONNECTION_RETRY|))
+
+--- rep_timeout[](which)
+    Only for DB >= 4.5
+
+    Returns the database environment timeout for ((|which|))
 
 --- elect(sites, priority, timeout)
 --- rep_elect(sites, priority, timeout)

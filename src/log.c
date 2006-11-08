@@ -55,7 +55,7 @@ bdb_s_log_put_internal(VALUE obj, VALUE a, int flag)
     ret = bdb_makelsn(obj);
     Data_Get_Struct(ret, struct dblsnst, lsnst);
     data.data = StringValuePtr(a);
-    data.size = RSTRING(a)->len;
+    data.size = RSTRING_LEN(a);
 #if BDB_VERSION < 30000
     if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");

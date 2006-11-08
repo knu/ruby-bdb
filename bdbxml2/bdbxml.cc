@@ -28,8 +28,8 @@ static void
 xb_io_delete(VALUE obj, bool to_close)
 {
     if (TYPE(xb_io) == T_ARRAY) {
-        for (int i = 0; i < RARRAY(xb_io)->len; i++) {
-            if (RARRAY(xb_io)->ptr[i] == obj) {
+        for (int i = 0; i < RARRAY_LEN(xb_io); i++) {
+            if (RARRAY_PTR(xb_io)[i] == obj) {
                 rb_ary_delete_at(xb_io, i);
                 break;
             }
@@ -481,8 +481,8 @@ ent_release(VALUE obj, VALUE man)
 static VALUE
 clean_ent(VALUE ary)
 {
-    return rb_iterate(ent_each, RARRAY(ary)->ptr[1], 
-                      (VALUE (*)(...))ent_release, RARRAY(ary)->ptr[0]);
+    return rb_iterate(ent_each, RARRAY_PTR(ary)[1], 
+                      (VALUE (*)(...))ent_release, RARRAY_PTR(ary)[0]);
 }
 
 static VALUE
@@ -496,16 +496,16 @@ xb_man_close(VALUE obj)
         man->env = 0;
     }
     VALUE ary = rb_ary_new2(2);
-    RARRAY(ary)->ptr[0] = obj;
-    RARRAY(ary)->ptr[1] = xb_cRes;
+    rb_ary_push(ary, obj);
+    rb_ary_push(ary, xb_cRes);
     rb_protect(clean_ent, ary, 0);
-    RARRAY(ary)->ptr[1] = xb_cVal;
+    rb_ary_store(ary, 1, xb_cVal);
     rb_protect(clean_ent, ary, 0);
-    RARRAY(ary)->ptr[1] = xb_cDoc;
+    rb_ary_store(ary, 1, xb_cDoc);
     rb_protect(clean_ent, ary, 0);
-    RARRAY(ary)->ptr[1] = xb_cQue;
+    rb_ary_store(ary, 1, xb_cQue);
     rb_protect(clean_ent, ary, 0);
-    RARRAY(ary)->ptr[1] = xb_cCon;
+    rb_ary_store(ary, 1, xb_cCon);
     rb_protect(clean_ent, ary, 0);
     if (man->man) {
         delete man->man;
@@ -730,6 +730,10 @@ xb_txn_missing(int argc, VALUE *argv, VALUE obj)
     ID id = SYM2ID(argv[0]);
     argc--; argv++;
     if (rb_block_given_p()) {
+#if HAVE_RB_BLOCK_CALL
+	return rb_block_call(txnst->man, id, argc, argv, 
+			     (VALUE(*)(ANYARGS))rb_yield, 0);
+#else
         VALUE tmp[4];
 
         tmp[0] = txnst->man;
@@ -738,6 +742,7 @@ xb_txn_missing(int argc, VALUE *argv, VALUE obj)
         tmp[3] = (VALUE)argv;
         return rb_iterate((VALUE(*)(VALUE))xb_each, (VALUE)tmp, 
                           (VALUE(*)(ANYARGS))rb_yield, 0);
+#endif
     }
     return rb_funcall2(txnst->man, id, argc, argv);
 }
@@ -1592,7 +1597,12 @@ xb_man_query(int argc, VALUE *argv, VALUE obj)
         res->man = obj;
     }
     if (rb_block_given_p()) {
+#if HAVE_RB_BLOCK_CALL
+	return rb_block_call(result, rb_intern("each"), 0, 0,
+			     (VALUE(*)(ANYARGS))rb_yield, Qnil);
+#else
         return rb_iterate(rb_each, result, (VALUE(*)(ANYARGS))rb_yield, Qnil);
+#endif
     }
     return result;
 }
@@ -2917,11 +2927,11 @@ xb_look_highbound_set(VALUE obj, VALUE a)
 {
     xlook *look = get_look(obj);
     a = rb_Array(a);
-    if (RARRAY(a)->len != 2) {
+    if (RARRAY_LEN(a) != 2) {
         rb_raise(rb_eArgError, "invalid argument [value, operation]");
     }
-    XmlValue xmlval = xb_val_xml(RARRAY(a)->ptr[0]);
-    XmlIndexLookup::Operation xmlop = XmlIndexLookup::Operation(NUM2INT(RARRAY(a)->ptr[1]));
+    XmlValue xmlval = xb_val_xml(RARRAY_PTR(a)[0]);
+    XmlIndexLookup::Operation xmlop = XmlIndexLookup::Operation(NUM2INT(RARRAY_PTR(a)[1]));
     PROTECT(look->look->setHighBound(xmlval, xmlop));
     return a;
 }
@@ -2945,11 +2955,11 @@ xb_look_lowbound_set(VALUE obj, VALUE a)
 {
     xlook *look = get_look(obj);
     a = rb_Array(a);
-    if (RARRAY(a)->len != 2) {
+    if (RARRAY_LEN(a) != 2) {
         rb_raise(rb_eArgError, "invalid argument [value, operation]");
     }
-    XmlValue xmlval = xb_val_xml(RARRAY(a)->ptr[0]);
-    XmlIndexLookup::Operation xmlop = XmlIndexLookup::Operation(NUM2INT(RARRAY(a)->ptr[1]));
+    XmlValue xmlval = xb_val_xml(RARRAY_PTR(a)[0]);
+    XmlIndexLookup::Operation xmlop = XmlIndexLookup::Operation(NUM2INT(RARRAY_PTR(a)[1]));
     PROTECT(look->look->setLowBound(xmlval, xmlop));
     return a;
 }
@@ -2989,11 +2999,11 @@ xb_look_node_set(VALUE obj, VALUE a)
 {
     xlook *look = get_look(obj);
     a = rb_Array(a);
-    if (RARRAY(a)->len != 2) {
+    if (RARRAY_LEN(a) != 2) {
         rb_raise(rb_eArgError, "invalid argument [uri, name]");
     }
-    char *uri = StringValuePtr(RARRAY(a)->ptr[0]);
-    char *name = StringValuePtr(RARRAY(a)->ptr[1]);
+    char *uri = StringValuePtr(RARRAY_PTR(a)[0]);
+    char *name = StringValuePtr(RARRAY_PTR(a)[1]);
     PROTECT(look->look->setNode(uri, name));
     return a;
 }
@@ -3045,11 +3055,11 @@ xb_look_parent_set(VALUE obj, VALUE a)
 {
     xlook *look = get_look(obj);
     a = rb_Array(a);
-    if (RARRAY(a)->len != 2) {
+    if (RARRAY_LEN(a) != 2) {
         rb_raise(rb_eArgError, "invalid argument [uri, name]");
     }
-    char *uri = StringValuePtr(RARRAY(a)->ptr[0]);
-    char *name = StringValuePtr(RARRAY(a)->ptr[1]);
+    char *uri = StringValuePtr(RARRAY_PTR(a)[0]);
+    char *name = StringValuePtr(RARRAY_PTR(a)[1]);
     PROTECT(look->look->setParent(uri, name));
     return a;
 }
@@ -3140,7 +3150,12 @@ xb_look_execute(int argc, VALUE *argv, VALUE obj)
     res->res = xmlres;
     res->man = look->man;
     if (rb_block_given_p()) {
+#if HAVE_RB_BLOCK_CALL
+	return rb_block_call(result, rb_intern("each"), 0, 0,
+			     (VALUE(*)(ANYARGS))rb_yield, Qnil);
+#else
         return rb_iterate(rb_each, result, (VALUE(*)(ANYARGS))rb_yield, Qnil);
+#endif
     }
     return result;
 }
@@ -3681,7 +3696,12 @@ xb_que_exec(int argc, VALUE *argv, VALUE obj)
     res->res = xmlres;
     res->man = que->man;
     if (rb_block_given_p()) {
+#if HAVE_RB_BLOCK_CALL
+	return rb_block_call(result, rb_intern("each"), 0, 0,
+			     (VALUE(*)(ANYARGS))rb_yield, Qnil);
+#else
         return rb_iterate(rb_each, result, (VALUE(*)(ANYARGS))rb_yield, Qnil);
+#endif
     }
     return result;
 }

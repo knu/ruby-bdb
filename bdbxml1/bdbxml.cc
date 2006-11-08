@@ -1350,9 +1350,9 @@ xb_ind_init(int argc, VALUE *argv, VALUE obj)
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 1)", argc);
     }
     tmp = rb_Array(argv[0]);
-    for (i = 0; i < RARRAY(tmp)->len; ++i) {
-	val = rb_Array(RARRAY(tmp)->ptr[i]);
-	xb_ind_add(RARRAY(val)->len, RARRAY(val)->ptr, obj);
+    for (i = 0; i < RARRAY_LEN(tmp); ++i) {
+	val = rb_Array(RARRAY_PTR(tmp)[i]);
+	xb_ind_add(RARRAY_LEN(val), RARRAY_PTR(val), obj);
     }
     return obj;
 }

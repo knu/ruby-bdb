@@ -59,7 +59,7 @@ unique = if with_config("db-uniquename")
 	    ""
 	 end
 
-version  = with_config('db-version', "-4.4,44,-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
+version  = with_config('db-version', "-4.5,45,-4.4,44,-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
 version << "" if version.empty?
 
 catch(:done) do
@@ -79,10 +79,8 @@ catch(:done) do
    raise "libdb#{version[-1]} not found"
 end
 
-["rb_frame_this_func", "rb_block_proc", "rb_io_stdio_file"].each do |f|
-   if have_func(f)
-      $CFLAGS += " -DHAVE_#{f.upcase}"
-   end
+["rb_frame_this_func", "rb_block_proc", "rb_io_stdio_file", "rb_block_call"].each do |f|
+   have_func(f)
 end
 
 ["insert", "values_at"].each do |f|

@@ -12,11 +12,15 @@ bdb_deleg_mark(struct deleg_class *delegst)
 
 extern VALUE bdb_put _((int, VALUE *, VALUE));
 
+#ifndef HAVE_RB_BLOCK_CALL
+
 static VALUE
 bdb_deleg_each(VALUE *tmp)
 {
     return rb_funcall2(tmp[0], id_send, (int)tmp[1], (VALUE *)tmp[2]);
 }
+
+#endif
 
 static VALUE
 bdb_deleg_missing(int argc, VALUE *argv, VALUE obj)
@@ -27,12 +31,16 @@ bdb_deleg_missing(int argc, VALUE *argv, VALUE obj)
 
     Data_Get_Struct(obj, struct deleg_class, delegst);
     if (rb_block_given_p()) {
+#if HAVE_RB_BLOCK_CALL
+	res = rb_block_call(delegst->obj, id_send, argc, argv, rb_yield, 0);
+#else
 	VALUE tmp[3];
 
 	tmp[0] = delegst->obj;
 	tmp[1] = (VALUE)argc;
 	tmp[2] = (VALUE)argv;
 	res = rb_iterate((VALUE(*)(VALUE))bdb_deleg_each, (VALUE)tmp, rb_yield, 0);
+#endif
     }
     else {
 	res = rb_funcall2(delegst->obj, id_send, argc, argv);
@@ -129,8 +137,8 @@ void bdb_init_delegator()
 	int i;
 
 	ary = rb_class_instance_methods(1, &ary, rb_mKernel);
-	for (i = 0; i < RARRAY(ary)->len; i++) {
-	    method = StringValuePtr(RARRAY(ary)->ptr[i]);
+	for (i = 0; i < RARRAY_LEN(ary); i++) {
+	    method = StringValuePtr(RARRAY_PTR(ary)[i]);
 	    if (!strcmp(method, "==") ||
 		!strcmp(method, "===") || !strcmp(method, "=~")) continue;
 	    rb_undef_method(bdb_cDelegate, method);

@@ -37,10 +37,12 @@ class TestLock < Inh::TestCase
 	 BDB::Env.open("tmp", BDB::CREATE | BDB::INIT_LOCK,
 		       "set_lk_conflicts" => [[0], [2]])
       end
+=begin
       assert_raises(TypeError) do
 	 BDB::Env.open("tmp", BDB::CREATE | BDB::INIT_LOCK,
 		       "set_lk_max" => "a")
       end
+=end
    end
 
    def test_02_init

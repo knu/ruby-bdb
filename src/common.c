@@ -25,6 +25,12 @@ static void bdb_mark _((bdb_DB *));
     Data_Get_Struct(obj, bdb_DB, dbst);					  	\
 } while (0)
 
+VALUE
+bdb_respond_to(VALUE obj, ID meth)
+{
+    return rb_funcall(obj, rb_intern("respond_to?"), 2, ID2SYM(meth), Qtrue);
+}
+
 void
 bdb_ary_push(struct ary_st *db_ary, VALUE obj)
 {
@@ -129,7 +135,7 @@ bdb_test_dump(VALUE obj, DBT *key, VALUE a, int type_kv)
     }
     key->data = StringValuePtr(tmp);
     key->flags &= ~DB_DBT_MALLOC;
-    key->size = RSTRING(tmp)->len + is_nil;
+    key->size = RSTRING_LEN(tmp) + is_nil;
     return tmp;
 }
 
@@ -498,16 +504,16 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 	    break;
 	default:
 	    Check_Type(value, T_ARRAY);
-	    if (RARRAY(value)->len < 3) { 
+	    if (RARRAY_LEN(value) < 3) { 
 		rb_raise(bdb_eFatal, "expected 3 values for cachesize");
 	    }
 #if BDB_VERSION < 30000
-	    dbst->dbinfo->db_cachesize = NUM2INT(RARRAY(value)->ptr[1]);
+	    dbst->dbinfo->db_cachesize = NUM2INT(RARRAY_PTR(value)[1]);
 #else
 	    bdb_test_error(dbp->set_cachesize(dbp, 
-					      NUM2INT(RARRAY(value)->ptr[0]),
-					      NUM2INT(RARRAY(value)->ptr[1]),
-					      NUM2INT(RARRAY(value)->ptr[2])));
+					      NUM2INT(RARRAY_PTR(value)[0]),
+					      NUM2INT(RARRAY_PTR(value)[1]),
+					      NUM2INT(RARRAY_PTR(value)[2])));
 #endif
 	    break;
 	}
@@ -614,8 +620,8 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 	    dbst->options &= ~BDB_MARSHAL;
 	    break;
         default: 
-	    if (!rb_respond_to(value, bdb_id_load) ||
-		!rb_respond_to(value, bdb_id_dump)) {
+	    if (!bdb_respond_to(value, bdb_id_load) ||
+		!bdb_respond_to(value, bdb_id_dump)) {
 		rb_raise(bdb_eFatal, "marshal value must be true or false");
 	    }
 	    dbst->marshal = value;
@@ -669,11 +675,11 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 	char *passwd;
 	int flags = DB_ENCRYPT_AES;
 	if (TYPE(value) == T_ARRAY) {
-	    if (RARRAY(value)->len != 2) {
+	    if (RARRAY_LEN(value) != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
-	    flags = NUM2INT(RARRAY(value)->ptr[1]);
+	    passwd = StringValuePtr(RARRAY_PTR(value)[0]);
+	    flags = NUM2INT(RARRAY_PTR(value)[1]);
 	}
 	else {
 	    passwd = StringValuePtr(value);
@@ -729,6 +735,9 @@ bdb_i_close(bdb_DB *dbst, int flags)
 		else {
 		    rb_funcall2(dbst->txn, rb_intern("abort"), 0, 0);
 		}
+	    }
+	    if (!(dbst->options & BDB_NOT_OPEN)) {
+		bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
 	    }
 	}
 	else {
@@ -872,9 +881,11 @@ bdb_close(int argc, VALUE *argv, VALUE obj)
 	}
 	bdb_i_close(dbst, flags);
     }
-    dbst->options |= BDB_NOT_OPEN;
-    rb_protect((VALUE (*)(ANYARGS))bdb_final_aref, (VALUE)dbst, 0);
-    RDATA(obj)->dfree = free;
+    if (RDATA(obj)->dfree != free) {
+	dbst->options |= BDB_NOT_OPEN;
+	rb_protect((VALUE (*)(ANYARGS))bdb_final_aref, (VALUE)dbst, 0);
+	RDATA(obj)->dfree = free;
+    }
     return Qnil;
 }
 
@@ -1051,8 +1062,8 @@ bdb_s_new(int argc, VALUE *argv, VALUE obj)
     dbst->dbp->set_errpfx(dbst->dbp, "BDB::");
     dbst->dbp->set_errcall(dbst->dbp, bdb_env_errcall);
 #endif
-    if (rb_respond_to(obj, bdb_id_load) == Qtrue &&
-	rb_respond_to(obj, bdb_id_dump) == Qtrue) {
+    if (bdb_respond_to(obj, bdb_id_load) == Qtrue &&
+	bdb_respond_to(obj, bdb_id_dump) == Qtrue) {
 	dbst->marshal = obj;
 	dbst->options |= BDB_MARSHAL;
     }
@@ -1103,11 +1114,11 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 	int flags = DB_ENCRYPT_AES;
 	VALUE value = rb_const_get(CLASS_OF(obj), rb_intern("BDB_ENCRYPT"));
 	if (TYPE(value) == T_ARRAY) {
-	    if (RARRAY(value)->len != 2) {
+	    if (RARRAY_LEN(value) != 2) {
 		rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	    }
-	    passwd = StringValuePtr(RARRAY(value)->ptr[0]);
-	    flags = NUM2INT(RARRAY(value)->ptr[1]);
+	    passwd = StringValuePtr(RARRAY_PTR(value)[0]);
+	    flags = NUM2INT(RARRAY_PTR(value)[1]);
 	}
 	else {
 	    passwd = StringValuePtr(value);
@@ -1801,6 +1812,9 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
         return notfound;
     if (((flags & ~DB_RMW) == DB_GET_BOTH) ||
 	((flags & ~DB_RMW) == DB_SET_RECNO)) {
+#if BDB_VERSION >= 40500
+	data.flags &= ~DB_DBT_MALLOC;
+#endif
         return bdb_assoc(obj, &key, &data);
     }
     if (dyna) {
@@ -1873,7 +1887,9 @@ bdb_pget(int argc, VALUE *argv, VALUE obj)
         flags = NUM2INT(c);
         if ((flags & ~DB_RMW) == DB_GET_BOTH) {
             b = bdb_test_dump(obj, &data, b, FILTER_VALUE);
+#if BDB_VERSION < 40500
 	    data.flags |= DB_DBT_MALLOC;
+#endif
         }
 	break;
     case 2:
@@ -2230,7 +2246,9 @@ bdb_has_both(obj, a, b)
     ret = bdb_test_error(dbst->dbp->get(dbst->dbp, txnid, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qfalse;
+#if BDB_VERSION < 40500
     free(data.data);
+#endif
     return Qtrue;
 #endif
 }
@@ -2445,7 +2463,7 @@ bdb_treat(st, pkey, key, data)
     {
 	VALUE ary = bdb_assoc(st->db, key, data);
 	if (!RTEST(rb_yield(ary))) {
-	    rb_hash_aset(st->replace, RARRAY(ary)->ptr[0], RARRAY(ary)->ptr[1]);
+	    rb_hash_aset(st->replace, RARRAY_PTR(ary)[0], RARRAY_PTR(ary)[1]);
 	}
 	break;
     }
@@ -2888,22 +2906,22 @@ bdb_to_a(obj)
 }
 
 static VALUE
-each_pair(obj)
-    VALUE obj;
-{
-    return rb_funcall(obj, rb_intern("each_pair"), 0, 0);
-}
-
-static VALUE
 bdb_update_i(pair, obj)
     VALUE pair, obj;
 {
     Check_Type(pair, T_ARRAY);
-    if (RARRAY(pair)->len < 2) {
+    if (RARRAY_LEN(pair) < 2) {
 	rb_raise(rb_eArgError, "pair must be [key, value]");
     }
-    bdb_put(2, RARRAY(pair)->ptr, obj);
+    bdb_put(2, RARRAY_PTR(pair), obj);
     return Qnil;
+}
+
+static VALUE
+each_pair(obj)
+    VALUE obj;
+{
+    return rb_funcall(obj, rb_intern("each_pair"), 0, 0);
 }
 
 static VALUE
@@ -3125,9 +3143,8 @@ bdb_indexes(int argc, VALUE *argv, VALUE obj)
 #endif
     indexes = rb_ary_new2(argc);
     for (i = 0; i < argc; i++) {
-	RARRAY(indexes)->ptr[i] = bdb_get(1, &argv[i], obj);
+	rb_ary_push(indexes, bdb_get(1, &argv[i], obj));
     }
-    RARRAY(indexes)->len = i;
     return indexes;
 }
 
@@ -3602,19 +3619,19 @@ bdb_join(int argc, VALUE *argv, VALUE obj)
     if (TYPE(a) != T_ARRAY) {
         rb_raise(bdb_eFatal, "first argument must an array of cursors");
     }
-    if (RARRAY(a)->len == 0) {
+    if (RARRAY_LEN(a) == 0) {
         rb_raise(bdb_eFatal, "empty array");
     }
-    dbcarr = ALLOCA_N(DBC *, RARRAY(a)->len + 1);
+    dbcarr = ALLOCA_N(DBC *, RARRAY_LEN(a) + 1);
     {
 	DBC **dbs;
 	bdb_DB *tmp;
 
-	for (dbs = dbcarr, i = 0; i < RARRAY(a)->len; i++, dbs++) {
-	    if (!rb_obj_is_kind_of(RARRAY(a)->ptr[i], bdb_cCursor)) {
+	for (dbs = dbcarr, i = 0; i < RARRAY_LEN(a); i++, dbs++) {
+	    if (!rb_obj_is_kind_of(RARRAY_PTR(a)[i], bdb_cCursor)) {
 		rb_raise(bdb_eFatal, "element %d is not a cursor", i);
 	    }
-	    GetCursorDB(RARRAY(a)->ptr[i], dbcst, tmp);
+	    GetCursorDB(RARRAY_PTR(a)[i], dbcst, tmp);
 	    *dbs = dbcst->dbc;
 	}
 	*dbs = 0;
@@ -3679,16 +3696,16 @@ bdb_call_secondary(secst, pkey, pdata, skey)
 
     GetIdDb(obj, dbst);
     if (!dbst->dbp || !RTEST(dbst->secondary)) return DB_DONOTINDEX;
-    for (i = 0; i < RARRAY(dbst->secondary)->len; i++) {
-	ary = RARRAY(dbst->secondary)->ptr[i];
-	if (RARRAY(ary)->len != 2) continue;
-	second = RARRAY(ary)->ptr[0];
+    for (i = 0; i < RARRAY_LEN(dbst->secondary); i++) {
+	ary = RARRAY_PTR(dbst->secondary)[i];
+	if (RARRAY_LEN(ary) != 2) continue;
+	second = RARRAY_PTR(ary)[0];
 	Data_Get_Struct(second, bdb_DB, secondst);
 	if (!secondst->dbp) continue;
 	if (secondst->dbp == secst) {
 	    VALUE tmp[4];
 
-	    tmp[0] = RARRAY(ary)->ptr[1];
+	    tmp[0] = RARRAY_PTR(ary)[1];
 	    tmp[1] = second;
 	    tmp[2] = bdb_test_load_key(obj, pkey);
 	    tmp[3] = bdb_test_load(obj, pdata, FILTER_VALUE|FILTER_FREE);
@@ -3869,7 +3886,7 @@ bdb__txn__close(VALUE obj, VALUE commit, VALUE real)
 		dbst1->len = dbst->len;
 	    }
 	}
-	bdb_close(0, 0, obj);
+//	bdb_close(0, 0, obj);
     }
     return Qnil;
 }
@@ -4163,7 +4180,7 @@ void bdb_init_common()
     rb_define_method(bdb_cCommon, "reject", bdb_reject, -1);
     rb_define_method(bdb_cCommon, "clear", bdb_clear, -1);
     rb_define_method(bdb_cCommon, "truncate", bdb_clear, -1);
-    rb_define_method(bdb_cCommon, "replace", bdb_replace, 1);
+    rb_define_method(bdb_cCommon, "replace", bdb_replace, -1);
     rb_define_method(bdb_cCommon, "update", bdb_update, 1);
     rb_define_method(bdb_cCommon, "include?", bdb_has_key, 1);
     rb_define_method(bdb_cCommon, "has_key?", bdb_has_key, 1);

@@ -93,16 +93,16 @@ bdb_seq_i_options(VALUE obj, VALUE seqobj)
     }
     else if (strcmp(options, "set_range") == 0) {
         Check_Type(value, T_ARRAY);
-        if (RARRAY(value)->len != 2) { 
+        if (RARRAY_LEN(value) != 2) { 
             rb_raise(bdb_eFatal, "expected 2 values for range");
         }
         if (seqst->seqp->set_range(seqst->seqp, 
-                                   NUM2LONG(RARRAY(value)->ptr[0]),
-                                   NUM2LONG(RARRAY(value)->ptr[1]))) {
+                                   NUM2LONG(RARRAY_PTR(value)[0]),
+                                   NUM2LONG(RARRAY_PTR(value)[1]))) {
             seqst->seqp->remove(seqst->seqp, 0, 0);
             rb_raise(rb_eArgError, "Invalid value (%ld, %ld) for set_range",
-                     NUM2LONG(RARRAY(value)->ptr[0]),
-                     NUM2LONG(RARRAY(value)->ptr[1]));
+                     NUM2LONG(RARRAY_PTR(value)[0]),
+                     NUM2LONG(RARRAY_PTR(value)[1]));
         }
     }
     else {

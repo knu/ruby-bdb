@@ -106,6 +106,10 @@ class BDB::Env
       #  * <em>set_lk_max_objects</em> : set maximum number of lock objects
       #  * <em>set_rep_transport</em> : configure replication transport (DB >= 4)
       #  * <em>set_rep_limit</em> : limit data sent in response to a single message (DB >= 4.1)
+      #  * <em>set_rep_nsites</em> : configure replication group site count (DB >= 4.5)
+      #  * <em>set_rep_priority</em> : configure replication site priority (DB >= 4.5)
+      #  * <em>set_rep_config</em> : configure the replication subsystem (DB >= 4.5)
+      #  * <em>set_rep_timeout</em> : configure replication timeouts (DB >= 4.5)
       #  * <em>set_rpc_server</em> : establish an RPC server connection (DB >= 3.1)
       #  * <em>set_tas_spins</em> : set the number of test-and-set spins (DB >= 3)
       #  * <em>set_tmp_dir</em> : set the environment temporary file directory (DB >= 3)
@@ -462,6 +466,110 @@ class BDB::Env
    #
    def failcheck(flag = 0)
    end
+
+   #Only for DB >= 4.5
+   #
+   #Adds a new replication site to the replication manager's list of known sites.
+   #
+   #Return the environment ID assigned to the remote site
+   def repmgr_add_remote(host, port, flag = 0)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Specifies how master and client sites will handle acknowledgment of replication
+   #messages which are necessary for "permanent" records.
+   #
+   #<em>policy</em> must be set to one of the following values 
+   #<em>BDB::REPMGR_ACKS_ALL</em>, <em>BDB::REPMGR_ACKS_ALL_PEERS</em>,
+   #<em>BDB::REPMGR_ACKS_NONE</em>, <em>BDB::REPMGR_ACKS_ONE</em>,
+   #<em>BDB::REPMGR_ACKS_ONE_PEER</em>, <em>BDB::REPMGR_ACKS_QUORUM</em>
+   def repmgr_ack_policy=(policy)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Returns the replication manager's client acknowledgment policy.
+   def repmgr_ack_policy
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Returns an array with the status of the sites currently known by the
+   #replication manager.
+   def repmgr_site_list
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Specifies the host identification string and port number for the local system.
+   def repmgr_set_local_site(host, port, flag = 0)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Starts the replication manager.
+   def repmgr_start(count, flag)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Configures the Berkeley DB replication subsystem.
+   #
+   #<em>which</em> can have the value <em>BDB::REP_CONF_BULK</em>,
+   #<em>BDB::REP_CONF_DELAYCLIENT</em>, <em>BDB::REP_CONF_NOAUTOINIT</em>,
+   #<em>BDB::REP_CONF_NOWAIT</em>
+   #
+   #<em>onoff</em> can have the value <em>true</em> or <em>false</em>
+   def rep_config[]=(which, onoff)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Returns <em>true</em> if the specified <em>which</em> parameter is currently set or not.
+   def rep_config?[](which)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Specifies the total number of sites in a replication group.
+   def rep_nsites=(sites)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Returns the total number of sites in a replication group.
+   def rep_nsites
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Specifies the priority in the replication group elections.
+   def rep_priority=(priority)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Returns the database environment priority.
+   def rep_priority
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Specifies the timeout in the replication group elections.
+   #
+   #<em>which</em> can have the value <em>BDB::REP_ACK_TIMEOUT</em>,
+   #<em>BDB::REP_ELECTION_TIMEOUT</em>, <em>BDB::REP_ELECTION_RETRY</em>,
+   #<em>BDB::REP_CONNECTION_RETRY</em>
+   def rep_timeout[]=(which, timeout)
+   end
+
+   #Only for DB >= 4.5
+   #
+   #Returns the database environment timeout for <em>which</em>
+   def rep_timeout[](which)
+   end
+
 
 end
 

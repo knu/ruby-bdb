@@ -5,9 +5,9 @@ static ID id_txn_close;
 static VALUE
 txn_close_i(VALUE ary)
 {
-    if (rb_respond_to(RARRAY(ary)->ptr[0], id_txn_close)) {
-        rb_funcall(RARRAY(ary)->ptr[0], id_txn_close, 2,
-                   RARRAY(ary)->ptr[1], Qfalse);
+    if (bdb_respond_to(RARRAY_PTR(ary)[0], id_txn_close)) {
+        rb_funcall(RARRAY_PTR(ary)[0], id_txn_close, 2,
+                   RARRAY_PTR(ary)[1], RARRAY_PTR(ary)[2]);
     }
     return Qnil;
 }
@@ -18,14 +18,17 @@ clean_ary(bdb_TXN *txnst, VALUE result)
     VALUE *ary, tmp;
     int i, len;
 
-    tmp = rb_assoc_new(Qnil, result);
+    tmp = rb_ary_new2(3);
+    rb_ary_push(tmp, Qnil);
+    rb_ary_push(tmp, result);
+    rb_ary_push(tmp, Qtrue);
     if (txnst->db_ary.ptr) {
         txnst->db_ary.mark = Qtrue;
 	ary = txnst->db_ary.ptr;
 	len = txnst->db_ary.len;
 
 	for (i = 0; i < len; i++) {
-            RARRAY(tmp)->ptr[0] = ary[i];
+            RARRAY_PTR(tmp)[0] = ary[i];
             rb_protect(txn_close_i, tmp, 0);
 	}
         txnst->db_ary.mark = Qfalse;
@@ -33,12 +36,13 @@ clean_ary(bdb_TXN *txnst, VALUE result)
 	txnst->db_ary.total = txnst->db_ary.len = 0;
 	free(ary);
     }
+    RARRAY_PTR(tmp)[2] = Qfalse;
     if (txnst->db_assoc.ptr) {
         txnst->db_assoc.mark = Qtrue;
 	ary = txnst->db_assoc.ptr;
 	len = txnst->db_assoc.len;
 	for (i = 0; i < len; i++) {
-            RARRAY(tmp)->ptr[0] = ary[i];
+            RARRAY_PTR(tmp)[0] = ary[i];
             rb_protect(txn_close_i, tmp, 0);
 	}
         txnst->db_assoc.mark = Qfalse;
@@ -99,9 +103,9 @@ bdb_txn_assoc(int argc, VALUE *argv, VALUE obj)
 	bdb_ary_push(&txnst->db_assoc, a);
         rb_ary_push(ary, a);
     }
-    switch (RARRAY(ary)->len) {
+    switch (RARRAY_LEN(ary)) {
     case 0: return Qnil;
-    case 1: return RARRAY(ary)->ptr[0];
+    case 1: return RARRAY_PTR(ary)[0];
     default: return ary;
     }
 }
@@ -199,7 +203,7 @@ bdb_txn_lock(VALUE obj)
     VALUE txnv;
 
     if (TYPE(obj) == T_ARRAY) {
-	txnv = RARRAY(obj)->ptr[0];
+	txnv = RARRAY_PTR(obj)[0];
     }
     else {
 	txnv = obj;
@@ -392,8 +396,8 @@ bdb_env_rslbl_begin(VALUE origin, int argc, VALUE *argv, VALUE obj)
             if (TYPE(b) == T_ARRAY) {
                 long i;
 
-                for (i = 0; i < RARRAY(b)->len; i++) {
-                    rb_ary_push(tmp, RARRAY(b)->ptr[i]);
+                for (i = 0; i < RARRAY_LEN(b); i++) {
+                    rb_ary_push(tmp, RARRAY_PTR(b)[i]);
                 }
             }
             else {
@@ -686,11 +690,11 @@ bdb_txn_set_timeout(VALUE obj, VALUE a)
 {
     if (!NIL_P(a)) {
 	if (TYPE(a) == T_ARRAY) {
-	    if (RARRAY(a)->len >= 1 && !NIL_P(RARRAY(a)->ptr[0])) {
-		bdb_txn_set_txn_timeout(obj, RARRAY(a)->ptr[0]);
+	    if (RARRAY_LEN(a) >= 1 && !NIL_P(RARRAY_PTR(a)[0])) {
+		bdb_txn_set_txn_timeout(obj, RARRAY_PTR(a)[0]);
 	    }
-	    if (RARRAY(a)->len == 2 && !NIL_P(RARRAY(a)->ptr[1])) {
-		bdb_txn_set_lock_timeout(obj, RARRAY(a)->ptr[0]);
+	    if (RARRAY_LEN(a) == 2 && !NIL_P(RARRAY_PTR(a)[1])) {
+		bdb_txn_set_lock_timeout(obj, RARRAY_PTR(a)[1]);
 	    }
 	}
 	else {
@@ -878,6 +882,9 @@ void bdb_init_transaction()
     rb_define_method(bdb_cTxn, "set_timeout", bdb_txn_set_timeout, 1);
     rb_define_method(bdb_cTxn, "set_txn_timeout", bdb_txn_set_txn_timeout, 1);
     rb_define_method(bdb_cTxn, "set_lock_timeout", bdb_txn_set_lock_timeout, 1);
+    rb_define_method(bdb_cTxn, "timeout=", bdb_txn_set_timeout, 1);
+    rb_define_method(bdb_cTxn, "txn_timeout=", bdb_txn_set_txn_timeout, 1);
+    rb_define_method(bdb_cTxn, "lock_timeout=", bdb_txn_set_lock_timeout, 1);
 #if BDB_VERSION >= 40100
     rb_define_method(bdb_cEnv, "dbremove", bdb_env_dbremove, -1);
     rb_define_method(bdb_cTxn, "dbremove", bdb_env_dbremove, -1);
