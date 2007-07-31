@@ -60,6 +60,7 @@ extern "C" {
 #define BDB_DUP_COMPARE    (1<<5)
 #define BDB_H_HASH         (1<<6)
 #define BDB_APPEND_RECNO   (1<<7)
+#define BDB_H_COMPARE      (1<<13)
 
 #define BDB_FEEDBACK       (1<<8)
 #define BDB_AUTO_COMMIT    (1<<9)
@@ -81,9 +82,9 @@ extern "C" {
 
 #define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
 #define BDB_INIT_LOMP (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_LOG)
-#define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH | BDB_APPEND_RECNO | BDB_FEEDBACK)
+#define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH | BDB_H_COMPARE | BDB_APPEND_RECNO | BDB_FEEDBACK)
 
-#define BDB_NEED_ENV_CURRENT (BDB_FEEDBACK | BDB_APP_DISPATCH)
+#define BDB_NEED_ENV_CURRENT (BDB_FEEDBACK | BDB_APP_DISPATCH | BDB_REP_TRANSPORT)
 
 #if BDB_VERSION < 20600
 #define DB_RMW 0
@@ -149,6 +150,9 @@ typedef struct  {
     VALUE thread_id_string;
     VALUE isalive;
 #endif
+#if BDB_VERSION >= 40500
+    VALUE event_notify;
+#endif
 } bdb_ENV;
 
 #if BDB_VERSION >= 40000
@@ -187,6 +191,9 @@ typedef struct {
     VALUE env, orig, secondary, txn;
     VALUE filename, database;
     VALUE bt_compare, bt_prefix, dup_compare, h_hash;
+#if BDB_VERSION >= 40600
+    VALUE h_compare;
+#endif
     VALUE filter[4];
     VALUE ori_val;
     DB *dbp;
@@ -515,6 +522,16 @@ extern void bdb_ary_unshift _((struct ary_st *, VALUE));
 extern VALUE bdb_ary_delete _((struct ary_st *, VALUE));
 extern void bdb_ary_mark _((struct ary_st *));
 extern VALUE bdb_respond_to _((VALUE, ID));
+
+#if BDB_VERSION >= 40600
+#define c_close close
+#define c_count count
+#define c_del del
+#define c_dup dup
+#define c_get get
+#define c_pget pget
+#define c_put put
+#endif
 
 #if defined(__cplusplus)
 }

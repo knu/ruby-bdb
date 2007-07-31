@@ -96,6 +96,12 @@ def hm_loop(sock, host, addr)
 	    else
 	       do_client()
 	    end
+         when BDB::REP_ISPERM
+            display_message("REP_ISPERM")
+         when BDB::REP_NOTPERM
+            display_message("REP_NOTPERM")
+         when BDB::REP_IGNORE
+            display_message("REP_IGNORE")
 	 else
             display_message("error #{res} #{cdata} #{envid}")
 	 end

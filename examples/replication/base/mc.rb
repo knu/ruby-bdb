@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
-$LOAD_PATH.unshift "../../src"
+$LOAD_PATH.unshift Dir.pwd.sub(%r{(bdb-\d\.\d\.\d/).*}, '\1src')
 
 require 'bdb'
 require 'mutex_m'
@@ -13,19 +13,15 @@ module BDB
 
       attr_accessor :sites, :priority, :timeout
 
-      def self.new(home = nil, sites = 4, pri = 10, timeout = 2000000)
-         super(home, BDB::THREAD | BDB::CREATE | BDB::INIT_TRANSACTION,
-               "set_verb_replication" => 1, 
-	       "specific" => [sites, pri, timeout]) 
-      end
-
-      def initialize(*args)
-	 @sites, @priority, @timeout = *args[-1]["specific"]
+      def initialize(home = nil, sites = 4, pri = 10, timeout = 2000000)
+	 @sites, @priority, @timeout = sites, pri, timeout
          @mach = {}
+         super(home, BDB::THREAD | BDB::CREATE | BDB::INIT_TRANSACTION | BDB::INIT_REP,
+               "set_verb_replication" => 0)
       end
 
       def param
-	 [(@mach.empty? ? @sites : @mach.size), @priority, @timeout]
+	 [(@mach.empty? ? @sites : @mach.size), 1]
       end
 
       def empty?
@@ -38,7 +34,7 @@ module BDB
 
       def add_mach(f, h, a)
 	 @eid ||= 2
-	 type.synchronize do
+	 self.class.synchronize do
 	    @mach.each do |eid, inf|
 	       host, addr, = inf
 	       return eid if h == host && a == addr
@@ -50,7 +46,7 @@ module BDB
       end
 
       def remove_mach(eid)
-	 type.synchronize do
+	 self.class.synchronize do
 	    @mach.delete(eid)
 	 end
       end
@@ -66,13 +62,12 @@ module BDB
 	 return nil if res.size < nb
 	 Marshal.load res
       rescue
-	 s.close
 	 remove_mach(eid)
 	 return nil
       end
 
-      def bdb_rep_transport(control, rec, eid, flags)
-	 type.synchronize do
+      def bdb_rep_transport(control, rec, lsn, eid, flags)
+	 self.class.synchronize do
 	    case eid
 	    when BDB::EID_BROADCAST
 	       new = {}

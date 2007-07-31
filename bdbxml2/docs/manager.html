@@ -197,7 +197,27 @@ an optional query context
 <dd>
 <p>Register a resolver</p>
 <p>A resolver is an object which can respond to #resolve_collection,
-#resolve_document, #resolve_entity, or #resolve_schema</p></dd>
+#resolve_document, #resolve_entity, #resolve_schema, #resolve_module
+or #resolve_module_location</p>
+<p>These methods (if implemented) must return <var>nil</var> if they can't resolve</p>
+<p>def resolve_collection(txn_or_manager, uri)</p>
+<pre>Xml::Results.new</pre>
+<p>end</p>
+<p>def resolve_document(txn_or_manager, uri)</p>
+<pre>Xml::Value.new</pre>
+<p>end</p>
+<p>def resolve_entity(txn_or_manager, system_id, public_id)</p>
+<pre>'an object which respond to #read'</pre>
+<p>end</p>
+<p>def resolve_schema(txn_or_manager, schema_location, namespace)</p>
+<pre>'an object which respond to #read'</pre>
+<p>end</p>
+<p>def resolve_module(txn_or_manager, module_location, namespace)</p>
+<pre>'an object which respond to #read'</pre>
+<p>end</p>
+<p>def resolve_module_location(txn_or_manager, namespace)</p>
+<pre>Xml::Results.new</pre>
+<p>end</p></dd>
 <dt><a name="label-44" id="label-44"><code>remove_container(<var>name</var>)</code></a></dt><!-- RDLabel: "remove_container" -->
 <dd>
 Remove a container
@@ -353,6 +373,21 @@ if true the io will be closed at end.
 can have the value BDB::SALVAGE, BDB::AGGRESSIVE
 </dd>
 </dl></dd>
+<dt><a name="label-80" id="label-80"><code>flags</code></a></dt><!-- RDLabel: "flags" -->
+<dd>
+Get the flags used to open the manager.</dd>
+<dt><a name="label-81" id="label-81"><code>implicit_timezone</code></a></dt><!-- RDLabel: "implicit_timezone" -->
+<dd>
+Get the implicit timezone used for queries</dd>
+<dt><a name="label-82" id="label-82"><code>implicit_timezone=(<var>tz</var>)</code></a></dt><!-- RDLabel: "implicit_timezone=" -->
+<dd>
+Set the implicit timezone used for queries</dd>
+<dt><a name="label-83" id="label-83"><code>compact_container(<var>name</var>, <var>context</var> = <var>Xml</var>::<var>Context</var>.<var>new</var>)</code></a></dt><!-- RDLabel: "compact_container" -->
+<dd>
+Compact the databases comprising the container.</dd>
+<dt><a name="label-84" id="label-84"><code>truncate_container(<var>name</var>, <var>context</var> = <var>XML</var>::<var>Context</var>.<var>new</var>)</code></a></dt><!-- RDLabel: "truncate_container" -->
+<dd>
+Truncate the container.</dd>
 </dl>
 
 </body>

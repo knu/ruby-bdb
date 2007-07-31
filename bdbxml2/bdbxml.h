@@ -84,6 +84,20 @@ typedef struct {
 
 #endif
 
+#if BDBXML_VERSION >= 20300
+
+typedef struct {
+    XmlEventWriter *ewr;
+    VALUE con;
+} xewr;
+
+typedef struct {
+    XmlEventReader *erd;
+    VALUE doc;
+} xerd;
+
+#endif
+
 typedef struct {
     XmlResults *res;
     VALUE man;
@@ -367,3 +381,43 @@ rset_obj(VALUE obj)
 static void xb_res_free(xres *res);
 static void xb_res_mark(xres *res);
 
+#if BDBXML_VERSION >= 20300
+
+static void xb_ewr_free(xewr *ewr);
+static void xb_ewr_mark(xewr *ewr);
+
+static inline xewr *
+get_ewr(VALUE obj)
+{
+    xewr *ewr;
+
+    if (TYPE(obj) != T_DATA || RDATA(obj)->dmark != (RDF)xb_ewr_mark) {
+        rb_raise(rb_eArgError, "expected a XML::EventWriter");
+    }
+    Data_Get_Struct(obj, xewr, ewr);
+    if (!ewr->ewr) {
+        rb_raise(rb_eArgError, "closed XML::EventWriter");
+    }
+    get_con(ewr->con);
+    return ewr;
+}
+
+static void xb_erd_free(xerd *erd);
+static void xb_erd_mark(xerd *erd);
+
+static inline xerd *
+get_erd(VALUE obj)
+{
+    xerd *erd;
+
+    if (TYPE(obj) != T_DATA || RDATA(obj)->dmark != (RDF)xb_erd_mark) {
+        rb_raise(rb_eArgError, "expected a XML::EventReader");
+    }
+    Data_Get_Struct(obj, xerd, erd);
+    if (!erd->erd) {
+        rb_raise(rb_eArgError, "closed XML::EventReader");
+    }
+    return erd;
+}
+
+#endif

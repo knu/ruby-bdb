@@ -93,4 +93,9 @@ included module : Enumerable
 --- to_str
     same than ((|to_s|))
 
+
+--- event_reader
+
+    Retrieve content as an XML::EventReader.
+
 =end

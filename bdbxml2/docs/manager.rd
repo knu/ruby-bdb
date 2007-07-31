@@ -135,9 +135,38 @@ BDB::Transaction respond to the same method than BDB::XML::Manager
 
 --- resolver = object
     Register a resolver
-   
+
     A resolver is an object which can respond to #resolve_collection,
-    #resolve_document, #resolve_entity, or #resolve_schema
+    #resolve_document, #resolve_entity, #resolve_schema, #resolve_module
+    or #resolve_module_location
+
+    These methods (if implemented) must return ((|nil|)) if they can't resolve
+
+
+    def resolve_collection(txn_or_manager, uri)
+       Xml::Results.new
+    end
+    
+    def resolve_document(txn_or_manager, uri)
+       Xml::Value.new
+    end
+
+    def resolve_entity(txn_or_manager, system_id, public_id)
+       'an object which respond to #read'
+    end
+
+    def resolve_schema(txn_or_manager, schema_location, namespace)
+       'an object which respond to #read'
+    end
+
+    def resolve_module(txn_or_manager, module_location, namespace)
+       'an object which respond to #read'
+    end
+
+    def resolve_module_location(txn_or_manager, namespace)
+       Xml::Results.new
+    end
+
 
 --- remove_container(name)
     Remove a container
@@ -265,5 +294,25 @@ BDB::Transaction respond to the same method than BDB::XML::Manager
       if true the io will be closed at end.
     : ((|flags|))
       can have the value BDB::SALVAGE, BDB::AGGRESSIVE
+
+--- flags
+
+    Get the flags used to open the manager.
+
+--- implicit_timezone
+
+    Get the implicit timezone used for queries
+
+--- implicit_timezone=(tz)
+
+    Set the implicit timezone used for queries
+
+--- compact_container(name, context = Xml::Context.new)
+
+    Compact the databases comprising the container.
+
+--- truncate_container(name, context = XML::Context.new)
+
+    Truncate the container.
 
 =end

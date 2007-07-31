@@ -98,5 +98,8 @@ class BDB::XML::Document
    # same than <em> to_s</em>
    def  to_str
    end
-   
+
+   # Retrieve content as an XML::EventReader.
+   def event_reader
+   end
 end

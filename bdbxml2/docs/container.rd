@@ -136,5 +136,28 @@ Module included : Enumerable
 --- sync
 
     Flush database pages for the container to disk
+
+--- flags
+
+    Get the flags used to open the container.
+
+--- node(handle, flags = 0)
+
+    Get the specified node.
+   
+    : ((|handle|)) 
+      must be obtained using XML::Value.node_handle
+    : ((|flags|)) 
+      must be set to 0 or, ((|BDB::READ_UNCOMMITED|))
+      ((|BDB::READ_UNCOMMITED|)), ((|BDB::RMW|))
+      ((|BDB::XML::LAZY_DOCS|))
+
+--- event_writer(document, update_context, flags = 0)
+
+    Begins insertion of an ((|XML::Document|)) into the container through use of an 
+    ((|XML::EventWriter|)) object.
+
+    Return the ((|XML::EventWriter|)) which must be closed at end.
+
    
 =end

@@ -1,3 +1,4 @@
+cd {base|mgr}
 rm test?/*
 b.rb -M -h test1 -n 3 -p 100 -m some.host:5000
 b.rb -C -h test2 -n 3 -p 50 -m some.host:5001 -o some.host:5000

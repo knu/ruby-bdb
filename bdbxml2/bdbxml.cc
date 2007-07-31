@@ -6,6 +6,9 @@ static VALUE xb_cCon, xb_cDoc, xb_cCxt, xb_mObs;
 #if BDBXML_VERSION >= 20200
 static VALUE xb_cLook;
 #endif
+#if BDBXML_VERSION >= 20300
+static VALUE xb_cEwr, xb_cErd;
+#endif
 
 static VALUE xb_io;
 static ID id_current_env, id_close, id_read, id_write, id_pos;
@@ -15,6 +18,10 @@ static ID id_current_env, id_close, id_read, id_write, id_pos;
 #else
 #define FREE_DEBUG(a, ...)
 #endif
+
+static void xb_val_mark(xval *val);
+static void xb_val_free(xval *val);
+static XmlValue xb_val_xml(VALUE);
 
 static void
 xb_io_push(VALUE obj)
@@ -156,44 +163,55 @@ public:
     resolveCollection(XmlTransaction *xmltxn, XmlManager &xmlman,
                       const std::string &xmluri, XmlResults &xmlresult) 
         const {
+
+	if (!rb_respond_to(obj_, rb_intern("resolve_collection"))) {
+	    return false;
+	}
         VALUE uri = rb_tainted_str_new2(xmluri.c_str());
-        xres *res;
-        VALUE result = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark,
-                                        (RDF)xb_res_free, res);
-        res->res = &xmlresult;
-        res->man = man_;
         VALUE obj = retrieve_txn(xmltxn);
-        VALUE rep = rb_funcall(obj_, rb_intern("resolve_collection"), 3,
-                               obj, uri, result);
-        if (RTEST(rep)) {
+        VALUE rep = rb_funcall(obj_, rb_intern("resolve_collection"), 2,
+                               obj, uri);
+	if (NIL_P(rep)) {
+	    return false;
+	}
+	if (TYPE(rep) == T_DATA && RDATA(rep)->dfree == (RDF)xb_res_free) {
+	    xres *res = get_res(rep);
+	    xmlresult = XmlResults(*res->res);
             return true;
         }
+	else {
+	    rb_raise(rb_eArgError, "object must an XML::Results");
+	}
         return false;
     }
 
     virtual bool 
     resolveDocument(XmlTransaction *xmltxn, XmlManager &xmlman,
-                      const std::string &xmluri, XmlResults &xmlresult) 
+                      const std::string &xmluri, XmlValue &xmlval) 
         const {
+
+	if (!rb_respond_to(obj_, rb_intern("resolve_document"))) {
+	    return false;
+	}
         VALUE uri = rb_tainted_str_new2(xmluri.c_str());
-        xres *res;
-        VALUE result = Data_Make_Struct(xb_cRes, xres, (RDF)xb_res_mark,
-                                        (RDF)xb_res_free, res);
-        res->res = &xmlresult;
-        res->man = man_;
         VALUE obj = retrieve_txn(xmltxn);
-        VALUE rep = rb_funcall(obj_, rb_intern("resolve_document"), 3,
-                               obj, uri, result);
-        if (RTEST(rep)) {
-            return true;
-        }
-        return false;
+        VALUE rep = rb_funcall(obj_, rb_intern("resolve_document"), 2,
+                               obj, uri);
+	if (NIL_P(rep)) {
+	    return false;
+	}
+	xmlval = xb_val_xml(rep);
+	return true;
     }
 
     virtual XmlInputStream *
     resolveEntity(XmlTransaction *xmltxn, XmlManager &xmlman,
                   const std::string &xmlsys, const std::string &xmlpub)
         const {
+
+	if (!rb_respond_to(obj_, rb_intern("resolve_entity"))) {
+	    return NULL;
+	}
         VALUE sys = rb_tainted_str_new2(xmlsys.c_str());
         VALUE pub = rb_tainted_str_new2(xmlpub.c_str());
         VALUE obj = retrieve_txn(xmltxn);
@@ -212,6 +230,9 @@ public:
     resolveSchema(XmlTransaction *xmltxn, XmlManager &xmlman,
                   const std::string &xmlschema, const std::string &xmlname)
         const {
+	if (!rb_respond_to(obj_, rb_intern("resolve_schema"))) {
+	    return NULL;
+	}
         VALUE schema = rb_tainted_str_new2(xmlschema.c_str());
         VALUE name = rb_tainted_str_new2(xmlname.c_str());
         VALUE obj = retrieve_txn(xmltxn);
@@ -225,6 +246,57 @@ public:
         }
         return new xbInput(res);
     }
+
+#if BDBXML_VERSION >= 20300
+
+    virtual XmlInputStream *
+    resolveModule(XmlTransaction *xmltxn, XmlManager &xmlman, 
+		  const std::string &xmlmodule, const std::string &xmlname)
+	const {
+	if (!rb_respond_to(obj_, rb_intern("resolve_module"))) {
+	    return NULL;
+	}
+        VALUE module = rb_tainted_str_new2(xmlmodule.c_str());
+        VALUE name = rb_tainted_str_new2(xmlname.c_str());
+        VALUE obj = retrieve_txn(xmltxn);
+        VALUE res = rb_funcall(obj_, rb_intern("resolve_module"), 3,
+                               obj, module, name);
+        if (NIL_P(res)) {
+            return NULL;
+        }
+        if (!rb_respond_to(res, id_read)) {
+            rb_raise(rb_eArgError, "object must respond to #read");
+        }
+        return new xbInput(res);
+    }
+
+    virtual bool 
+    resolveModuleLocation(XmlTransaction *xmltxn, XmlManager &xmlman,
+                      const std::string &xmlname, XmlResults &xmlresult) 
+        const {
+
+	if (!rb_respond_to(obj_, rb_intern("resolve_module_location"))) {
+	    return false;
+	}
+        VALUE name = rb_tainted_str_new2(xmlname.c_str());
+        VALUE obj = retrieve_txn(xmltxn);
+        VALUE rep = rb_funcall(obj_, rb_intern("resolve_collection"), 2,
+                               obj, name);
+	if (NIL_P(rep)) {
+	    return false;
+	}
+	if (TYPE(rep) == T_DATA && RDATA(rep)->dfree == (RDF)xb_res_free) {
+	    xres *res = get_res(rep);
+	    xmlresult = XmlResults(*res->res);
+            return true;
+        }
+	else {
+	    rb_raise(rb_eArgError, "object must an XML::Results");
+	}
+        return false;
+    }
+
+#endif	    
    
 private:
     VALUE man_;
@@ -968,6 +1040,111 @@ xb_man_increment_set(VALUE obj, VALUE a)
     int incr = NUM2INT(a);
     PROTECT(man->man->setDefaultSequenceIncrement(incr));
     return a;
+}
+
+#endif
+
+#if BDBXML_VERSION >= 20300
+
+static VALUE
+xb_man_get_flags(VALUE obj)
+{
+    xman *man = get_man(obj);
+    return INT2NUM(man->man->getFlags());
+}
+
+static VALUE
+xb_man_get_itz(VALUE obj)
+{
+  xman *man = get_man(obj);
+  return INT2NUM(man->man->getImplicitTimezone());
+}
+
+static VALUE
+xb_man_set_itz(VALUE obj, VALUE a)
+{
+  xman *man = get_man(obj);
+  int tz = NUM2INT(a);
+  PROTECT(man->man->setImplicitTimezone(tz));
+  return a;
+}
+
+static VALUE
+xb_man_compact_con(int argc, VALUE *argv, VALUE obj)
+{
+    XmlUpdateContext *xmlupd = 0;
+    xupd *upd;
+    VALUE a, b;
+    std::string name;
+    bool freeupd = true;
+    int flags = 0;
+
+    rb_secure(2);
+    XmlTransaction *xmltxn = get_txn(obj);
+    xman *man = get_man_txn(obj);
+    switch (rb_scan_args(argc, argv, "11", &a, &b)) {
+    case 2:
+        if (!NIL_P(b)) {
+            upd = get_upd(b);
+            xmlupd = upd->upd;
+            freeupd = false;
+        }
+        /* ... */
+    case 1:
+        name = StringValuePtr(a);
+        break;
+    }
+    if (freeupd) {
+        xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+    }
+    if (xmltxn) {
+        PROTECT2(man->man->compactContainer(name, *xmlupd, flags),
+                 if (freeupd) delete xmlupd);
+    }
+    else {
+        PROTECT2(man->man->compactContainer(*xmltxn, name, *xmlupd, flags),
+                 if (freeupd) delete xmlupd);
+    }
+    return obj;
+}
+
+static VALUE
+xb_man_truncate_con(int argc, VALUE *argv, VALUE obj)
+{
+    XmlUpdateContext *xmlupd = 0;
+    xupd *upd;
+    VALUE a, b;
+    std::string name;
+    bool freeupd = true;
+    int flags = 0;
+
+    rb_secure(2);
+    XmlTransaction *xmltxn = get_txn(obj);
+    xman *man = get_man_txn(obj);
+    switch (rb_scan_args(argc, argv, "11", &a, &b)) {
+    case 2:
+        if (!NIL_P(b)) {
+            upd = get_upd(b);
+            xmlupd = upd->upd;
+            freeupd = false;
+        }
+        /* ... */
+    case 1:
+        name = StringValuePtr(a);
+        break;
+    }
+    if (freeupd) {
+        xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
+    }
+    if (xmltxn) {
+        PROTECT2(man->man->truncateContainer(name, *xmlupd, flags),
+                 if (freeupd) delete xmlupd);
+    }
+    else {
+        PROTECT2(man->man->truncateContainer(*xmltxn, name, *xmlupd, flags),
+                 if (freeupd) delete xmlupd);
+    }
+    return obj;
 }
 
 #endif
@@ -1766,6 +1943,8 @@ xb_con_add(int argc, VALUE *argv, VALUE obj)
         delete_doc(a, doc);
     }
     else {
+	std::string new_id;
+
         if (argc == 1) {
             rb_raise(rb_eArgError, "invalid number of argument (1 for 2)");
         }
@@ -1785,11 +1964,11 @@ xb_con_add(int argc, VALUE *argv, VALUE obj)
                 xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
             }
             if (xmltxn) {
-                PROTECT2(con->con->putDocument(*xmltxn, name, &rbs, *xmlupd, flags),
+                PROTECT2(new_id = con->con->putDocument(*xmltxn, name, &rbs, *xmlupd, flags),
                          if (freeupd) delete xmlupd);
             }
             else {
-                PROTECT2(con->con->putDocument(name, &rbs, *xmlupd, flags),
+                PROTECT2(new_id = con->con->putDocument(name, &rbs, *xmlupd, flags),
                          if (freeupd) delete xmlupd);
             }
         }
@@ -1800,14 +1979,15 @@ xb_con_add(int argc, VALUE *argv, VALUE obj)
                 xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
             }
             if (xmltxn) {
-                PROTECT2(con->con->putDocument(*xmltxn, name, content, *xmlupd, flags),
+                PROTECT2(new_id = con->con->putDocument(*xmltxn, name, content, *xmlupd, flags),
                          if (freeupd) delete xmlupd);
             }
             else {
-                PROTECT2(con->con->putDocument(name, content, *xmlupd, flags),
+                PROTECT2(new_id = con->con->putDocument(name, content, *xmlupd, flags),
                          if (freeupd) delete xmlupd);
             }
         }
+	return rb_tainted_str_new2(new_id.c_str());
     }
     return obj;
 }
@@ -2366,6 +2546,92 @@ xb_con_pagesize(VALUE obj)
 
 #endif
 
+static VALUE xb_xml_val(XmlValue *, VALUE);
+
+#if BDBXML_VERSION >= 20300
+
+static VALUE
+xb_con_flags(VALUE obj)
+{
+    xcon *con = get_con(obj);
+    return INT2NUM(con->con->getFlags());
+}
+
+static VALUE
+xb_con_node(int argc, VALUE *argv, VALUE obj)
+{
+    VALUE a, b;
+    XmlValue xmlval;
+    int flags = 0;
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+	flags = NUM2INT(b);
+    }
+    char *node = StringValuePtr(a);
+    if (xmltxn) {
+	PROTECT(xmlval = con->con->getNode(*xmltxn, node, flags));
+    }
+    else {
+	PROTECT(xmlval = con->con->getNode(node, flags));
+    }
+    return xb_xml_val(&xmlval, con->man);
+}
+
+static void
+xb_ewr_mark(xewr *ewr)
+{
+    rb_gc_mark(ewr->con);
+}
+
+static void
+xb_ewr_free(xewr *ewr)
+{
+    if (ewr->ewr) {
+	PROTECT(ewr->ewr->close());
+	ewr->ewr = 0;
+    }
+    ::free(ewr);
+}
+
+static VALUE
+xb_con_ewr(int argc, VALUE *argv, VALUE obj)
+{
+    VALUE a, b, c;
+    XmlEventWriter *xmlewr;
+    xewr *ewr;
+    int flags = 0;
+    xcon *con = get_con(obj);
+    XmlTransaction *xmltxn = get_con_txn(con);
+
+    if (rb_scan_args(argc, argv, "21", &a, &b, &c) == 3) {
+	flags = NUM2INT(b);
+    }
+    xdoc *doc = get_doc(a);
+    xupd *upd = get_upd(b);
+    if (xmltxn) {
+	PROTECT(XmlEventWriter &rex = con->con->putDocumentAsEventWriter(*xmltxn, 
+									 *doc->doc, 
+									 *upd->upd, 
+									 flags);
+		xmlewr = (XmlEventWriter *)&rex);
+    }
+    else {
+	PROTECT(XmlEventWriter &rex = con->con->putDocumentAsEventWriter(*doc->doc, 
+									 *upd->upd, 
+									 flags);
+		xmlewr = (XmlEventWriter *)&rex);
+    }
+    VALUE res = Data_Make_Struct(xb_cEwr, xewr, (RDF)xb_ewr_mark, 
+				 (RDF)xb_ewr_free, ewr);
+    ewr->ewr = xmlewr;
+    ewr->con = obj;
+    return res;
+}
+
+#endif
+
 static VALUE
 xb_con_get(int argc, VALUE *argv, VALUE obj)
 {
@@ -2394,8 +2660,6 @@ xb_con_get(int argc, VALUE *argv, VALUE obj)
     doc->man = con->man;
     return res;
 }
-
-static XmlValue xb_val_xml(VALUE);
 
 static VALUE
 xb_con_stat(int argc, VALUE *argv, VALUE obj)
@@ -2936,8 +3200,6 @@ xb_look_highbound_set(VALUE obj, VALUE a)
     return a;
 }
 
-static VALUE xb_xml_val(XmlValue *, VALUE);
-
 static VALUE
 xb_look_highbound_get(VALUE obj)
 {
@@ -3303,6 +3565,14 @@ static VALUE
 xb_doc_content_set(VALUE obj, VALUE a)
 {
     xdoc *doc = get_doc(obj);
+#if BDBXML_VERSION >= 20300
+    if (TYPE(a) == T_DATA && RDATA(a)->dmark == (RDF)xb_erd_mark) {
+	xerd *erd = get_erd(a);
+	PROTECT(doc->doc->setContentAsEventReader(*erd->erd));
+	erd->erd = 0;
+	return a;
+    }
+#endif
     char *str = StringValuePtr(a);
     PROTECT(doc->doc->setContent(str));
     return a;
@@ -3566,6 +3836,35 @@ xb_cxt_coll_get(VALUE obj)
 
 #endif
 
+#if BDBXML_VERSION >= 20300
+
+static VALUE
+xb_cxt_interrupt(VALUE obj)
+{
+    xcxt *cxt = get_cxt(obj);
+    cxt->cxt->interruptQuery();
+    return Qnil;
+}
+
+static VALUE
+xb_cxt_get_timeout(VALUE obj)
+{
+    xcxt *cxt = get_cxt(obj);
+    int to;
+    PROTECT(to = cxt->cxt->getQueryTimeoutSeconds());
+    return INT2NUM(to);
+}
+
+static VALUE
+xb_cxt_set_timeout(VALUE obj, VALUE a)
+{
+    xcxt *cxt = get_cxt(obj);
+    PROTECT(cxt->cxt->setQueryTimeoutSeconds(NUM2INT(a)));
+    return a;
+}
+
+#endif
+
 static VALUE
 xb_que_manager(VALUE obj)
 {
@@ -3731,6 +4030,19 @@ xb_res_size(VALUE obj)
     return INT2NUM(size);
 }
 
+#if BDBXML_VERSION >= 20300
+
+static VALUE
+xb_res_eval(VALUE obj)
+{
+    XmlQueryContext::EvaluationType eval;
+    xres *res = get_res(obj);
+    PROTECT(eval = res->res->getEvaluationType());
+    return INT2NUM(eval);
+}
+
+#endif
+
 static VALUE
 xb_res_each(VALUE obj)
 {
@@ -3853,6 +4165,10 @@ static VALUE
 xb_mod_append(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b, c, d, e;
+#if BDBXML_VERSION >= 20300
+    xres *res = NULL;
+#endif
+    char *content;
     int location = -1;
 
     if (rb_scan_args(argc, argv, "41", &a, &b, &c, &d, &e) == 5) {
@@ -3861,33 +4177,89 @@ xb_mod_append(int argc, VALUE *argv, VALUE obj)
     xque *que = get_que(a);
     XmlModify::XmlObject type = XmlModify::XmlObject(NUM2INT(b));
     char *name = StringValuePtr(c);
-    char *content = StringValuePtr(d);
+#if BDBXML_VERSION >= 20300
+    if (TYPE(d) == T_DATA && RDATA(obj)->dfree == (RDF)xb_res_free) {
+	res = get_res(d);
+    }
+    else
+#endif
+    {
+	content = StringValuePtr(d);
+    }
     xmod *mod = get_mod(obj);
-    PROTECT(mod->mod->addAppendStep(*que->que, type, name, content, location));
+#if BDBXML_VERSION >= 20300
+    if (res != NULL) {
+	PROTECT(mod->mod->addAppendStep(*que->que, type, name, *res->res, location));
+    }
+    else
+#endif
+    {
+	PROTECT(mod->mod->addAppendStep(*que->que, type, name, content, location));
+    }
     return obj;
 }
 
 static VALUE
 xb_mod_insert_after(VALUE obj, VALUE a, VALUE b, VALUE c, VALUE d)
 {
+#if BDBXML_VERSION >= 20300
+    xres *res = NULL;
+#endif
+    char *content;
     xmod *mod = get_mod(obj);
     xque *que = get_que(a);
     XmlModify::XmlObject type = XmlModify::XmlObject(NUM2INT(b));
     char *name = StringValuePtr(c);
-    char *content = StringValuePtr(d);
-    PROTECT(mod->mod->addInsertAfterStep(*que->que, type, name, content));
+#if BDBXML_VERSION >= 20300
+    if (TYPE(d) == T_DATA && RDATA(obj)->dfree == (RDF)xb_res_free) {
+	res = get_res(d);
+    }
+    else
+#endif
+    {
+	content = StringValuePtr(d);
+    }
+#if BDBXML_VERSION >= 20300
+    if (res != NULL) {
+	PROTECT(mod->mod->addInsertAfterStep(*que->que, type, name, *res->res));
+    }
+    else
+#endif
+    {
+	PROTECT(mod->mod->addInsertAfterStep(*que->que, type, name, content));
+    }
     return obj;
 }
 
 static VALUE
 xb_mod_insert_before(VALUE obj, VALUE a, VALUE b, VALUE c, VALUE d)
 {
+#if BDBXML_VERSION >= 20300
+    xres *res = NULL;
+#endif
+    char *content;
+    xmod *mod = get_mod(obj);
     xque *que = get_que(a);
     XmlModify::XmlObject type = XmlModify::XmlObject(NUM2INT(b));
     char *name = StringValuePtr(c);
-    char *content = StringValuePtr(d);
-    xmod *mod = get_mod(obj);
-    PROTECT(mod->mod->addInsertBeforeStep(*que->que, type, name, content));
+#if BDBXML_VERSION >= 20300
+    if (TYPE(d) == T_DATA && RDATA(obj)->dfree == (RDF)xb_res_free) {
+	res = get_res(d);
+    }
+    else
+#endif
+    {
+	content = StringValuePtr(d);
+    }
+#if BDBXML_VERSION >= 20300
+    if (res != NULL) {
+	PROTECT(mod->mod->addInsertBeforeStep(*que->que, type, name, *res->res));
+    }
+    else
+#endif
+    {
+	PROTECT(mod->mod->addInsertBeforeStep(*que->que, type, name, content));
+    }
     return obj;
 }
 
@@ -3999,16 +4371,40 @@ xb_val_s_alloc(VALUE obj)
 }
 
 static VALUE
-xb_val_init(VALUE obj, VALUE a, VALUE b)
+xb_val_init(int argc, VALUE *argv, VALUE obj)
 {
     xval *val;
+    VALUE a, b;
 
     Data_Get_Struct(obj, xval, val);
-    XmlValue::Type type = XmlValue::Type(NUM2INT(a));
-    b = rb_obj_as_string(b);
-    char *str = StringValuePtr(b);
-    delete val->val;
-    val->val = new XmlValue(type, str);
+    if (rb_scan_args(argc, argv, "11", &a, &b) == 2) {
+      XmlValue::Type type = XmlValue::Type(NUM2INT(a));
+      b = rb_obj_as_string(b);
+      char *str = StringValuePtr(b);
+      delete val->val;
+      val->val = new XmlValue(type, str);
+      return obj;
+    }
+    if (TYPE(a) == T_DATA && RDATA(obj)->dmark != (RDF)xb_doc_mark) {
+      xdoc *doc = get_doc(a);
+      delete val->val;
+      val->val = new XmlValue(*doc->doc);
+    }
+    else if (a == Qtrue || a == Qfalse) {
+      delete val->val;
+      val->val = new XmlValue(a == Qtrue);
+    }
+    else if (FIXNUM_P(a) || TYPE(a) == T_FLOAT || TYPE(a) == T_BIGNUM) {
+      a = rb_funcall2(a, rb_intern("to_f"), 0, 0);
+      delete val->val;
+      val->val = new XmlValue(RFLOAT(a)->value);
+    }
+    else {
+      a = rb_obj_as_string(a);
+      char *str = StringValuePtr(b);
+      delete val->val;
+      val->val = new XmlValue(str);
+    }
     return obj;
 }
 
@@ -4314,7 +4710,591 @@ xb_val_attributes(VALUE obj)
     res->man = val->man;
     return result;
 }
-    
+
+#if BDBXML_VERSION >= 20300
+
+static VALUE
+xb_val_type_uri(VALUE obj)
+{
+    xval *val;
+
+    Data_Get_Struct(obj, xval, val);
+    std::string str;
+    PROTECT(str = val->val->getTypeURI());
+    return rb_tainted_str_new2(str.c_str());
+}
+
+static VALUE
+xb_val_type_name(VALUE obj)
+{
+    xval *val;
+
+    Data_Get_Struct(obj, xval, val);
+    std::string str;
+    PROTECT(str = val->val->getTypeName());
+    return rb_tainted_str_new2(str.c_str());
+}
+
+static VALUE
+xb_val_node_handle(VALUE obj)
+{
+    xval *val;
+
+    Data_Get_Struct(obj, xval, val);
+    std::string str;
+    PROTECT(str = val->val->getNodeHandle());
+    return rb_tainted_str_new2(str.c_str());
+}
+
+#endif
+
+#if BDBXML_VERSION >= 20300    
+
+static VALUE
+xb_ewr_s_alloc(VALUE obj)
+{
+    xewr *ewr;
+
+    VALUE res = Data_Make_Struct(xb_cEwr, xewr, (RDF)xb_ewr_mark, 
+                                 (RDF)xb_ewr_free, ewr);
+    ewr->ewr = new XmlEventWriter();
+    return res;
+}
+
+static VALUE
+xb_ewr_init(VALUE obj)
+{
+    return obj;
+}
+
+static VALUE
+xb_ewr_close(VALUE obj)
+{
+    xewr *ewr = get_ewr(obj);
+    PROTECT(ewr->ewr->close());
+    ewr->ewr = 0;
+    return Qnil;
+}
+
+static VALUE
+xb_ewr_attribute(VALUE obj, VALUE a, VALUE b, VALUE c, VALUE d, VALUE e)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *prefix = NULL;
+    unsigned char *uri = NULL;
+    unsigned char *localName = (unsigned char *)StringValuePtr(a);
+    if (!NIL_P(b)) {
+	prefix = (unsigned char *)StringValuePtr(b);
+    }
+    if (!NIL_P(c)) {
+	uri = (unsigned char *)StringValuePtr(c);
+    }
+    unsigned char *value =  (unsigned char *)StringValuePtr(d);   
+    PROTECT(ewr->ewr->writeAttribute(localName, prefix, uri, value, RTEST(e)));
+    return obj;
+}
+
+static VALUE
+xb_ewr_dtd(VALUE obj, VALUE a)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *dtd = (unsigned char *)StringValuePtr(a);
+    PROTECT(ewr->ewr->writeDTD(dtd, strlen((char *)dtd)));
+    return obj;
+}
+
+static VALUE
+xb_ewr_end_doc(VALUE obj)
+{
+    xewr *ewr = get_ewr(obj);
+    PROTECT(ewr->ewr->writeEndDocument());
+    return obj;
+}
+
+static VALUE
+xb_ewr_end_ele(int argc, VALUE *argv, VALUE obj)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *prefix = NULL;
+    unsigned char *uri = NULL;
+    unsigned char *localName = NULL;
+    VALUE a, b, c;
+    switch (rb_scan_args(argc, argv, "12", &a, &b, &c)) {
+    case 3:
+	if (!NIL_P(c)) {
+	    uri = (unsigned char *)StringValuePtr(c);
+	}
+	/* ... */
+    case 2:
+	if (!NIL_P(b)) {
+	    prefix = (unsigned char *)StringValuePtr(b);
+	}
+    }
+    localName = (unsigned char *)StringValuePtr(a);
+    PROTECT(ewr->ewr->writeEndElement(localName, prefix, uri));
+    return obj;
+}
+
+static VALUE
+xb_ewr_end_ent(VALUE obj, VALUE a)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *name = (unsigned char *)StringValuePtr(a);
+    PROTECT(ewr->ewr->writeEndEntity(name));
+    return obj;
+}
+
+static VALUE
+xb_ewr_pi(VALUE obj, VALUE a, VALUE b)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *target = (unsigned char *)StringValuePtr(a);
+    unsigned char *data = (unsigned char *)StringValuePtr(b);
+    PROTECT(ewr->ewr->writeProcessingInstruction(target, data));
+    return obj;
+}
+
+static VALUE
+xb_ewr_start_ele(VALUE obj, VALUE a, VALUE b, VALUE c, VALUE d, VALUE e)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *prefix = NULL;
+    unsigned char *uri = NULL;
+    unsigned char *localName = (unsigned char *)StringValuePtr(a);
+    if (!NIL_P(b)) {
+	prefix = (unsigned char *)StringValuePtr(b);
+    }
+    if (!NIL_P(c)) {
+	uri = (unsigned char *)StringValuePtr(c);
+    }
+    int numAttributes = NUM2INT(d);   
+    PROTECT(ewr->ewr->writeStartElement(localName, prefix, uri, numAttributes, RTEST(e)));
+    return obj;
+}
+
+static VALUE
+xb_ewr_start_ent(VALUE obj, VALUE a, VALUE b)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *name = (unsigned char *)StringValuePtr(a);
+    PROTECT(ewr->ewr->writeStartEntity(name, RTEST(b)));
+    return obj;
+}
+
+static VALUE
+xb_ewr_start_doc(int argc, VALUE *argv, VALUE obj)
+{
+    xewr *ewr = get_ewr(obj);
+    unsigned char *version = NULL;
+    unsigned char *encoding = NULL;
+    unsigned char *standalone = NULL;
+    VALUE a, b, c;
+    switch (rb_scan_args(argc, argv, "03", &a, &b, &c)) {
+    case 3:
+	if (!NIL_P(c)) {
+	    standalone = (unsigned char *)StringValuePtr(c);
+	}
+        /* ... */
+    case 2:
+	if (!NIL_P(b)) {
+	    encoding = (unsigned char *)StringValuePtr(b);
+	}
+	/* ... */
+    case 1:
+	if (!NIL_P(a)) {
+	    version = (unsigned char *)StringValuePtr(a);
+	}
+    }
+    PROTECT(ewr->ewr->writeStartDocument(version, encoding, standalone));
+    return obj;
+}
+
+static VALUE
+xb_ewr_txt(VALUE obj, VALUE a, VALUE b)
+{
+    xewr *ewr = get_ewr(obj);
+    XmlEventReader::XmlEventType type = XmlEventReader::XmlEventType(NUM2INT(a));
+    unsigned char *txt = (unsigned char *)StringValuePtr(b);
+    PROTECT(ewr->ewr->writeText(type, txt, strlen((char *)txt)));
+    return obj;
+}
+
+static void
+xb_erd_mark(xerd *erd)
+{
+    rb_gc_mark(erd->doc);
+}
+
+static void
+xb_erd_free(xerd *erd)
+{
+    if (erd->erd) {
+	PROTECT(erd->erd->close());
+	erd->erd = 0;
+    }
+    ::free(erd);
+}
+
+static VALUE
+xb_erd_s_alloc(VALUE obj)
+{
+    xerd *erd;
+
+    VALUE res = Data_Make_Struct(xb_cErd, xerd, (RDF)xb_erd_mark, 
+                                 (RDF)xb_erd_free, erd);
+    erd->erd = new XmlEventReader();
+    return res;
+}
+
+static VALUE
+xb_erd_init(VALUE obj)
+{
+    return obj;
+}
+
+static VALUE
+xb_erd_close(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    PROTECT(erd->erd->close());
+    erd->erd = 0;
+    return Qnil;
+}
+
+static VALUE
+xb_doc_erd(VALUE obj)
+{
+    XmlEventReader *xmlerd;
+    xerd *erd;
+    xdoc *doc = get_doc(obj);
+    PROTECT(XmlEventReader &rex = doc->doc->getContentAsEventReader();
+	    xmlerd = (XmlEventReader *) &rex);
+    VALUE res = Data_Make_Struct(xb_cErd, xerd, (RDF)xb_erd_mark, 
+				 (RDF)xb_erd_free, erd);
+    erd->erd = xmlerd;
+    erd->doc = obj;
+    return res;
+}
+
+static VALUE
+xb_erd_ev(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    int xmlt;
+    PROTECT(xmlt = erd->erd->getEventType());
+    return INT2NUM(xmlt);
+}
+
+static VALUE
+xb_erd_uri(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getNamespaceURI());
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_name(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getLocalName());
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_prefix(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getPrefix());
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_value(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    int len;
+    PROTECT(uri = erd->erd->getValue(len));
+    return rb_tainted_str_new((char *)uri, len);
+}
+
+static VALUE
+xb_erd_attr_count(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    int nb;
+    PROTECT(nb = erd->erd->getAttributeCount());
+    return INT2NUM(nb);
+}
+
+static VALUE
+xb_erd_attr_p(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    int nb = NUM2INT(a);
+    bool res;
+    PROTECT(res = erd->erd->isAttributeSpecified(nb));
+    if (res) return Qtrue;
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_attr_uri(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    int nb = NUM2INT(a);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getAttributeNamespaceURI(nb));
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_attr_name(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    int nb = NUM2INT(a);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getAttributeLocalName(nb));
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_attr_prefix(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    int nb = NUM2INT(a);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getAttributePrefix(nb));
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_attr_value(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    int nb = NUM2INT(a);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getAttributeValue(nb));
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_info_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    if (erd->erd->hasEmptyElementInfo()) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_escape_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    if (erd->erd->hasEntityEscapeInfo()) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_next_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    bool res;
+    PROTECT(res = erd->erd->hasNext());
+    if (res) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_empty_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    bool res;
+    PROTECT(res = erd->erd->isEmptyElement());
+    if (res) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_white_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    bool res;
+    PROTECT(res = erd->erd->isWhiteSpace());
+    if (res) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_nescape_p(int argc, VALUE *argv, VALUE obj)
+{
+    VALUE a;
+    int nb = 0;
+    bool res;
+    xerd *erd = get_erd(obj);
+    if (rb_scan_args(argc, argv, "01", &a) == 1) {
+	nb = NUM2INT(a);
+    }
+    PROTECT(res = erd->erd->needsEntityEscape(nb));
+    if (res) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_next(VALUE obj)
+{
+    int res;
+    xerd *erd = get_erd(obj);
+    PROTECT(res = erd->erd->next());
+    return INT2NUM(res);
+}
+
+static VALUE
+xb_erd_next_tag(VALUE obj)
+{
+    int res;
+    xerd *erd = get_erd(obj);
+    PROTECT(res = erd->erd->nextTag());
+    return INT2NUM(res);
+}
+
+static VALUE
+xb_erd_get_expand(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    if (erd->erd->getExpandEntities()) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_set_expand(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    if (RTEST(a)) {
+	erd->erd->setExpandEntities(true);
+    }
+    else {
+	erd->erd->setExpandEntities(false);
+    }
+    return a;
+}
+
+static VALUE
+xb_erd_get_info(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    if (erd->erd->getReportEntityInfo()) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_set_info(VALUE obj, VALUE a)
+{
+    xerd *erd = get_erd(obj);
+    if (RTEST(a)) {
+	erd->erd->setReportEntityInfo(true);
+    }
+    else {
+	erd->erd->setReportEntityInfo(false);
+    }
+    return a;
+}
+
+static VALUE
+xb_erd_encoding(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getEncoding());
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_encoding_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    bool res;
+    PROTECT(res = erd->erd->encodingSet());
+    if (res) return Qtrue;
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_version(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getVersion());
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_system(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    const unsigned char *uri;
+    PROTECT(uri = erd->erd->getSystemId());
+    return rb_tainted_str_new2((char *)uri);
+}
+
+static VALUE
+xb_erd_doc_stand_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    bool res;
+    PROTECT(res = erd->erd->isStandalone());
+    if (res) return Qtrue;
+    return Qfalse;
+}
+
+static VALUE
+xb_erd_attr_stand_p(VALUE obj)
+{
+    xerd *erd = get_erd(obj);
+    bool res;
+    PROTECT(res = erd->erd->standaloneSet());
+    if (res) return Qtrue;
+    return Qfalse;
+}
+
+static VALUE
+xb_val_to_erd(VALUE obj)
+{
+    xval *val;
+    xerd *erd;
+
+    Data_Get_Struct(obj, xval, val);
+    XmlEventReader *xmlerd;
+    PROTECT(XmlEventReader &rex = val->val->asEventReader();
+	    xmlerd = (XmlEventReader *)&rex);
+    VALUE res = Data_Make_Struct(xb_cErd, xerd, (RDF)xb_erd_mark, 
+                                 (RDF)xb_erd_free, erd);
+    erd->erd = xmlerd;
+    erd->doc = obj;
+    return res;
+}
+
+#endif
+
 static VALUE
 xb_man_resolver(VALUE obj, VALUE a)
 {
@@ -4494,6 +5474,10 @@ extern "C" {
         rb_define_method(xb_cTxn, "container_version", RMF(xb_man_con_version), 1);
 	rb_define_method(xb_cTxn, "reindex_container", RMF(xb_man_reindex), -1);
 #endif
+#if BDBXML_VERSION >= 20300
+	rb_define_method(xb_cTxn, "compact_container", RMF(xb_man_compact_con), -1);
+	rb_define_method(xb_cTxn, "truncate_container", RMF(xb_man_truncate_con), -1);
+#endif
         rb_define_method(xb_cTxn, "method_missing", RMF(xb_txn_missing), -1);
 
 	DbXml::setLogLevel(DbXml::LEVEL_ALL, false);
@@ -4535,6 +5519,9 @@ extern "C" {
 #endif
 #ifdef DB_ENCRYPT
 	rb_define_const(xb_mXML, "ENCRYPT", INT2NUM(DBXML_ENCRYPT));
+#endif
+#ifdef DBXML_WELL_FORMED_ONLY
+	rb_define_const(xb_mXML, "WELL_FORMED_ONLY", INT2NUM(DBXML_WELL_FORMED_ONLY));
 #endif
 #if BDBXML_VERSION >= 20200
 	rb_define_const(xb_mXML, "REVERSE_ORDER", INT2NUM(DBXML_REVERSE_ORDER));
@@ -4615,6 +5602,13 @@ extern "C" {
         rb_define_method(xb_cMan, "sequence_incr=", RMF(xb_man_increment_set), 0);
         rb_define_method(xb_cMan, "sequence_increment=", RMF(xb_man_increment_set), 0);
 #endif
+#if BDBXML_VERSION >= 20300
+	rb_define_method(xb_cMan, "flags", RMF(xb_man_get_flags), 0);
+	rb_define_method(xb_cMan, "implicit_timezone", RMF(xb_man_get_itz), 0);
+	rb_define_method(xb_cMan, "implicit_timezone=", RMF(xb_man_set_itz), 1);
+	rb_define_method(xb_cMan, "compact_container", RMF(xb_man_compact_con), -1);
+	rb_define_method(xb_cMan, "truncate_container", RMF(xb_man_truncate_con), -1);
+#endif
 
 	xb_cCon = rb_define_class_under(xb_mXML, "Container", rb_cObject);
         rb_define_const(xb_cCon, "NodeContainer", INT2NUM(XmlContainer::NodeContainer));
@@ -4669,6 +5663,12 @@ extern "C" {
 	rb_define_method(xb_cCon, "add_default_index", RMF(xb_con_add_def_index), -1);
 	rb_define_method(xb_cCon, "delete_default_index", RMF(xb_con_delete_def_index), -1);
 	rb_define_method(xb_cCon, "replace_default_index", RMF(xb_con_replace_def_index), -1);
+#if BDBXML_VERSION >= 20300
+	rb_define_method(xb_cCon, "flags", RMF(xb_con_flags), 0);
+	rb_define_method(xb_cCon, "node", RMF(xb_con_node), -1);
+	rb_define_method(xb_cCon, "put_document_as_event_writer", RMF(xb_con_ewr), -1);
+	rb_define_method(xb_cCon, "event_writer", RMF(xb_con_ewr), -1);
+#endif
 
 	xb_cInd = rb_define_class_under(xb_mXML, "Index", rb_cObject);
 	rb_undef_method(CLASS_OF(xb_cInd), "allocate");
@@ -4775,6 +5775,10 @@ extern "C" {
 	rb_define_method(xb_cDoc, "to_s", RMF(xb_doc_content_str), 0);
 	rb_define_method(xb_cDoc, "to_str", RMF(xb_doc_content_str), 0);
 	rb_define_method(xb_cDoc, "release", RMF(xb_doc_close), 0);
+#if BDBXML_VERSION >= 20300
+	rb_define_method(xb_cDoc, "event_reader", RMF(xb_doc_erd), 0);
+	rb_define_method(xb_cDoc, "get_content_as_event_reader", RMF(xb_doc_erd), 0);
+#endif
 
 	xb_cCxt = rb_define_class_under(xb_mXML, "Context", rb_cObject);
 	rb_const_set(xb_mXML, rb_intern("QueryContext"), xb_cCxt);
@@ -4811,6 +5815,11 @@ extern "C" {
         rb_define_method(xb_cCxt, "collection", RMF(xb_cxt_coll_get), 0);
         rb_define_method(xb_cCxt, "collection=", RMF(xb_cxt_coll_set), 1);
 #endif
+#if BDBXML_VERSION >= 20300
+        rb_define_method(xb_cCxt, "interrupt_query", RMF(xb_cxt_interrupt), 0);
+        rb_define_method(xb_cCxt, "query_timeout", RMF(xb_cxt_get_timeout), 0);
+        rb_define_method(xb_cCxt, "query_timeout=", RMF(xb_cxt_set_timeout), 1);
+#endif
 
 	xb_cQue = rb_define_class_under(xb_mXML, "Query", rb_cObject);
 	rb_const_set(xb_mXML, rb_intern("QueryExpression"), xb_cQue);
@@ -4842,6 +5851,9 @@ extern "C" {
 	rb_define_method(xb_cRes, "add", RMF(xb_res_add), 1);
 	rb_define_method(xb_cRes, "each", RMF(xb_res_each), 0);
 	rb_define_method(xb_cRes, "size", RMF(xb_res_size), 0);
+#if BDBXML_VERSION >= 20300
+	rb_define_method(xb_cRes, "evaluation_type", RMF(xb_res_eval), 0);
+#endif
 
 	xb_cMod = rb_define_class_under(xb_mXML, "Modify", rb_cObject);
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
@@ -4882,7 +5894,7 @@ extern "C" {
 	rb_define_singleton_method(xb_cVal, "allocate", RMFS(xb_val_s_alloc), 0);
 #endif
 	rb_define_singleton_method(xb_cVal, "new", RMF(xb_s_new), -1);
-	rb_define_private_method(xb_cVal, "initialize", RMF(xb_val_init), 2);
+	rb_define_private_method(xb_cVal, "initialize", RMF(xb_val_init), -1);
         rb_define_const(xb_cVal, "NONE", INT2NUM(XmlValue::NONE));
         rb_define_const(xb_cVal, "NODE", INT2NUM(XmlValue::NODE));
         rb_define_const(xb_cVal, "ANY_SIMPLE_TYPE", INT2NUM(XmlValue::ANY_SIMPLE_TYPE));
@@ -4933,6 +5945,86 @@ extern "C" {
         rb_define_method(xb_cVal, "next_sibling", RMF(xb_val_next_sibling), 0);
         rb_define_method(xb_cVal, "owner_element", RMF(xb_val_owner_element), 0);
         rb_define_method(xb_cVal, "attributes", RMF(xb_val_attributes), 0);
+#if BDBXML_VERSION >= 20300
+        rb_define_method(xb_cVal, "type_uri", RMF(xb_val_type_uri), 0);
+        rb_define_method(xb_cVal, "type_name", RMF(xb_val_type_name), 0);
+        rb_define_method(xb_cVal, "node_handle", RMF(xb_val_node_handle), 0);
+#endif
+
+#if BDBXML_VERSION >= 20300
+        xb_cEwr = rb_define_class_under(xb_mXML, "EventWriter", rb_cObject);
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+	rb_define_alloc_func(xb_cEwr, RMFS(xb_ewr_s_alloc));
+#else
+	rb_define_singleton_method(xb_cEwr, "allocate", RMFS(xb_ewr_s_alloc), 0);
+#endif
+	rb_define_singleton_method(xb_cEwr, "new", RMF(xb_s_new), -1);
+	rb_define_private_method(xb_cEwr, "initialize", RMF(xb_ewr_init), 0);
+	rb_define_method(xb_cEwr, "close", RMF(xb_ewr_close), 0);
+	rb_define_method(xb_cEwr, "attribute", RMF(xb_ewr_attribute), 5);
+	rb_define_method(xb_cEwr, "dtd", RMF(xb_ewr_dtd), 1);
+	rb_define_method(xb_cEwr, "end_document", RMF(xb_ewr_end_doc), 0);
+	rb_define_method(xb_cEwr, "end_element", RMF(xb_ewr_end_ele), -1);
+	rb_define_method(xb_cEwr, "end_entity", RMF(xb_ewr_end_ent), 1);
+	rb_define_method(xb_cEwr, "processing_instruction", RMF(xb_ewr_pi), 2);
+	rb_define_method(xb_cEwr, "start_element", RMF(xb_ewr_start_ele), 5);
+	rb_define_method(xb_cEwr, "start_entity", RMF(xb_ewr_start_ent), 2);
+	rb_define_method(xb_cEwr, "start_document", RMF(xb_ewr_start_doc), -1);
+	rb_define_method(xb_cEwr, "text", RMF(xb_ewr_txt), 2);
+
+        xb_cErd = rb_define_class_under(xb_mXML, "EventReader", rb_cObject);
+#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
+	rb_define_alloc_func(xb_cErd, RMFS(xb_erd_s_alloc));
+#else
+	rb_define_singleton_method(xb_cErd, "allocate", RMFS(xb_erd_s_alloc), 0);
+#endif
+	rb_define_singleton_method(xb_cErd, "new", RMF(xb_s_new), -1);
+	rb_define_private_method(xb_cErd, "initialize", RMF(xb_erd_init), 0);
+	rb_define_const(xb_cErd, "StartElement", INT2FIX(XmlEventReader::StartElement));
+	rb_define_const(xb_cErd, "EndElement", INT2FIX(XmlEventReader::EndElement));
+	rb_define_const(xb_cErd, "Characters", INT2FIX(XmlEventReader::Characters));
+	rb_define_const(xb_cErd, "CDATA", INT2FIX(XmlEventReader::CDATA));
+	rb_define_const(xb_cErd, "Comment", INT2FIX(XmlEventReader::Comment));
+	rb_define_const(xb_cErd, "Whitespace", INT2FIX(XmlEventReader::Whitespace));
+	rb_define_const(xb_cErd, "StartDocument", INT2FIX(XmlEventReader::StartDocument));
+	rb_define_const(xb_cErd, "EndDocument", INT2FIX(XmlEventReader::EndDocument));
+	rb_define_const(xb_cErd, "StartEntityReference", INT2FIX(XmlEventReader::StartEntityReference));
+	rb_define_const(xb_cErd, "EndEntityReference", INT2FIX(XmlEventReader::EndEntityReference));
+	rb_define_const(xb_cErd, "ProcessingInstruction", INT2FIX(XmlEventReader::ProcessingInstruction));
+	rb_define_const(xb_cErd, "DTD", INT2FIX(XmlEventReader::DTD));
+	rb_define_method(xb_cErd, "close", RMF(xb_erd_close), 0);
+	rb_define_method(xb_cErd, "event_type", RMF(xb_erd_ev), 0);
+	rb_define_method(xb_cErd, "namespace_uri", RMF(xb_erd_uri), 0);
+	rb_define_method(xb_cErd, "local_name", RMF(xb_erd_name), 0);
+	rb_define_method(xb_cErd, "prefix", RMF(xb_erd_prefix), 0);
+	rb_define_method(xb_cErd, "value", RMF(xb_erd_value), 0);
+	rb_define_method(xb_cErd, "attribute_count", RMF(xb_erd_attr_count), 0);
+	rb_define_method(xb_cErd, "attribute_specified?", RMF(xb_erd_attr_p), 1);
+	rb_define_method(xb_cErd, "attribute_namespace_uri", RMF(xb_erd_attr_uri), 1);
+	rb_define_method(xb_cErd, "attribute_local_name", RMF(xb_erd_attr_name), 1);
+	rb_define_method(xb_cErd, "attribute_prefix", RMF(xb_erd_attr_prefix), 1);
+	rb_define_method(xb_cErd, "attribute_value", RMF(xb_erd_attr_value), 1);
+	rb_define_method(xb_cErd, "empty_element_info?", RMF(xb_erd_info_p), 0);
+	rb_define_method(xb_cErd, "entity_escape_info?", RMF(xb_erd_escape_p), 0);
+	rb_define_method(xb_cErd, "next?", RMF(xb_erd_next_p), 0);
+	rb_define_method(xb_cErd, "empty_element?", RMF(xb_erd_empty_p), 0);
+	rb_define_method(xb_cErd, "whitespace?", RMF(xb_erd_white_p), 0);
+	rb_define_method(xb_cErd, "entity_escape?", RMF(xb_erd_nescape_p), -1);
+	rb_define_method(xb_cErd, "next", RMF(xb_erd_next), 0);
+	rb_define_method(xb_cErd, "next_tag", RMF(xb_erd_next_tag), 0);
+	rb_define_method(xb_cErd, "expand_entities?", RMF(xb_erd_get_expand), 0);
+	rb_define_method(xb_cErd, "expand_entities=", RMF(xb_erd_set_expand), 1);
+	rb_define_method(xb_cErd, "entity_info?", RMF(xb_erd_get_info), 0);
+	rb_define_method(xb_cErd, "entity_info=", RMF(xb_erd_set_info), 1);
+	rb_define_method(xb_cErd, "encoding", RMF(xb_erd_encoding), 0);
+	rb_define_method(xb_cErd, "encoding?", RMF(xb_erd_encoding_p), 0);
+	rb_define_method(xb_cErd, "version", RMF(xb_erd_version), 0);
+	rb_define_method(xb_cErd, "system_id", RMF(xb_erd_system), 0);
+	rb_define_method(xb_cErd, "document_standalone?", RMF(xb_erd_doc_stand_p), 0);
+	rb_define_method(xb_cErd, "standalone?", RMF(xb_erd_attr_stand_p), 0);
+        rb_define_method(xb_cVal, "to_event_reader", RMF(xb_val_to_erd), 0);
+        rb_define_method(xb_cVal, "event_reader", RMF(xb_val_to_erd), 0);
+#endif
 
     }
 }

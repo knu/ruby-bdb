@@ -147,5 +147,26 @@ class BDB::XML::Container
    # <em>XML::Index#replace_default</em>
    def replace_default(index, context = nil)
    end
-  
+
+   # Get the flags used to open the container.
+   def flags
+   end
+
+   # Get the specified node.
+   #
+   # * <em>handle</em> must be obtained using XML::Value.node_handle
+   # * <em>flags</em> must be set to 0 or, <em>BDB::READ_UNCOMMITED</em>
+   #   <em>BDB::READ_UNCOMMITED</em>, <em>BDB::RMW</em>
+   #   <em>BDB::XML::LAZY_DOCS</em>
+   def node(handle, flags = 0)
+   end
+
+   # Begins insertion of an <em>XML::Document</em> into the container through use of an 
+   # <em>XML::EventWriter</em> object.
+   #
+   # Return the <em>XML::EventWriter</em> which must be closed at end.
+   #
+   def event_writer(document, update_context, flags = 0)
+   end
+
 end

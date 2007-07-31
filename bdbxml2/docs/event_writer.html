@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/event_writer.rd</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::EventWriter</a></h2><!-- RDLabel: "BDB::XML::EventWriter" -->
+<p>Class which enables applications to construct document content without using serialized XML.</p>
+<p>An XML::EventWriter can be obtained with the method XML::Document#event_writer</p>
+<h3><a name="label-1" id="label-1">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>attribute(<var>local_name</var>, <var>prefix</var> = <var>nil</var>, <var>uri</var> = <var>nil</var>, <var>value</var>, <var>speficied</var>)</code></a></dt><!-- RDLabel: "attribute" -->
+<dd>
+Write a single attribute </dd>
+<dt><a name="label-3" id="label-3"><code>close</code></a></dt><!-- RDLabel: "close" -->
+<dd>
+Close the object</dd>
+<dt><a name="label-4" id="label-4"><code>dtd(<var>text</var>)</code></a></dt><!-- RDLabel: "dtd" -->
+<dd>
+Write the DTD</dd>
+<dt><a name="label-5" id="label-5"><code>end_document</code></a></dt><!-- RDLabel: "end_document" -->
+<dd>
+Write an EndDocument event</dd>
+<dt><a name="label-6" id="label-6"><code>end_element(<var>local_name</var>, <var>prefix</var> = <var>nil</var>, <var>uri</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "end_element" -->
+<dd>
+Write an EndElement event</dd>
+<dt><a name="label-7" id="label-7"><code>end_entity(<var>name</var>)</code></a></dt><!-- RDLabel: "end_entity" -->
+<dd>
+Write an EndEntity event</dd>
+<dt><a name="label-8" id="label-8"><code>processing_instruction(<var>target</var>, <var>data</var>)</code></a></dt><!-- RDLabel: "processing_instruction" -->
+<dd>
+Write a ProcessingInstruction event</dd>
+<dt><a name="label-9" id="label-9"><code>start_document(<var>version</var> = <var>nil</var>, <var>encoding</var> = <var>nil</var>, <var>standalone</var> = <var>nil</var>)</code></a></dt><!-- RDLabel: "start_document" -->
+<dd>
+Write a StartDocument event</dd>
+<dt><a name="label-10" id="label-10"><code>start_element(<var>local_name</var>, <var>prefix</var> = <var>nil</var>, <var>uri</var> = <var>nil</var>, <var>nattr</var>, <var>empty</var>)</code></a></dt><!-- RDLabel: "start_element" -->
+<dd>
+Write an element event</dd>
+<dt><a name="label-11" id="label-11"><code>start_entity(<var>name</var>, <var>expanded</var>)</code></a></dt><!-- RDLabel: "start_entity" -->
+<dd>
+Write StartEntityReference event</dd>
+<dt><a name="label-12" id="label-12"><code>text(<var>type</var>, <var>txt</var>)</code></a></dt><!-- RDLabel: "text" -->
+<dd>
+<p>Write an text event</p>
+<p>type must be one of XML::EventReader::Characters, XML::EventReader::Whitespace, 
+XML::EventReader::CDATA, or XML::EventReader::Comment</p></dd>
+</dl>
+
+</body>
+</html>

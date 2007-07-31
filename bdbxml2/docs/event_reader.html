@@ -1,0 +1,124 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html 
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>docs/event_reader.rd</title>
+</head>
+<body>
+<h2><a name="label-0" id="label-0">BDB::XML::EventReader</a></h2><!-- RDLabel: "BDB::XML::EventReader" -->
+<p>Class which enables applications to read document content via a pull interface without 
+materializing XML as text.</p>
+<p>An XML::EventReader can be obtained with the method XML::Document#event_reader
+or XML::Value#event_reader</p>
+<h3><a name="label-1" id="label-1">Methods</a></h3><!-- RDLabel: "Methods" -->
+<dl>
+<dt><a name="label-2" id="label-2"><code>attribute_count</code></a></dt><!-- RDLabel: "attribute_count" -->
+<dd>
+If the current event is StartElement, return the number of attributes available.</dd>
+<dt><a name="label-3" id="label-3"><code>attribute_local_name(<var>index</var>)</code></a></dt><!-- RDLabel: "attribute_local_name" -->
+<dd>
+If the current event is StartElement, return the local name for the attribute at the 
+specified offset</dd>
+<dt><a name="label-4" id="label-4"><code>attribute_namespace_uri(<var>index</var>)</code></a></dt><!-- RDLabel: "attribute_namespace_uri" -->
+<dd>
+If the current event is StartElement, return the namespace URI for the attribute at the
+specified offset.</dd>
+<dt><a name="label-5" id="label-5"><code>attribute_prefix(<var>index</var>)</code></a></dt><!-- RDLabel: "attribute_prefix" -->
+<dd>
+If the current event is StartElement, return the namespace prefix for the attribute at the
+specified offset.</dd>
+<dt><a name="label-6" id="label-6"><code>attribute_specified?(<var>index</var>)</code></a></dt><!-- RDLabel: "attribute_specified?" -->
+<dd>
+If the current event is StartElement, return whether the attribute at the index indicated
+is specified.</dd>
+<dt><a name="label-7" id="label-7"><code>attribute_value(<var>index</var>)</code></a></dt><!-- RDLabel: "attribute_value" -->
+<dd>
+If the current event is StartElement, return the value for the attribute at the specified
+offset.</dd>
+<dt><a name="label-8" id="label-8"><code>close</code></a></dt><!-- RDLabel: "close" -->
+<dd>
+close the object</dd>
+<dt><a name="label-9" id="label-9"><code>document_standalone?</code></a></dt><!-- RDLabel: "document_standalone?" -->
+<dd>
+Return whether the document is standalone</dd>
+<dt><a name="label-10" id="label-10"><code>empty_element?</code></a></dt><!-- RDLabel: "empty_element?" -->
+<dd>
+Return true if the current event is StartElement and the element has not content. 
+If the current even is not StartElement, an exception will be raised.</dd>
+<dt><a name="label-11" id="label-11"><code>empty_element_info?</code></a></dt><!-- RDLabel: "empty_element_info?" -->
+<dd>
+Returns true if the XML::EventReader object will return whether an element is empty 
+or not in the context of the StartElement event. </dd>
+<dt><a name="label-12" id="label-12"><code>encoding</code></a></dt><!-- RDLabel: "encoding" -->
+<dd>
+Returns the encoding for the document, if available.</dd>
+<dt><a name="label-13" id="label-13"><code>encoding?</code></a></dt><!-- RDLabel: "encoding?" -->
+<dd>
+Checks if the encoding was explicitly set.</dd>
+<dt><a name="label-14" id="label-14"><code>entity_escape?</code></a></dt><!-- RDLabel: "entity_escape?" -->
+<dd>
+If the current event is Characters, and XML::EventReader#entity_escape_info? is true, 
+returns whether the current text string requires escaping of entities for XML serialization.</dd>
+<dt><a name="label-15" id="label-15"><code>entity_escape_info?</code></a></dt><!-- RDLabel: "entity_escape_info?" -->
+<dd>
+Returns true if the XML::EventReader object is able to return information about text strings
+indicating that they may have entities requiring escaping for XML serialization.</dd>
+<dt><a name="label-16" id="label-16"><code>entity_info?</code></a></dt><!-- RDLabel: "entity_info?" -->
+<dd>
+Gets whether the XML::EventReader will include events of type StartEntityReference
+and EndEntityReference.</dd>
+<dt><a name="label-17" id="label-17"><code>entity_info=(<var>boolean</var>)</code></a></dt><!-- RDLabel: "entity_info=" -->
+<dd>
+The events of type StartEntityReference and EndEntityReference are used to report the start
+and end of XML that was originally an entity reference in the XML text, but has since been 
+expanded. By default, these events are not reported.</dd>
+<dt><a name="label-18" id="label-18"><code>event_type</code></a></dt><!-- RDLabel: "event_type" -->
+<dd>
+Return the event type of the current event</dd>
+<dt><a name="label-19" id="label-19"><code>expand_entities?</code></a></dt><!-- RDLabel: "expand_entities?" -->
+<dd>
+Gets whether the XML::EventReader will include events associated with expanded entities.</dd>
+<dt><a name="label-20" id="label-20"><code>expand_entities=(<var>boolean</var>)</code></a></dt><!-- RDLabel: "expand_entities=" -->
+<dd>
+Sets whether the XML::EventReader should include events associated with expanded entities.</dd>
+<dt><a name="label-21" id="label-21"><code>local_name</code></a></dt><!-- RDLabel: "local_name" -->
+<dd>
+If the current event is StartElement or EndElement, return the local name for the element   </dd>
+<dt><a name="label-22" id="label-22"><code>namespace_uri</code></a></dt><!-- RDLabel: "namespace_uri" -->
+<dd>
+If the current event is StartElement or EndElement, return the namespace URI for the element</dd>
+<dt><a name="label-23" id="label-23"><code>next?</code></a></dt><!-- RDLabel: "next?" -->
+<dd>
+Check if there are additional events available</dd>
+<dt><a name="label-24" id="label-24"><code>next</code></a></dt><!-- RDLabel: "next" -->
+<dd>
+Move to the next event</dd>
+<dt><a name="label-25" id="label-25"><code>next_tag</code></a></dt><!-- RDLabel: "next_tag" -->
+<dd>
+Move to the next StartElement or EndElement </dd>
+<dt><a name="label-26" id="label-26"><code>prefix</code></a></dt><!-- RDLabel: "prefix" -->
+<dd>
+If the current event is StartElement or EndElement, return the namespace prefix for the element</dd>
+<dt><a name="label-27" id="label-27"><code>standalone?</code></a></dt><!-- RDLabel: "standalone?" -->
+<dd>
+Checks if the standalone attribute was explicitly set.</dd>
+<dt><a name="label-28" id="label-28"><code>system_id</code></a></dt><!-- RDLabel: "system_id" -->
+<dd>
+Returns the document's system ID, if available.    </dd>
+<dt><a name="label-29" id="label-29"><code>value</code></a></dt><!-- RDLabel: "value" -->
+<dd>
+If the current event is Characters, return the text value. If the current event is 
+ProcessingInstruction, return the data portion of the processing instruction.</dd>
+<dt><a name="label-30" id="label-30"><code>version</code></a></dt><!-- RDLabel: "version" -->
+<dd>
+Returns the XML version string, if available.</dd>
+<dt><a name="label-31" id="label-31"><code>whitespace?</code></a></dt><!-- RDLabel: "whitespace?" -->
+<dd>
+Return true if the current text value is entirely white space. The current event must be 
+one of Whitespace, Characters, or CDATA, or an exception will be raised..</dd>
+</dl>
+
+</body>
+</html>

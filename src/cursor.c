@@ -348,7 +348,7 @@ bdb_cursor_put(int argc, VALUE *argv, VALUE obj)
     cnt = rb_scan_args(argc, argv, "21", &a, &b, &c);
     GetCursorDB(obj, dbcst, dbst);
     flags = NUM2INT(a);
-    if (flags & (DB_KEYFIRST | DB_KEYLAST)) {
+    if (flags == DB_KEYFIRST || flags == DB_KEYLAST) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
         d = bdb_test_recno(dbcst->db, &key, &recno, b);

@@ -1,8 +1,13 @@
 #include "bdb.h"
 
 static ID id_bt_compare, id_bt_prefix, id_dup_compare, id_h_hash;
+
 #if BDB_VERSION >= 40100
 static ID id_append_recno;
+#endif
+
+#if BDB_VERSION >= 40600
+static ID id_h_compare;
 #endif
 
 #if BDB_VERSION >= 30000
@@ -363,6 +368,26 @@ bdb_h_hash(const void *bytes, u_int32_t length)
     return NUM2UINT(res);
 }
 
+#if BDB_VERSION >= 40600
+
+static int
+bdb_h_compare(DB *dbbd, const DBT *a, const DBT *b)
+{
+    VALUE obj, av, bv, res;
+    bdb_DB *dbst;
+
+    GetIdDb(obj, dbst);
+    av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
+    bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
+    if (dbst->h_compare == 0)
+	res = rb_funcall(obj, id_h_compare, 2, av, bv);
+    else
+	res = rb_funcall(dbst->h_compare, bdb_id_call, 2, av, bv);
+    return NUM2INT(res);
+}
+
+#endif
+
 #if BDB_VERSION >= 40100
 
 static int
@@ -481,6 +506,16 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 	bdb_test_error(dbp->set_h_hash(dbp, bdb_h_hash));
 #endif
     }
+#if BDB_VERSION >= 40600
+    else if (strcmp(options, "set_h_compare") == 0) {
+	if (!rb_respond_to(value, bdb_id_call)) {
+	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	}
+	dbst->options |= BDB_H_COMPARE;
+	dbst->h_compare = value;
+	bdb_test_error(dbp->set_h_compare(dbp, bdb_h_compare));
+    }
+#endif
 #if BDB_VERSION >= 40100
     else if (strcmp(options, "set_append_recno") == 0) {
 	if (!rb_respond_to(value, bdb_id_call)) {
@@ -812,6 +847,9 @@ bdb_mark(bdb_DB *dbst)
 	rb_gc_mark(dbst->filter[i]);
     }
     rb_gc_mark(dbst->h_hash);
+#if BDB_VERSION >= 40600
+    rb_gc_mark(dbst->h_compare);
+#endif
     rb_gc_mark(dbst->filename);
     rb_gc_mark(dbst->database);
 #if BDB_VERSION >= 40100
@@ -1203,6 +1241,12 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 	bdb_test_error(dbp->set_h_hash(dbp, bdb_h_hash));
 #endif
     }
+#if BDB_VERSION >= 40600
+    if (dbst->h_compare == 0 && rb_respond_to(obj, id_h_compare) == Qtrue) {
+	dbst->options |= BDB_H_COMPARE;
+	bdb_test_error(dbp->set_h_compare(dbp, bdb_h_compare));
+    }
+#endif
 #if BDB_VERSION >= 40100
     if (dbst->append_recno == 0 && rb_respond_to(obj, id_append_recno) == Qtrue) {
 	dbst->options |= BDB_APPEND_RECNO;
@@ -2528,7 +2572,18 @@ bdb_i_each_kv(st)
 	if (ret == DB_NOTFOUND) {
 	    return Qfalse;
 	}
-        bdb_treat(st, &pkey, &key, &data);
+        if (prefix) {
+            if (key.size >= orig.size &&
+                !memcmp(key.data, orig.data, orig.size)) {
+                bdb_treat(st, &pkey, &key, &data);
+            }
+	    else {
+		return Qfalse;
+	    }
+	}
+	else {
+	    bdb_treat(st, &pkey, &key, &data);
+	}
     }
     do {
 #if BDB_VERSION >= 30300
@@ -3250,6 +3305,9 @@ bdb_hash_stat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(hash, rb_tainted_str_new2("hash_ovfl_free"), INT2NUM(bdb_stat->hash_ovfl_free));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_dup"), INT2NUM(bdb_stat->hash_dup));
     rb_hash_aset(hash, rb_tainted_str_new2("hash_dup_free"), INT2NUM(bdb_stat->hash_dup_free));
+#if BDB_VERSION >= 40600
+    rb_hash_aset(hash, rb_tainted_str_new2("hash_pagecnt"), INT2NUM(bdb_stat->hash_pagecnt));
+#endif
     free(bdb_stat);
     return hash;
 }
@@ -3311,6 +3369,9 @@ bdb_tree_stat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(hash, rb_tainted_str_new2("bt_re_len"), INT2NUM(bdb_stat->bt_re_len));
     pad = (char)bdb_stat->bt_re_pad;
     rb_hash_aset(hash, rb_tainted_str_new2("bt_re_pad"), rb_tainted_str_new(&pad, 1));
+#if BDB_VERSION >= 40600
+    rb_hash_aset(hash, rb_tainted_str_new2("bt_pagecnt"), INT2NUM(bdb_stat->bt_pagecnt));
+#endif
     free(bdb_stat);
     return hash;
 }
@@ -4088,6 +4149,9 @@ void bdb_init_common()
     id_bt_prefix = rb_intern("bdb_bt_prefix");
     id_dup_compare = rb_intern("bdb_dup_compare");
     id_h_hash = rb_intern("bdb_h_hash");
+#if BDB_VERSION >= 40600
+    id_h_compare = rb_intern("bdb_h_compare");
+#endif
 #if BDB_VERSION >= 40100
     id_append_recno = rb_intern("bdb_append_recno");
 #endif

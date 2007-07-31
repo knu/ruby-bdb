@@ -176,6 +176,14 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
+#if BDB_VERSION >= 40600
+    rb_hash_aset(a, rb_tainted_str_new2("st_objs_nowait"), INT2NUM(statp->st_objs_nowait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_objs_wait"), INT2NUM(statp->st_objs_wait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_lockers_nowait"), INT2NUM(statp->st_lockers_nowait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_lockers_wait"), INT2NUM(statp->st_lockers_wait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_locks_nowait"), INT2NUM(statp->st_locks_nowait));
+    rb_hash_aset(a, rb_tainted_str_new2("st_locks_wait"), INT2NUM(statp->st_locks_wait));
+#endif
 #else
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);

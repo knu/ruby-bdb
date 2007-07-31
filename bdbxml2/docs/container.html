@@ -130,6 +130,29 @@ an optional Update context
 <dt><a name="label-34" id="label-34"><code>sync</code></a></dt><!-- RDLabel: "sync" -->
 <dd>
 Flush database pages for the container to disk</dd>
+<dt><a name="label-35" id="label-35"><code>flags</code></a></dt><!-- RDLabel: "flags" -->
+<dd>
+Get the flags used to open the container.</dd>
+<dt><a name="label-36" id="label-36"><code>node(<var>handle</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "node" -->
+<dd>
+Get the specified node.
+<dl>
+<dt><a name="label-37" id="label-37"><var>handle</var></a></dt><!-- RDLabel: "handle" -->
+<dd>
+must be obtained using XML::Value.node_handle
+</dd>
+<dt><a name="label-38" id="label-38"><var>flags</var></a></dt><!-- RDLabel: "flags" -->
+<dd>
+must be set to 0 or, <var>BDB::READ_UNCOMMITED</var>
+<var>BDB::READ_UNCOMMITED</var>, <var>BDB::RMW</var>
+<var>BDB::XML::LAZY_DOCS</var>
+</dd>
+</dl></dd>
+<dt><a name="label-39" id="label-39"><code>event_writer(<var>document</var>, <var>update_context</var>, <var>flags</var> = <var>0</var>)</code></a></dt><!-- RDLabel: "event_writer" -->
+<dd>
+<p>Begins insertion of an <var>XML::Document</var> into the container through use of an 
+<var>XML::EventWriter</var> object.</p>
+<p>Return the <var>XML::EventWriter</var> which must be closed at end.</p></dd>
 </dl>
 
 </body>

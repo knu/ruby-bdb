@@ -33,7 +33,6 @@ EOT
    exit
 end
 
-
 if unknown = enable_config("unknown")
    libs = if CONFIG.key?("LIBRUBYARG_STATIC")
 	     Config::expand(CONFIG["LIBRUBYARG_STATIC"].dup).sub(/^-l/, '')
@@ -59,7 +58,7 @@ unique = if with_config("db-uniquename")
 	    ""
 	 end
 
-version  = with_config('db-version', "-4.5,45,-4.4,44,-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
+version  = with_config('db-version', "-4.6,46,-4.5,45,-4.4,44,-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
 version << "" if version.empty?
 
 catch(:done) do

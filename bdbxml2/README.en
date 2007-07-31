@@ -9,13 +9,17 @@
      bdb for use with bdbxml
 
 
-.... modify './myconfig' to adapt it to your configuration
-     IMPORTANT : you must use a version of xercesc compiled *without* threads
-     Comment in extconf.rb the line
+.... choose one of myconfig-2.2, myconfig-2.3 and copy it in myconfig
+     modify './myconfig' to adapt it to your configuration
+
+     IMPORTANT FOR dbxml 2.2 : you must use a version of xercesc compiled 
+     *without* threads
+     
+.... Comment in extconf.rb the line
 
 VERIFY 'myconfig' then comment this line
 
-.... This version must be used with [db-4.3.*, DbXml 2.*]
+.... This version must be used with [ >= db-4.3.*, DbXml 2.*]
 
 .... ruby extconf.rb
      make

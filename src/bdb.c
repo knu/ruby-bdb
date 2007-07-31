@@ -359,6 +359,12 @@ Init_bdb()
 #ifdef DB_NEXT_NODUP
     rb_define_const(bdb_mDb, "NEXT_NODUP", INT2FIX(DB_NEXT_NODUP));
 #endif
+#ifdef DB_PREV_DUP
+    rb_define_const(bdb_mDb, "PREV_DUP", INT2FIX(DB_PREV_DUP));
+#endif
+#ifdef DB_PREV_NODUP
+    rb_define_const(bdb_mDb, "PREV_NODUP", INT2FIX(DB_PREV_NODUP));
+#endif
 #ifdef DB_NODUPDATA
     rb_define_const(bdb_mDb, "NODUPDATA", INT2FIX(DB_NODUPDATA));
 #endif
@@ -392,9 +398,6 @@ Init_bdb()
     rb_define_const(bdb_mDb, "POSITION", INT2FIX(DB_POSITION));
 #endif
     rb_define_const(bdb_mDb, "PREV", INT2FIX(DB_PREV));
-#ifdef DB_PREV_NODUP
-    rb_define_const(bdb_mDb, "PREV_NODUP", INT2FIX(DB_PREV_NODUP));
-#endif
 #if BDB_VERSION < 30000
     rb_define_const(bdb_mDb, "PRIVATE", INT2FIX(0));
 #else
@@ -506,6 +509,12 @@ Init_bdb()
 #endif
     rb_define_const(bdb_mDb, "REP_PERMANENT", INT2FIX(DB_REP_PERMANENT));
     rb_define_const(bdb_mDb, "REP_UNAVAIL", INT2FIX(DB_REP_UNAVAIL));
+#ifdef DB_REP_ISPERM
+    rb_define_const(bdb_mDb, "REP_ISPERM", INT2FIX(DB_REP_ISPERM));
+    rb_define_const(bdb_mDb, "REP_NOTPERM", INT2FIX(DB_REP_NOTPERM));
+    rb_define_const(bdb_mDb, "REP_IGNORE", INT2FIX(DB_REP_IGNORE));
+    rb_define_const(bdb_mDb, "REP_JOIN_FAILURE", INT2FIX(DB_REP_JOIN_FAILURE));
+#endif
     rb_define_const(bdb_mDb, "EID_BROADCAST", INT2FIX(DB_EID_BROADCAST));
     rb_define_const(bdb_mDb, "EID_INVALID", INT2FIX(DB_EID_INVALID));
     rb_define_const(bdb_mDb, "SET_LOCK_TIMEOUT", INT2FIX(DB_SET_LOCK_TIMEOUT));
@@ -553,8 +562,29 @@ Init_bdb()
 #ifdef DB_MUTEX_PROCESS_ONLY
     rb_define_const(bdb_mDb, "MUTEX_PROCESS_ONLY", INT2FIX(DB_MUTEX_PROCESS_ONLY));
 #endif
+#ifdef DB_EVENT_PANIC
+    rb_define_const(bdb_mDb, "EVENT_PANIC", INT2FIX(DB_EVENT_PANIC));
+#endif
 #ifdef DB_EVENT_REP_STARTUPDONE
     rb_define_const(bdb_mDb, "EVENT_REP_STARTUPDONE", INT2FIX(DB_EVENT_REP_STARTUPDONE));
+#endif
+#ifdef DB_EVENT_REP_CLIENT
+    rb_define_const(bdb_mDb, "EVENT_REP_CLIENT", INT2FIX(DB_EVENT_REP_CLIENT));
+#endif
+#ifdef DB_EVENT_REP_ELECTED
+    rb_define_const(bdb_mDb, "EVENT_REP_ELECTED", INT2FIX(DB_EVENT_REP_ELECTED));
+#endif
+#ifdef DB_EVENT_REP_MASTER
+    rb_define_const(bdb_mDb, "EVENT_REP_MASTER", INT2FIX(DB_EVENT_REP_MASTER));
+#endif
+#ifdef DB_EVENT_REP_NEWMASTER
+    rb_define_const(bdb_mDb, "EVENT_REP_NEWMASTER", INT2FIX(DB_EVENT_REP_NEWMASTER));
+#endif
+#ifdef DB_EVENT_REP_PERM_FAILED
+    rb_define_const(bdb_mDb, "EVENT_REP_PERM_FAILED", INT2FIX(DB_EVENT_REP_PERM_FAILED));
+#endif
+#ifdef DB_EVENT_WRITE_FAILED
+    rb_define_const(bdb_mDb, "EVENT_WRITE_FAILED", INT2FIX(DB_EVENT_WRITE_FAILED));
 #endif
 #ifdef DB_REP_CONF_BULK
     rb_define_const(bdb_mDb, "REP_CONF_BULK", INT2FIX(DB_REP_CONF_BULK));
@@ -571,8 +601,53 @@ Init_bdb()
 #ifdef DB_REP_ACK_TIMEOUT
     rb_define_const(bdb_mDb, "REP_ACK_TIMEOUT", INT2FIX(DB_REP_ACK_TIMEOUT));
 #endif
+#ifdef DB_REP_ANYWHERE
+    rb_define_const(bdb_mDb, "REP_ANYWHERE", INT2FIX(DB_REP_ANYWHERE));
+#endif
+#ifdef DB_REP_BULKOVF
+    rb_define_const(bdb_mDb, "REP_BULKOVF", INT2FIX(DB_REP_BULKOVF));
+#endif
+#ifdef DB_REP_DEFAULT_PRIORITY
+    rb_define_const(bdb_mDb, "REP_DEFAULT_PRIORITY", INT2FIX(DB_REP_DEFAULT_PRIORITY));
+#endif
+#ifdef DB_REP_EGENCHG
+    rb_define_const(bdb_mDb, "REP_EGENCHG", INT2FIX(DB_REP_EGENCHG));
+#endif
+#ifdef DB_REPFLAGS_MASK
+    rb_define_const(bdb_mDb, "REPFLAGS_MASK", INT2FIX(DB_REPFLAGS_MASK));
+#endif
+#ifdef DB_REP_FULL_ELECTION_TIMEOUT
+    rb_define_const(bdb_mDb, "REP_FULL_ELECTION_TIMEOUT", INT2FIX(DB_REP_FULL_ELECTION_TIMEOUT));
+#endif
+#ifdef DB_REP_HANDLE_DEAD
+    rb_define_const(bdb_mDb, "REP_HANDLE_DEAD", INT2FIX(DB_REP_HANDLE_DEAD));
+#endif
+#ifdef DB_REP_LEASE_EXPIRED
+    rb_define_const(bdb_mDb, "REP_LEASE_EXPIRED", INT2FIX(DB_REP_LEASE_EXPIRED));
+#endif
+#ifdef DB_REP_LEASE_TIMEOUT
+    rb_define_const(bdb_mDb, "REP_LEASE_TIMEOUT", INT2FIX(DB_REP_LEASE_TIMEOUT));
+#endif
+#ifdef DB_REP_LOCKOUT
+    rb_define_const(bdb_mDb, "REP_LOCKOUT", INT2FIX(DB_REP_LOCKOUT));
+#endif
+#ifdef DB_REP_LOGREADY
+    rb_define_const(bdb_mDb, "REP_LOGREADY", INT2FIX(DB_REP_LOGREADY));
+#endif
+#ifdef DB_REPMGR_CONNECTED
+    rb_define_const(bdb_mDb, "REPMGR_CONNECTED", INT2FIX(DB_REPMGR_CONNECTED));
+#endif
+#ifdef DB_REPMGR_DISCONNECTED
+    rb_define_const(bdb_mDb, "REPMGR_DISCONNECTED", INT2FIX(DB_REPMGR_DISCONNECTED));
+#endif
 #ifdef DB_REPMGR_PEER
     rb_define_const(bdb_mDb, "REPMGR_PEER", INT2FIX(DB_REPMGR_PEER));
+#endif
+#ifdef DB_REP_PAGEDONE
+    rb_define_const(bdb_mDb, "REP_PAGEDONE", INT2FIX(DB_REP_PAGEDONE));
+#endif
+#ifdef DB_REP_REREQUEST
+    rb_define_const(bdb_mDb, "REP_REREQUEST", INT2FIX(DB_REP_REREQUEST));
 #endif
 #ifdef DB_REPMGR_ACKS_ALL
     rb_define_const(bdb_mDb, "REPMGR_ACKS_ALL", INT2FIX(DB_REPMGR_ACKS_ALL));
@@ -606,6 +681,12 @@ Init_bdb()
 #endif
 #ifdef DB_REP_CONNECTION_RETRY
     rb_define_const(bdb_mDb, "REP_CONNECTION_RETRY", INT2FIX(DB_REP_CONNECTION_RETRY));
+#endif
+#ifdef DB_REP_CHECKPOINT_DELAY
+    rb_define_const(bdb_mDb, "REP_CHECKPOINT_DELAY", INT2FIX(DB_REP_CHECKPOINT_DELAY));
+#endif
+#ifdef DB_IGNORE_LEASE
+    rb_define_const(bdb_mDb, "IGNORE_LEASE", INT2FIX(DB_IGNORE_LEASE));
 #endif
     bdb_init_env();
     bdb_init_common();

@@ -86,9 +86,6 @@ class TestLock < Inh::TestCase
    end
 
    def test_06_release
-      if BDB::VERSION_MAJOR >= 4
-	 assert_raises(BDB::Fatal) { $lockid.close }
-      end
       $locks.each do |lock|
 	 assert_equal(nil, lock.release, "<release>")
       end

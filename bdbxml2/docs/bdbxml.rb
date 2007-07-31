@@ -89,5 +89,15 @@
 #
 #   Class which encapsulates the value of a node in an XML document.
 #
+# * BDB::XML::EventWriter
+#
+#   Class which enables applications to construct document content without using serialized XML.
+#
+# * BDB::XML::EventReader
+#
+#   Class which enables applications to read document content via a pull interface without
+#   materializing XML as text.
+#
+#
 module BDB::XML
 end
