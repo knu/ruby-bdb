@@ -12,7 +12,7 @@ ruby metadata.rb
 echo "=================================== update.rb"
 ruby update.rb
 echo "=================================== delete.rb"
-ruby delete.rb
+# ruby delete.rb
 echo "=================================== add_index.rb"
 ruby add_index.rb
 echo "=================================== replace_index.rb"

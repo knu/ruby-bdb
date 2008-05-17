@@ -1,4 +1,5 @@
 #include "bdb.h"
+#include "version.h"
 
 #include <fstream>
 #include <dbxml/DbXml.hpp>

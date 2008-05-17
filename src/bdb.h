@@ -1,5 +1,4 @@
 #include <ruby.h>
-#include <version.h>
 #include <rubysig.h>
 #include <rubyio.h>
 
@@ -28,6 +27,10 @@
 #ifndef RARRAY_PTR
 # define RARRAY_PTR(x_) RARRAY(x_)->ptr
 # define RARRAY_LEN(x_) RARRAY(x_)->len
+#endif
+
+#ifndef RCLASS_SUPER
+#define RCLASS_SUPER(c) (RCLASS(c)->super)
 #endif
 
 #ifdef close

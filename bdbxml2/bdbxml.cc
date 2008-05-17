@@ -1015,7 +1015,7 @@ xb_man_reindex(int argc, VALUE *argv, VALUE obj)
     if (freeupd) {
         xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
     }
-    if (xmltxn) {
+    if (!xmltxn) {
         PROTECT2(man->man->reindexContainer(name, *xmlupd, flags),
                  if (freeupd) delete xmlupd);
     }
@@ -1097,7 +1097,7 @@ xb_man_compact_con(int argc, VALUE *argv, VALUE obj)
     if (freeupd) {
         xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
     }
-    if (xmltxn) {
+    if (!xmltxn) {
         PROTECT2(man->man->compactContainer(name, *xmlupd, flags),
                  if (freeupd) delete xmlupd);
     }
@@ -1136,7 +1136,7 @@ xb_man_truncate_con(int argc, VALUE *argv, VALUE obj)
     if (freeupd) {
         xmlupd = new XmlUpdateContext(man->man->createUpdateContext());
     }
-    if (xmltxn) {
+    if (!xmltxn) {
         PROTECT2(man->man->truncateContainer(name, *xmlupd, flags),
                  if (freeupd) delete xmlupd);
     }
@@ -1432,6 +1432,8 @@ xb_upd_manager(VALUE obj)
     return upd->man;
 }
 
+#if BDBXML_VERSION < 20400
+
 static VALUE
 xb_upd_changes_get(VALUE obj)
 {
@@ -1449,6 +1451,8 @@ xb_upd_changes_set(VALUE obj, VALUE a)
     upd->upd->setApplyChangesToContainers(RTEST(a));
     return obj;
 }
+
+#endif
 
 static void
 xb_doc_mark(xdoc *doc)
@@ -3044,7 +3048,7 @@ xb_ind_find(int argc, VALUE *argv, VALUE obj)
     xind *ind = get_ind(obj);
     if (argc == 1) {
 	name = StringValuePtr(argv[0]);
-	uri = "";
+	uri = (char *)"";
     }
     else {
 	if (argc != 2) {
@@ -4004,7 +4008,21 @@ xb_que_exec(int argc, VALUE *argv, VALUE obj)
     }
     return result;
 }
-    
+
+#if BDBXML_VERSION >= 20400
+
+static VALUE
+xb_que_update(VALUE obj)
+{
+  xque *que = get_que(obj);
+  if (que->que->isUpdateExpression()) {
+    return Qtrue;
+  }
+  return Qfalse;
+}
+
+#endif
+
 static VALUE
 xb_res_manager(VALUE obj)
 {
@@ -4152,6 +4170,8 @@ xb_mod_txn(VALUE obj)
     return Qnil;
 }
 
+#if BDBXML_VERSION < 20400
+
 static VALUE
 xb_mod_encoding(VALUE obj, VALUE a)
 {
@@ -4160,6 +4180,8 @@ xb_mod_encoding(VALUE obj, VALUE a)
     PROTECT(mod->mod->setNewEncoding(encoding));
     return a;
 }
+
+#endif
     
 static VALUE
 xb_mod_append(int argc, VALUE *argv, VALUE obj)
@@ -4750,6 +4772,8 @@ xb_val_node_handle(VALUE obj)
 
 #if BDBXML_VERSION >= 20300    
 
+#if BDBXML_VERSION < 20400
+
 static VALUE
 xb_ewr_s_alloc(VALUE obj)
 {
@@ -4766,6 +4790,8 @@ xb_ewr_init(VALUE obj)
 {
     return obj;
 }
+
+#endif
 
 static VALUE
 xb_ewr_close(VALUE obj)
@@ -4935,6 +4961,8 @@ xb_erd_free(xerd *erd)
     ::free(erd);
 }
 
+#if BDBXML_VERSION < 20400
+
 static VALUE
 xb_erd_s_alloc(VALUE obj)
 {
@@ -4951,6 +4979,8 @@ xb_erd_init(VALUE obj)
 {
     return obj;
 }
+
+#endif
 
 static VALUE
 xb_erd_close(VALUE obj)
@@ -5017,7 +5047,7 @@ xb_erd_value(VALUE obj)
 {
     xerd *erd = get_erd(obj);
     const unsigned char *uri;
-    int len;
+    size_t len;
     PROTECT(uri = erd->erd->getValue(len));
     return rb_tainted_str_new((char *)uri, len);
 }
@@ -5389,7 +5419,7 @@ extern "C" {
 	return Qnil;
     }
 
-    static void xb_const_set(VALUE hash, const char *cvalue, char *ckey)
+    static void xb_const_set(VALUE hash, const char *cvalue, const char *ckey)
     {
 	VALUE key, value;
 
@@ -5522,6 +5552,18 @@ extern "C" {
 #endif
 #ifdef DBXML_WELL_FORMED_ONLY
 	rb_define_const(xb_mXML, "WELL_FORMED_ONLY", INT2NUM(DBXML_WELL_FORMED_ONLY));
+#endif
+#ifdef DBXML_DOCUMENT_PROJECTION
+	rb_define_const(xb_mXML, "DOCUMENT_PROJECTION", INT2NUM(DBXML_DOCUMENT_PROJECTION));
+#endif
+#ifdef DBXML_NO_AUTO_COMMIT
+	rb_define_const(xb_mXML, "NO_AUTO_COMMIT", INT2NUM(DBXML_NO_AUTO_COMMIT));
+#endif
+#ifdef DBXML_STATISTICS
+	rb_define_const(xb_mXML, "STATISTICS", INT2NUM(DBXML_STATISTICS));
+#endif
+#ifdef DBXML_NO_STATISTICS
+	rb_define_const(xb_mXML, "NO_STATISTICS", INT2NUM(DBXML_NO_STATISTICS));
 #endif
 #if BDBXML_VERSION >= 20200
 	rb_define_const(xb_mXML, "REVERSE_ORDER", INT2NUM(DBXML_REVERSE_ORDER));
@@ -5745,8 +5787,10 @@ extern "C" {
 	rb_define_singleton_method(xb_cUpd, "new", RMF(xb_s_new), -1);
 	rb_define_private_method(xb_cUpd, "initialize", RMF(xb_upd_init), 1);
 	rb_define_method(xb_cUpd, "manager", RMF(xb_upd_manager), 0);
+#if BDBXML_VERSION < 20400
         rb_define_method(xb_cUpd, "apply_changes", RMF(xb_upd_changes_get), 0);
         rb_define_method(xb_cUpd, "apply_changes=", RMF(xb_upd_changes_set), 1);
+#endif
 	xb_cDoc = rb_define_class_under(xb_mXML, "Document", rb_cObject);
 	rb_include_module(xb_cDoc, rb_mEnumerable);
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
@@ -5783,7 +5827,9 @@ extern "C" {
 	xb_cCxt = rb_define_class_under(xb_mXML, "Context", rb_cObject);
 	rb_const_set(xb_mXML, rb_intern("QueryContext"), xb_cCxt);
 	rb_define_const(xb_cCxt, "LiveValues", INT2FIX(XmlQueryContext::LiveValues));
+#if BDBXML_VERSION < 20400
 	rb_define_const(xb_cCxt, "DeadValues", INT2FIX(XmlQueryContext::DeadValues));
+#endif
 	rb_define_const(xb_cCxt, "Eager", INT2FIX(XmlQueryContext::Eager));
 	rb_define_const(xb_cCxt, "Lazy", INT2FIX(XmlQueryContext::Lazy));
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
@@ -5837,6 +5883,9 @@ extern "C" {
 	rb_define_method(xb_cQue, "execute", RMF(xb_que_exec), -1);
 	rb_define_method(xb_cQue, "to_s", RMF(xb_que_to_str), 0);
 	rb_define_method(xb_cQue, "to_str", RMF(xb_que_to_str), 0);
+#if BDBXML_VERSION >= 20400
+	rb_define_method(xb_cQue, "update?", RMF(xb_que_update), 0);
+#endif
 
 	xb_cRes = rb_define_class_under(xb_mXML, "Results", rb_cObject);
 	rb_include_module(xb_cRes, rb_mEnumerable);
@@ -5878,7 +5927,9 @@ extern "C" {
 	rb_define_method(xb_cMod, "txn?", RMF(xb_mod_txn_p), 0);
 	rb_define_method(xb_cMod, "in_transaction?", RMF(xb_mod_txn_p), 0);
 	rb_define_method(xb_cMod, "in_txn?", RMF(xb_mod_txn_p), 0);
+#if BDBXML_VERSION < 20400
 	rb_define_method(xb_cMod, "encoding=", RMF(xb_mod_encoding), 1);
+#endif
         rb_define_method(xb_cMod, "append", RMF(xb_mod_append), -1);
         rb_define_method(xb_cMod, "insert_after", RMF(xb_mod_insert_after), 4);
         rb_define_method(xb_cMod, "insert_before", RMF(xb_mod_insert_before), 4);
@@ -5953,6 +6004,9 @@ extern "C" {
 
 #if BDBXML_VERSION >= 20300
         xb_cEwr = rb_define_class_under(xb_mXML, "EventWriter", rb_cObject);
+#if BDBXML_VERSION >= 20400
+	rb_undef_alloc_func(xb_cEwr);
+#else
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_define_alloc_func(xb_cEwr, RMFS(xb_ewr_s_alloc));
 #else
@@ -5960,6 +6014,7 @@ extern "C" {
 #endif
 	rb_define_singleton_method(xb_cEwr, "new", RMF(xb_s_new), -1);
 	rb_define_private_method(xb_cEwr, "initialize", RMF(xb_ewr_init), 0);
+#endif
 	rb_define_method(xb_cEwr, "close", RMF(xb_ewr_close), 0);
 	rb_define_method(xb_cEwr, "attribute", RMF(xb_ewr_attribute), 5);
 	rb_define_method(xb_cEwr, "dtd", RMF(xb_ewr_dtd), 1);
@@ -5973,6 +6028,9 @@ extern "C" {
 	rb_define_method(xb_cEwr, "text", RMF(xb_ewr_txt), 2);
 
         xb_cErd = rb_define_class_under(xb_mXML, "EventReader", rb_cObject);
+#if BDBXML_VERSION >= 20400
+	rb_undef_alloc_func(xb_cErd);
+#else
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
 	rb_define_alloc_func(xb_cErd, RMFS(xb_erd_s_alloc));
 #else
@@ -5980,6 +6038,7 @@ extern "C" {
 #endif
 	rb_define_singleton_method(xb_cErd, "new", RMF(xb_s_new), -1);
 	rb_define_private_method(xb_cErd, "initialize", RMF(xb_erd_init), 0);
+#endif
 	rb_define_const(xb_cErd, "StartElement", INT2FIX(XmlEventReader::StartElement));
 	rb_define_const(xb_cErd, "EndElement", INT2FIX(XmlEventReader::EndElement));
 	rb_define_const(xb_cErd, "Characters", INT2FIX(XmlEventReader::Characters));

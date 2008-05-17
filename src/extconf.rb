@@ -92,6 +92,8 @@ end
    end
 end
 
+have_type('rb_io_t', ['ruby.h', 'rubyio.h'])
+
 create_makefile("bdb")
 if unknown
    begin

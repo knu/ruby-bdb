@@ -132,13 +132,14 @@ void bdb_init_delegator()
     id_send = rb_intern("send");
     bdb_cDelegate = rb_define_class_under(bdb_mDb, "Delegate", rb_cObject);
     {
-	VALUE ary = Qfalse;
+	VALUE ary = Qfalse, tmp;
 	char *method;
 	int i;
 
 	ary = rb_class_instance_methods(1, &ary, rb_mKernel);
 	for (i = 0; i < RARRAY_LEN(ary); i++) {
-	    method = StringValuePtr(RARRAY_PTR(ary)[i]);
+	    tmp = rb_obj_as_string(RARRAY_PTR(ary)[i]);
+	    method = StringValuePtr(tmp);
 	    if (!strcmp(method, "==") ||
 		!strcmp(method, "===") || !strcmp(method, "=~")) continue;
 	    rb_undef_method(bdb_cDelegate, method);

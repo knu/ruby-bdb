@@ -16,19 +16,63 @@ static ID id_feedback;
 
 static void bdb_mark _((bdb_DB *));
 
-#define GetIdDb(obj, dbst) do {							\
-    VALUE th = rb_thread_current();						\
-										\
-    if (!RTEST(th) || !RBASIC(th)->flags) {					\
-	rb_raise(bdb_eFatal, "invalid thread object");				\
-    }										\
-    (obj) = rb_thread_local_aref(th, bdb_id_current_db); 			\
-    if (TYPE(obj) != T_DATA ||						  	\
-	RDATA(obj)->dmark != (RUBY_DATA_FUNC)bdb_mark) {		  	\
-	rb_raise(bdb_eFatal, "BUG : current_db not set");		  	\
-    }									  	\
-    Data_Get_Struct(obj, bdb_DB, dbst);					  	\
+#define GetIdDb(obj_, dbst_) do {				\
+    VALUE th = rb_thread_current();				\
+								\
+    if (!RTEST(th) || !RBASIC(th)->flags) {			\
+	rb_raise(bdb_eFatal, "invalid thread object");		\
+    }								\
+    (obj_) = rb_thread_local_aref(th, bdb_id_current_db);	\
+    if (TYPE(obj_) != T_DATA ||					\
+	RDATA(obj_)->dmark != (RUBY_DATA_FUNC)bdb_mark) {	\
+	rb_raise(bdb_eFatal, "BUG : current_db not set");	\
+    }								\
+    Data_Get_Struct(obj_, bdb_DB, dbst_);			\
 } while (0)
+
+#if BDB_VERSION >= 30200
+
+#define GetIdDbSec(obj_, dbst_, dbbd_) do {		\
+    (obj_) = (VALUE)dbbd_->app_private;			\
+    if (!obj) {						\
+	GetIdDb(obj_, dbst_);				\
+    }							\
+    else { 						\
+	Data_Get_Struct(obj_, bdb_DB, dbst_);     	\
+    }							\
+} while (0)
+
+#else
+
+#define GetIdDbSec(obj_, dbst_, dbbd_) do {					\
+    GetIdDb(obj_, dbst_);							\
+    if (dbbd_ != NULL && dbst_->dbp != dbbd_) {					\
+	if (TYPE(dbst_->secondary) == T_ARRAY) {				\
+	    int i_;								\
+	    VALUE tmp_;								\
+										\
+	    for (i_ = 0; i_ < RARRAY_LEN(dbst_->secondary); i_++) {		\
+		tmp_ = RARRAY_PTR(dbst_->secondary)[i_];			\
+		if (TYPE(tmp_) == T_ARRAY && RARRAY_LEN(tmp_) >= 1) {		\
+                    VALUE tmp_db = RARRAY_PTR(tmp_)[0];				\
+		    if (TYPE(tmp_db) == T_DATA &&				\
+			RDATA(tmp_db)->dmark == (RUBY_DATA_FUNC)bdb_mark) {	\
+			Data_Get_Struct(tmp_db, bdb_DB, dbst_);			\
+			if (dbst_->dbp == dbbd_) {				\
+			    (obj_) = tmp_db;					\
+			    goto found;						\
+			}							\
+		    }								\
+		}								\
+	    }									\
+	}									\
+	rb_raise(bdb_eFatal, "Invalid reference");				\
+    found:									\
+	Data_Get_Struct(obj_, bdb_DB, dbst_);					\
+    }										\
+} while (0)
+
+#endif
 
 VALUE
 bdb_respond_to(VALUE obj, ID meth)
@@ -289,6 +333,58 @@ test_load_dyna(VALUE obj, DBT *key, DBT *val)
     return res;
 }
 
+#define INT_COMPAR 1
+#define NUM_COMPAR 2
+#define STR_COMPAR 3
+#define COMPAR_INT 5
+#define COMPAR_NUM 6
+#define COMPAR_STR 7
+
+static int
+compar_funcall(VALUE av, VALUE bv, int compar)
+{
+    long ai, bi;
+    double ad, bd;
+
+    switch (compar) {
+    case INT_COMPAR:
+	ai = NUM2INT(rb_Integer(av));
+	bi = NUM2INT(rb_Integer(bv));
+	if (ai == bi) return 0;
+	if (ai > bi) return 1;
+	return -1;
+    case NUM_COMPAR:
+	ad = NUM2DBL(rb_Float(av));
+	bd = NUM2DBL(rb_Float(bv));
+	if (ad == bd) return 0;
+	if (ad > bd) return 1;
+	return -1;
+    case STR_COMPAR:
+	av = rb_obj_as_string(av);
+	bv = rb_obj_as_string(bv);
+	return strcmp(StringValuePtr(av), StringValuePtr(bv));
+    case COMPAR_INT:
+	ai = NUM2INT(rb_Integer(av));
+	bi = NUM2INT(rb_Integer(bv));
+	if (bi == ai) return 0;
+	if (bi > ai) return 1;
+	return -1;
+    case COMPAR_NUM:
+	ad = NUM2DBL(rb_Float(av));
+	bd = NUM2DBL(rb_Float(bv));
+	if (bd == ad) return 0;
+	if (bd > ad) return 1;
+	return -1;
+    case COMPAR_STR:
+	av = rb_obj_as_string(av);
+	bv = rb_obj_as_string(bv);
+	return strcmp(StringValuePtr(bv), StringValuePtr(av));
+    default:
+	rb_raise(bdb_eFatal, "Invalid comparison function");
+    }
+    return 0;
+}
+
 static int
 #if BDB_VERSION >= 30200
 bdb_bt_compare(DB *dbbd, const DBT *a, const DBT *b)
@@ -298,14 +394,22 @@ bdb_bt_compare(const DBT *a, const DBT *b)
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
+#if BDB_VERSION < 30200
+    DB *dbbd = NULL;
+#endif
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbbd);
     av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
     bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
-    if (dbst->bt_compare == 0)
+    if (dbst->bt_compare == 0) {
 	res = rb_funcall(obj, id_bt_compare, 2, av, bv);
-    else
+    }
+    else {
+	if (FIXNUM_P(dbst->bt_compare)) {
+	    return compar_funcall(av, bv, NUM2INT(dbst->bt_compare));
+	}
 	res = rb_funcall(dbst->bt_compare, bdb_id_call, 2, av, bv);
+    }
     return NUM2INT(res);
 } 
 
@@ -318,8 +422,11 @@ bdb_bt_prefix(const DBT *a, const DBT *b)
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
+#if BDB_VERSION < 30200
+    DB *dbbd = NULL;
+#endif
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbbd);
     av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
     bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
     if (dbst->bt_prefix == 0)
@@ -338,14 +445,22 @@ bdb_dup_compare(const DBT *a, const DBT *b)
 {
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
+#if BDB_VERSION < 30200
+    DB *dbbd = NULL;
+#endif
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbbd);
     av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
     bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
-    if (dbst->dup_compare == 0)
+    if (dbst->dup_compare == 0) {
 	res = rb_funcall(obj, id_dup_compare, 2, av, bv);
-    else
+    }
+    else {
+	if (FIXNUM_P(dbst->dup_compare)) {
+	    return compar_funcall(av, bv, NUM2INT(dbst->dup_compare));
+	}
 	res = rb_funcall(dbst->dup_compare, bdb_id_call, 2, av, bv);
+    }
     return NUM2INT(res);
 }
 
@@ -358,8 +473,11 @@ bdb_h_hash(const void *bytes, u_int32_t length)
 {
     VALUE obj, st, res;
     bdb_DB *dbst;
+#if BDB_VERSION < 30200
+    DB *dbbd = NULL;
+#endif
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbbd);
     st = rb_tainted_str_new((char *)bytes, length);
     if (dbst->h_hash == 0)
 	res = rb_funcall(obj, id_h_hash, 1, st);
@@ -376,13 +494,18 @@ bdb_h_compare(DB *dbbd, const DBT *a, const DBT *b)
     VALUE obj, av, bv, res;
     bdb_DB *dbst;
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbbd);
     av = bdb_test_load(obj, (DBT *)a, FILTER_VALUE|FILTER_FREE);
     bv = bdb_test_load(obj, (DBT *)b, FILTER_VALUE|FILTER_FREE);
-    if (dbst->h_compare == 0)
+    if (dbst->h_compare == 0) {
 	res = rb_funcall(obj, id_h_compare, 2, av, bv);
-    else
+    }
+    else {
+	if (FIXNUM_P(dbst->h_compare)) {
+	    return compar_funcall(av, bv, NUM2INT(dbst->h_compare));
+	}
 	res = rb_funcall(dbst->h_compare, bdb_id_call, 2, av, bv);
+    }
     return NUM2INT(res);
 }
 
@@ -396,7 +519,7 @@ bdb_append_recno(DB *dbp, DBT *data, db_recno_t recno)
     VALUE res, obj, av, rec;
     bdb_DB *dbst;
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbp);
     av = bdb_test_load(obj, data, FILTER_VALUE|FILTER_FREE);
     rec = INT2NUM(recno - dbst->array_base);
     if (dbst->append_recno == 0)
@@ -419,7 +542,7 @@ bdb_feedback(DB *dbp, int opcode, int pct)
     VALUE obj;
     bdb_DB *dbst;
 
-    GetIdDb(obj, dbst);
+    GetIdDbSec(obj, dbst, dbp);
     if (NIL_P(dbst->feedback)) {
 	return;
     }
@@ -432,6 +555,36 @@ bdb_feedback(DB *dbp, int opcode, int pct)
 }
 
 #endif
+
+static VALUE
+compar_func(VALUE value)
+{
+    value = rb_obj_as_string(value);
+    char *compar = StringValuePtr(value);
+
+    if (strcmp(compar, "int_compare") == 0) {
+	value = INT2NUM(INT_COMPAR);
+    }
+    else if (strcmp(compar, "int_compare_desc") == 0) {
+	value = INT2NUM(COMPAR_INT);
+    }
+    else if (strcmp(compar, "numeric_compare") == 0) {
+	value = INT2NUM(NUM_COMPAR);
+    }
+    else if (strcmp(compar, "numeric_compare_desc") == 0) {
+	value = INT2NUM(COMPAR_NUM);
+    }
+    else if (strcmp(compar, "string_compare") == 0) {
+	value = INT2NUM(STR_COMPAR);
+    }
+    else if (strcmp(compar, "string_compare_desc") == 0) {
+	value = INT2NUM(STR_COMPAR);
+    }
+    else {
+	rb_raise(bdb_eFatal, "arg must respond to #call");
+    }
+    return value;
+}
 
 static VALUE
 bdb_i_options(VALUE obj, VALUE dbstobj)
@@ -456,7 +609,7 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
     }
     else if (strcmp(options, "set_bt_compare") == 0) {
 	if (!rb_respond_to(value, bdb_id_call)) {
-	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	    value = compar_func(value);
 	}
 	dbst->options |= BDB_BT_COMPARE;
 	dbst->bt_compare = value;
@@ -481,7 +634,7 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
     else if (strcmp(options, "set_dup_compare") == 0) {
 #ifdef DB_DUPSORT
 	if (!rb_respond_to(value, bdb_id_call)) {
-	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	    value = compar_func(value);
 	}
 	dbst->options |= BDB_DUP_COMPARE;
 	dbst->dup_compare = value;
@@ -509,7 +662,7 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 #if BDB_VERSION >= 40600
     else if (strcmp(options, "set_h_compare") == 0) {
 	if (!rb_respond_to(value, bdb_id_call)) {
-	    rb_raise(bdb_eFatal, "arg must respond to #call");
+	    value = compar_func(value);
 	}
 	dbst->options |= BDB_H_COMPARE;
 	dbst->h_compare = value;
@@ -1436,6 +1589,9 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 	    }
 	}
     }
+#if BDB_VERSION >= 30200
+    dbst->dbp->app_private = (void *)obj;
+#endif
     return obj;
 }
 
@@ -1476,7 +1632,7 @@ bdb_s_alloc(obj)
 	    dbst->type = DB_UNKNOWN;
 	    break;
 	}
-	cl = RCLASS(cl)->super;
+	cl = RCLASS_SUPER(cl);
     }
     if (!cl) {
 	rb_raise(bdb_eFatal, "unknown database type");
@@ -2457,7 +2613,13 @@ bdb_treat(st, pkey, key, data)
 	}
 	break;
     case BDB_ST_DUPKV:
-	rb_yield(bdb_assoc_dyna(st->db, key, data));
+	res = bdb_assoc_dyna(st->db, key, data);
+	if (TYPE(st->replace) == T_ARRAY) {
+	    rb_ary_push(st->replace, res);
+	}
+	else {
+	    rb_yield(res);
+	}
 	break;
     case BDB_ST_DUPVAL:
 	res = test_load_dyna(st->db, key, data);
@@ -2519,6 +2681,45 @@ bdb_treat(st, pkey, key, data)
     }
 }
 
+static int
+bdb_i_last_prefix(dbcp, key, pkey, data, orig, st)
+    DBC *dbcp;
+    DBT *key, *pkey, *data, *orig;
+    eachst *st;
+{
+    int ret, flags = DB_LAST;
+
+    while (1) {
+#if BDB_VERSION >= 30300
+	if (st->type == BDB_ST_KV && st->primary) {
+	    ret = bdb_test_error(dbcp->c_pget(dbcp, key, pkey, data, DB_LAST));
+	}
+	else
+#endif
+	{
+#if BDB_VERSION < 20600
+	    key->flags |= DB_DBT_MALLOC;
+#endif
+	    ret = bdb_test_error(dbcp->c_get(dbcp, key, data, flags));
+#if BDB_VERSION < 20600
+	    key->flags &= ~DB_DBT_MALLOC;
+#endif
+	}
+	flags = DB_PREV;
+	if (ret == DB_NOTFOUND) {
+	    return ret;
+	}
+	if (key->size >= orig->size &&
+	    !memcmp(key->data, orig->data, orig->size)) {
+	    return 0;
+	}
+	if (memcmp(key->data, orig->data, 
+		   (key->size > orig->size)?orig->size:key->size) < 0) {
+	    return DB_NOTFOUND;
+	}
+    }
+}
+
 static VALUE
 bdb_i_each_kv(st)
     eachst *st;
@@ -2550,24 +2751,29 @@ bdb_i_each_kv(st)
             orig.data = ALLOCA_N(char, key.size);
             MEMCPY(orig.data, key.data, char, key.size);
         }
-#if BDB_VERSION >= 30300
-	if (st->type == BDB_ST_KV && st->primary) {
-	    ret = bdb_test_error(dbcp->c_pget(dbcp, &key, &pkey, &data, 
-                                              (st->type & BDB_ST_DUP)?DB_SET:
-                                              DB_SET_RANGE));
+	if (prefix && st->sens == DB_PREV) {
+	    ret = bdb_i_last_prefix(dbcp, &key, &pkey, &data, &orig, st);
 	}
-	else
+	else {
+#if BDB_VERSION >= 30300
+	    if (st->type == BDB_ST_KV && st->primary) {
+		ret = bdb_test_error(dbcp->c_pget(dbcp, &key, &pkey, &data, 
+						  (st->type & BDB_ST_DUP)?DB_SET:
+						  DB_SET_RANGE));
+	    }
+	    else
 #endif
-	{
+	    {
 #if BDB_VERSION < 20600
-	    key.flags |= DB_DBT_MALLOC;
+		key.flags |= DB_DBT_MALLOC;
 #endif
-	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, 
+		ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, 
                                              (st->type & BDB_ST_DUP)?DB_SET:
                                              DB_SET_RANGE));
 #if BDB_VERSION < 20600
-	    key.flags &= ~DB_DBT_MALLOC;
+		key.flags &= ~DB_DBT_MALLOC;
 #endif
+	    }
 	}
 	if (ret == DB_NOTFOUND) {
 	    return Qfalse;
@@ -2815,8 +3021,18 @@ bdb_common_each_dup_val(int argc, VALUE *argv, VALUE obj)
 static VALUE
 bdb_common_dups(int argc, VALUE *argv, VALUE obj)
 {
+    int flags = BDB_ST_DUPKV;
     VALUE result = rb_ary_new();
-    return bdb_each_kvc(argc, argv, obj, DB_NEXT_DUP, result, BDB_ST_DUPVAL);
+    if (argc > 1) {
+	if (RTEST(argv[argc - 1])) {
+	    flags = BDB_ST_DUPKV;
+	}
+	else {
+	    flags = BDB_ST_DUPVAL;
+	}
+	argc--;
+    }
+    return bdb_each_kvc(argc, argv, obj, DB_NEXT_DUP, result, flags);
 }
 
 #endif
@@ -3877,7 +4093,11 @@ bdb_verify(int argc, VALUE *argv, VALUE obj)
     char *file, *database;
     VALUE flagv = Qnil, iov = Qnil;
     int flags = 0;
+#if HAVE_TYPE_RB_IO_T
+    rb_io_t *fptr;
+#else
     OpenFile *fptr;
+#endif
     FILE *io = NULL;
 
     rb_secure(4);

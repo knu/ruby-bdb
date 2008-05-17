@@ -1,5 +1,5 @@
 #!/usr/local/bin/ruby
-data = "#{ENV['HOME']}/ruby/db/dbxml-2.3.10/dbxml/examples/xmlData"
+data = "#{ENV['HOME']}/ruby/db/dbxml-2.4.13/dbxml/examples/xmlData"
 unless FileTest.directory?(data) && FileTest.directory?(data + "/simpleData")
    puts "Error can't find DbXml examples"
    puts "path : #{data}"

@@ -198,7 +198,7 @@ class TestBtree < Inh::TestCase
       if BDB::VERSION_MAJOR > 2 || BDB::VERSION_MINOR >= 6
 	 for i in [0, 1, 2, 3]
 	    k0, v0 = [], []
-	    $bdb.duplicates(i.to_s).each {|v| v0 << v}
+	    $bdb.duplicates(i.to_s, false).each {|v| v0 << v}
 	    assert_equal(v0.sort, rep[i], "<dup val #{i}>")
 	    k0, v0 = [], []
 	    $bdb.each_dup(i.to_s) {|k, v| k0 << k; v0 << v}
@@ -354,6 +354,7 @@ class TestBtree < Inh::TestCase
       assert_equal(3, $bdb.size, "<size after abort>")
    end
 
+=begin
    def test_16_txn_abort2
       if BDB::VERSION_MAJOR == 2 && BDB::VERSION_MINOR < 7
 	 $stderr.print "skipping test for this version"
@@ -395,6 +396,7 @@ class TestBtree < Inh::TestCase
       assert_equal(nil, $bdb.close, "<close>")
       $env.close
    end
+=end
 
    def intern_btree_delete
       $hash = {}
