@@ -379,6 +379,38 @@ bdb_cursor_put(int argc, VALUE *argv, VALUE obj)
     }
 }
 
+#if BDB_VERSION >= 40725
+
+static VALUE
+bdb_cursor_set_priority(VALUE obj, VALUE a)
+{
+    bdb_DBC *dbcst;
+    bdb_DB *dbst;
+
+    GetCursorDB(obj, dbcst, dbst);
+    if (dbcst->dbc->set_priority(dbcst->dbc, NUM2INT(a))) {
+	rb_raise(rb_eArgError, "invalid argument");
+    }
+    return a;
+}
+
+static VALUE
+bdb_cursor_priority(VALUE obj)
+{
+    bdb_DBC *dbcst;
+    bdb_DB *dbst;
+
+    DB_CACHE_PRIORITY prio = 0;
+
+    GetCursorDB(obj, dbcst, dbst);
+    if (dbcst->dbc->get_priority(dbcst->dbc, &prio)) {
+	rb_raise(rb_eArgError, "invalid argument");
+    }
+    return INT2FIX(prio);
+}
+
+#endif
+
 void bdb_init_cursor()
 {
     rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, -1);
@@ -433,4 +465,8 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "set_range", bdb_cursor_set_range, 1);
     rb_define_method(bdb_cCursor, "c_set_recno", bdb_cursor_set_recno, 1);
     rb_define_method(bdb_cCursor, "set_recno", bdb_cursor_set_recno, 1);
+#if BDB_VERSION >= 40725
+    rb_define_method(bdb_cCursor, "priority", bdb_cursor_priority, 0);
+    rb_define_method(bdb_cCursor, "priority=", bdb_cursor_set_priority, 1);
+#endif
 }

@@ -978,8 +978,8 @@ static void
 bdb_free(bdb_DB *dbst)
 {
     if (dbst->dbp && !(dbst->options & BDB_NOT_OPEN)) {
-        rb_protect((VALUE (*)(ANYARGS))i_close, (VALUE)dbst, 0);
-        rb_protect((VALUE (*)(ANYARGS))bdb_final_aref, (VALUE)dbst, 0);
+	i_close(dbst);
+	bdb_final_aref(dbst);
     }
     free(dbst);
 }
@@ -1074,7 +1074,7 @@ bdb_close(int argc, VALUE *argv, VALUE obj)
     }
     if (RDATA(obj)->dfree != free) {
 	dbst->options |= BDB_NOT_OPEN;
-	rb_protect((VALUE (*)(ANYARGS))bdb_final_aref, (VALUE)dbst, 0);
+	bdb_final_aref(dbst);
 	RDATA(obj)->dfree = free;
     }
     return Qnil;
@@ -1465,7 +1465,9 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
     }
 #else
     {
+#if BDB_VERSION >= 40100
 	DB_TXN *txnid = NULL;
+#endif
 
 	if (name == NULL && subname == NULL) {
 	    if (flags & DB_RDONLY) {
@@ -1960,7 +1962,9 @@ bdb_assoc3(obj, skey, pkey, data)
 }
 
 static VALUE bdb_has_both _((VALUE, VALUE, VALUE));
+#if BDB_VERSION < 30100
 static VALUE bdb_has_both_internal _((VALUE, VALUE, VALUE, VALUE));
+#endif
 
 static VALUE
 bdb_get_internal(argc, argv, obj, notfound, dyna)
@@ -2007,9 +2011,15 @@ bdb_get_internal(argc, argv, obj, notfound, dyna)
     a = bdb_test_recno(obj, &key, &recno, a);
     SET_PARTIAL(dbst, data);
     flags |= TEST_INIT_LOCK(dbst);
+#if BDB_VERSION >= 40725
+    key.flags |= DB_DBT_MALLOC;
+#endif
     ret = bdb_test_error(dbst->dbp->get(dbst->dbp, txnid, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return notfound;
+#if BDB_VERSION >= 40725
+    key.flags &= ~DB_DBT_MALLOC;
+#endif
     if (((flags & ~DB_RMW) == DB_GET_BOTH) ||
 	((flags & ~DB_RMW) == DB_SET_RECNO)) {
 #if BDB_VERSION >= 40500
@@ -2331,6 +2341,8 @@ bdb_has_key(obj, key)
     return (bdb_get_internal(1, &key, obj, Qundef, 0) == Qundef)?Qfalse:Qtrue;
 }
 
+#if BDB_VERSION < 30100
+
 static VALUE
 bdb_has_both_internal(obj, a, b, flag)
     VALUE obj, a, b, flag;
@@ -2415,6 +2427,8 @@ bdb_has_both_internal(obj, a, b, flag)
     return Qfalse;
 }
 
+#endif
+
 static VALUE
 bdb_has_both(obj, a, b)
     VALUE obj, a, b;
@@ -2443,6 +2457,9 @@ bdb_has_both(obj, a, b)
     data.flags |= DB_DBT_MALLOC;
     SET_PARTIAL(dbst, data);
     flags = DB_GET_BOTH | TEST_INIT_LOCK(dbst);
+#if BDB_VERSION >= 40725
+    key.flags |= DB_DBT_MALLOC;
+#endif
     ret = bdb_test_error(dbst->dbp->get(dbst->dbp, txnid, &key, &data, flags));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qfalse;
@@ -3407,10 +3424,11 @@ bdb_indexes(int argc, VALUE *argv, VALUE obj)
 #if HAVE_RB_ARY_VALUES_AT
     rb_warn("Common#%s is deprecated; use Common#values_at",
 #if HAVE_RB_FRAME_THIS_FUNC
-	    rb_id2name(rb_frame_this_func()));
+	    rb_id2name(rb_frame_this_func())
 #else
-	    rb_id2name(rb_frame_last_func()));
+	    rb_id2name(rb_frame_last_func())
 #endif
+	    );
 #endif
     indexes = rb_ary_new2(argc);
     for (i = 0; i < argc; i++) {
@@ -3424,7 +3442,6 @@ bdb_values_at(int argc, VALUE *argv, VALUE obj)
 {
     VALUE result = rb_ary_new2(argc);
     long i;
-
     for (i = 0; i < argc; i++) {
 	rb_ary_push(result, bdb_get(1, &argv[i], obj));
     }
@@ -3474,7 +3491,7 @@ bdb_hash_stat(int argc, VALUE *argv, VALUE obj)
     DB_HASH_STAT *bdb_stat;
     VALUE hash, flagv;
     int flags = 0;
-#if BDB_VERSION >= 4030
+#if BDB_VERSION >= 40300
     DB_TXN *txnid = NULL;
 #endif
 
@@ -4363,6 +4380,54 @@ bdb_conf(int argc, VALUE *argv, VALUE obj)
 	
 #endif
 
+#if BDB_VERSION >= 40725
+
+static VALUE
+bdb_fd(VALUE obj)
+{
+    int fd = 0;
+    bdb_DB *dbst;
+    VALUE ary[2];
+
+    GetDB(obj, dbst);
+    if (dbst->dbp->fd(dbst->dbp, &fd)) {
+	rb_raise(rb_eArgError, "invalid database handler");
+    }
+    ary[0] = INT2FIX(fd);
+    ary[1] = rb_str_new2("r");
+    return rb_class_new_instance(2, ary, rb_cIO);
+}
+
+static VALUE
+bdb_set_priority(VALUE obj, VALUE a)
+{
+    bdb_DB *dbst;
+
+    GetDB(obj, dbst);
+    if (dbst->dbp->set_priority(dbst->dbp, NUM2INT(a))) {
+	rb_raise(rb_eArgError, "invalid argument");
+    }
+    return a;
+}
+
+static VALUE
+bdb_priority(VALUE obj)
+{
+    bdb_DB *dbst;
+    DB_CACHE_PRIORITY prio = 0;
+
+    GetDB(obj, dbst);
+    if (dbst->dbp->get_priority(dbst->dbp, &prio)) {
+	rb_raise(rb_eArgError, "invalid argument");
+    }
+    return INT2FIX(prio);
+}
+
+
+#endif
+
+
+    
 void bdb_init_common()
 {
     id_bt_compare = rb_intern("bdb_bt_compare");
@@ -4542,6 +4607,11 @@ void bdb_init_common()
 #if BDB_VERSION >= 40250
     rb_define_method(bdb_cCommon, "configuration", bdb_conf, -1);
     rb_define_method(bdb_cCommon, "conf", bdb_conf, -1);
+#endif
+#if BDB_VERSION >= 40725
+    rb_define_method(bdb_cCommon, "fd", bdb_fd, 0);
+    rb_define_method(bdb_cCommon, "priority", bdb_priority, 0);
+    rb_define_method(bdb_cCommon, "priority=", bdb_set_priority, 1);
 #endif
     bdb_cUnknown = rb_define_class_under(bdb_mDb, "Unknown", bdb_cCommon);
 }

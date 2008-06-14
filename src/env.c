@@ -443,7 +443,7 @@ bdb_env_event_notify(DB_ENV *dbenv, u_int32_t event, void *event_info)
 {
     VALUE obj;
     bdb_ENV *envst;
-    VALUE res, a ,b;
+    VALUE a;
 
     GetIdEnv(obj, envst);
     if (NIL_P(envst->event_notify)) {
@@ -970,6 +970,13 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
     }
 
 #endif
+#if BDB_VERSION >= 40725
+    else if (strcmp(options, "et_intermediate_dir_mode") == 0) {
+	char *dir;
+	dir = StringValuePtr(value);
+	bdb_test_error(envst->envp->set_intermediate_dir_mode(envst->envp, dir));
+    }
+#endif
     return Qnil;
 }
 
@@ -1010,7 +1017,7 @@ bdb_final(bdb_ENV *envst)
         envst->db_ary.mark = Qtrue;
         for (i = 0; i < envst->db_ary.len; i++) {
             if (rb_respond_to(ary[i], rb_intern("close"))) {
-                rb_protect(bdb_protect_close, ary[i], 0);
+                bdb_protect_close(ary[i]);
             }
         }
         envst->db_ary.mark = Qfalse;
@@ -1031,9 +1038,9 @@ bdb_final(bdb_ENV *envst)
     }
 #if BDB_VERSION >= 30000
     {
-	int status;
+	int status = 0;
 
-	obj = rb_protect(bdb_env_aref, 0, &status);
+	obj = bdb_env_aref();
 	if (!status && !NIL_P(obj)) {
 	    Data_Get_Struct(obj, bdb_ENV, thst);
 	    if (thst == envst) {
@@ -1180,6 +1187,8 @@ bdb_func_sleep(unsigned long sec, unsigned long usec)
     return 0;
 }
 
+#if BDB_VERSION < 40725
+
 static int
 bdb_func_yield()
 {
@@ -1187,15 +1196,24 @@ bdb_func_yield()
     return 0;
 }
 
+#endif
+
+#if 0
+
 static void *
 bdb_func_malloc(size_t size)
 {
     return malloc(size);
 }
 
+#endif
+
 static VALUE
 bdb_set_func(bdb_ENV *envst)
 {
+#if BDB_VERSION >= 40725
+    bdb_test_error(db_env_set_func_yield(bdb_func_sleep));
+#else
 #if BDB_VERSION >= 30000
 #if BDB_VERSION < 30114
     bdb_test_error(envst->envp->set_func_sleep(envst->envp, bdb_func_sleep));
@@ -1207,6 +1225,7 @@ bdb_set_func(bdb_ENV *envst)
 #else
     bdb_test_error(db_jump_set((void *)bdb_func_sleep, DB_FUNC_SLEEP));
     bdb_test_error(db_jump_set((void *)bdb_func_yield, DB_FUNC_YIELD));
+#endif
 #endif
     return Qtrue;
 }
@@ -1844,11 +1863,21 @@ bdb_env_i_conf(VALUE obj, VALUE a)
     }
 #if BDB_VERSION >= 40500
     if (strcmp(str, "rep_priority") == 0) {
+#if BDB_VERSION >= 40725
 	bdb_test_error(envst->envp->rep_get_priority(envst->envp, &size));
+#else
+	int size;
+	bdb_test_error(envst->envp->rep_get_priority(envst->envp, &size));
+#endif
 	return INT2NUM(size);
     }
     if (strcmp(str, "rep_nsites") == 0) {
+#if BDB_VERSION >= 40725
 	bdb_test_error(envst->envp->rep_get_nsites(envst->envp, &size));
+#else
+	int size;
+	bdb_test_error(envst->envp->rep_get_nsites(envst->envp, &size));
+#endif
 	return INT2NUM(size);
     }
 #endif
@@ -2191,7 +2220,11 @@ static VALUE
 bdb_env_rep_get_nsites(VALUE obj, VALUE a)
 {
     bdb_ENV *envst;
+#if BDB_VERSION >= 40725
+    uint32_t offon;
+#else
     int offon;
+#endif
 
     GetEnvDB(obj, envst);
     bdb_test_error(envst->envp->rep_get_nsites(envst->envp, &offon));
@@ -2212,7 +2245,11 @@ static VALUE
 bdb_env_rep_get_priority(VALUE obj, VALUE a)
 {
     bdb_ENV *envst;
+#if BDB_VERSION >= 40725
+    uint32_t offon;
+#else
     int offon;
+#endif
 
     GetEnvDB(obj, envst);
     bdb_test_error(envst->envp->rep_get_priority(envst->envp, &offon));
@@ -2235,7 +2272,7 @@ static VALUE
 bdb_env_rep_get_timeout(VALUE obj, VALUE a)
 {
     bdb_ENV *envst;
-    int offon;
+    uint32_t offon;
 
     GetEnvDB(obj, envst);
     bdb_test_error(envst->envp->rep_get_timeout(envst->envp, NUM2UINT(a), &offon));
@@ -2417,6 +2454,55 @@ bdb_intern_get(VALUE obj, VALUE a)
 
 #endif
 
+#if BDB_VERSION >= 40725
+
+static VALUE
+bdb_env_dir_mode(VALUE obj)
+{
+    bdb_ENV *envst;
+    const char *dir;
+
+    GetEnvDB(obj, envst);
+    if (envst->envp->get_intermediate_dir_mode(envst->envp, &dir)) {
+	rb_raise(rb_eArgError, "invalid environment");
+    }
+    return rb_tainted_str_new2(dir);
+}
+
+static VALUE
+bdb_env_log_set_config(VALUE obj, VALUE a, VALUE b)
+{
+    bdb_ENV *envst;
+    int onoff;
+
+    GetEnvDB(obj, envst);
+    onoff = RTEST(b)?1:0;
+    if (envst->envp->log_set_config(envst->envp, NUM2INT(a), onoff)) {
+	rb_raise(rb_eArgError, "invalid argument");
+    }
+    return obj;
+}
+
+static VALUE
+bdb_env_log_config(VALUE obj, VALUE a)
+{
+
+    bdb_ENV *envst;
+    int onoff;
+
+    GetEnvDB(obj, envst);
+    if (envst->envp->log_get_config(envst->envp, NUM2INT(a), &onoff)) {
+	rb_raise(rb_eArgError, "invalid argument");
+    }
+    if (onoff) {
+	return Qtrue;
+    }
+    return Qfalse;
+}
+ 
+#endif
+
+
 void bdb_init_env()
 {
     bdb_id_call = rb_intern("call");
@@ -2532,5 +2618,13 @@ void bdb_init_env()
     rb_define_method(bdb_cEnv, "rep_set_transport", bdb_env_rep_set_transport, 2);
     
 #endif
+
+#if BDB_VERSION >= 40725
+    rb_define_method(bdb_cEnv, "intermediate_dir_mode", bdb_env_dir_mode, 0);
+    rb_define_method(bdb_cEnv, "set_log_config", bdb_env_log_set_config, 2);
+    rb_define_method(bdb_cEnv, "log_set_config", bdb_env_log_set_config, 2);
+    rb_define_method(bdb_cEnv, "log_config", bdb_env_log_config, 1);
+#endif
+
 }
 

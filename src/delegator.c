@@ -141,7 +141,10 @@ void bdb_init_delegator()
 	    tmp = rb_obj_as_string(RARRAY_PTR(ary)[i]);
 	    method = StringValuePtr(tmp);
 	    if (!strcmp(method, "==") ||
-		!strcmp(method, "===") || !strcmp(method, "=~")) continue;
+		!strcmp(method, "===") ||
+		!strcmp(method, "=~") ||
+		!strcmp(method, "respond_to?")
+		) continue;
 	    rb_undef_method(bdb_cDelegate, method);
 	}
     }
@@ -158,7 +161,9 @@ void bdb_init_delegator()
     rb_define_method(bdb_cDelegate, "to_io", bdb_deleg_to_io, 0);
     rb_define_method(bdb_cDelegate, "to_proc", bdb_deleg_to_proc, 0);
     rb_define_method(bdb_cDelegate, "_dump", bdb_deleg_dump, 1);
+    rb_define_method(bdb_cDelegate, "_dump_data", bdb_deleg_dump, 1);
     rb_define_singleton_method(bdb_cDelegate, "_load", bdb_deleg_load, 1);
+    rb_define_singleton_method(bdb_cDelegate, "_load_data", bdb_deleg_load, 1);
     /* don't use please */
     rb_define_method(bdb_cDelegate, "to_orig", bdb_deleg_to_orig, 0);
     rb_define_method(rb_mKernel, "to_orig", bdb_deleg_orig, 0);

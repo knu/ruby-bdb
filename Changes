@@ -276,3 +276,7 @@
 --- 0.6.3
 
 * updated for dbxml-2.4
+
+--- 0.6.4
+
+* update for db 4.7

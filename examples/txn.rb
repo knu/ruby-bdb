@@ -3,25 +3,27 @@ require './clean.rb'
 
 BDB::Env.cleanup("tmp", true)
 
+
 module BDB
    class ThreadHash < Hash
       def start(val, num)
          Thread.start do
             self.env.begin(self) do |txn, b1|
+               p "Thread #{num} Enter"
                b1.delete_if do |k, v|
-		  print "\t#{num} #{k} -- #{v}\n"
+                  print "\t#{num} #{k} -- #{v}\n"
                   k == val
                end
                p "Thread #{num} Pass"
-               Thread.pass
+#              Thread.pass
                b1.each do |k, v|
-		  print "\t#{num} #{k} -- #{v}\n"
+                  print "\t#{num} #{k} -- #{v}\n"
                end
                if num == 1
-		  txn.abort
-	       else
-		  txn.commit
-	       end
+                  txn.abort
+               else
+                  txn.commit
+               end
             end
             p "End Thread #{num}"
          end

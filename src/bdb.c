@@ -547,12 +547,14 @@ Init_bdb()
 #ifdef DB_DIRECT_LOG
     rb_define_const(bdb_mDb, "DIRECT_LOG", INT2FIX(DB_DIRECT_LOG));
 #endif
-#if BDB_VERSION >= 40100
-    rb_define_const(bdb_mDb, "PRIORITY_VERY_LOW", INT2FIX(DB_PRIORITY_VERY_LOW));
-    rb_define_const(bdb_mDb, "PRIORITY_LOW", INT2FIX(DB_PRIORITY_LOW));
-    rb_define_const(bdb_mDb, "PRIORITY_DEFAULT", INT2FIX(DB_PRIORITY_DEFAULT));
-    rb_define_const(bdb_mDb, "PRIORITY_HIGH", INT2FIX(DB_PRIORITY_HIGH));
-    rb_define_const(bdb_mDb, "PRIORITY_VERY_HIGH", INT2FIX(DB_PRIORITY_VERY_HIGH));
+#ifdef DB_DSYNC_LOG
+    rb_define_const(bdb_mDb, "DSYNC_LOG", INT2FIX(DB_DSYNC_LOG));
+#endif
+#ifdef DB_LOG_INMEMORY
+    rb_define_const(bdb_mDb, "LOG_INMEMORY", INT2FIX(DB_LOG_INMEMORY));
+#endif
+#ifdef DB_LOG_AUTOREMOVE
+    rb_define_const(bdb_mDb, "LOG_AUTOREMOVE", INT2FIX(DB_LOG_AUTOREMOVE));
 #endif
 #ifdef DB_GET_BOTH_RANGE
     rb_define_const(bdb_mDb, "GET_BOTH_RANGE", INT2FIX(DB_GET_BOTH_RANGE));
@@ -692,6 +694,38 @@ Init_bdb()
 #ifdef DB_IGNORE_LEASE
     rb_define_const(bdb_mDb, "IGNORE_LEASE", INT2FIX(DB_IGNORE_LEASE));
 #endif
+#ifdef DB_VERY_PRIORITY_LOW
+    rb_define_const(bdb_mDb, "PRIORITY_VERY_LOW", INT2FIX(DB_PRIORITY_VERY_LOW));
+#endif
+#ifdef DB_PRIORITY_LOW
+    rb_define_const(bdb_mDb, "PRIORITY_LOW", INT2FIX(DB_PRIORITY_LOW));
+#endif
+#ifdef DB_PRIORITY_DEFAULT
+    rb_define_const(bdb_mDb, "PRIORITY_DEFAULT", INT2FIX(DB_PRIORITY_DEFAULT));
+#endif
+#ifdef DB_PRIORITY_HIGH
+    rb_define_const(bdb_mDb, "PRIORITY_HIGH", INT2FIX(DB_PRIORITY_HIGH));
+#endif
+#ifdef DB_PRIORITY_VERY_HIGH
+    rb_define_const(bdb_mDb, "PRIORITY_VERY_HIGH", INT2FIX(DB_PRIORITY_VERY_HIGH));
+#endif
+
+#ifdef DB_LOG_DIRECT
+    rb_define_const(bdb_mDb, "LOG_DIRECT", INT2FIX(DB_LOG_DIRECT));
+#endif
+#ifdef DB_LOG_DSYNC
+    rb_define_const(bdb_mDb, "LOG_DSYNC", INT2FIX(DB_LOG_DSYNC));
+#endif
+#ifdef DB_LOG_AUTO_REMOVE
+    rb_define_const(bdb_mDb, "LOG_AUTO_REMOVE", INT2FIX(DB_LOG_AUTO_REMOVE));
+#endif
+#ifdef DB_LOG_IN_MEMORY
+    rb_define_const(bdb_mDb, "LOG_IN_MEMORY", INT2FIX(DB_LOG_IN_MEMORY));
+#endif
+#ifdef DB_LOG_ZERO
+    rb_define_const(bdb_mDb, "LOG_ZERO", INT2FIX(DB_LOG_ZERO));
+#endif
+
     bdb_init_env();
     bdb_init_common();
     bdb_init_recnum();
@@ -700,8 +734,11 @@ Init_bdb()
     bdb_init_lock();
     bdb_init_log();
     bdb_init_delegator();
+#if BDB_VERSION >= 40300
     bdb_init_sequence();
+#endif
 
     bdb_errstr = rb_tainted_str_new(0, 0);
     rb_global_variable(&bdb_errstr);
+    
 }

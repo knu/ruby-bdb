@@ -181,8 +181,10 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_objs_wait"), INT2NUM(statp->st_objs_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_lockers_nowait"), INT2NUM(statp->st_lockers_nowait));
     rb_hash_aset(a, rb_tainted_str_new2("st_lockers_wait"), INT2NUM(statp->st_lockers_wait));
+#if BDB_VERSION < 40700
     rb_hash_aset(a, rb_tainted_str_new2("st_locks_nowait"), INT2NUM(statp->st_locks_nowait));
     rb_hash_aset(a, rb_tainted_str_new2("st_locks_wait"), INT2NUM(statp->st_locks_wait));
+#endif
 #endif
 #else
     if (argc != 0) {

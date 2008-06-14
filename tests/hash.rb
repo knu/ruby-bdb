@@ -399,7 +399,7 @@ class TestHash < Inh::TestCase
 	 array.push h
 	 assert_equal($hash.index(h.reverse), $bdb.index(h.reverse), "<index>")
       end
-      assert_equal($hash.indexes(array), $bdb.indexes(array), "<indexes>")
+      assert_equal($hash.indexes(*array), $bdb.indexes(*array), "<indexes>")
       array.each do |k|
 	 assert($bdb.has_both?(k, k.reverse), "<has both>")
       end

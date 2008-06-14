@@ -3,11 +3,10 @@
 static ID id_txn_close;
 
 static VALUE
-txn_close_i(VALUE ary)
+txn_close_i(VALUE ary[])
 {
-    if (bdb_respond_to(RARRAY_PTR(ary)[0], id_txn_close)) {
-        rb_funcall(RARRAY_PTR(ary)[0], id_txn_close, 2,
-                   RARRAY_PTR(ary)[1], RARRAY_PTR(ary)[2]);
+    if (bdb_respond_to(ary[0], id_txn_close)) {
+        rb_funcall(ary[0], id_txn_close, 2, ary[1], ary[2]);
     }
     return Qnil;
 }
@@ -15,35 +14,34 @@ txn_close_i(VALUE ary)
 static void
 clean_ary(bdb_TXN *txnst, VALUE result)
 {
-    VALUE *ary, tmp;
+    VALUE *ary, tmp[3];
     int i, len;
 
-    tmp = rb_ary_new2(3);
-    rb_ary_push(tmp, Qnil);
-    rb_ary_push(tmp, result);
-    rb_ary_push(tmp, Qtrue);
+    tmp[0] = Qnil;
+    tmp[1] = result;
+    tmp[2] = Qtrue;
     if (txnst->db_ary.ptr) {
         txnst->db_ary.mark = Qtrue;
 	ary = txnst->db_ary.ptr;
 	len = txnst->db_ary.len;
 
 	for (i = 0; i < len; i++) {
-            RARRAY_PTR(tmp)[0] = ary[i];
-            rb_protect(txn_close_i, tmp, 0);
+            tmp[0] = ary[i];
+	    txn_close_i(tmp);
 	}
         txnst->db_ary.mark = Qfalse;
 	txnst->db_ary.ptr = 0;
 	txnst->db_ary.total = txnst->db_ary.len = 0;
 	free(ary);
     }
-    RARRAY_PTR(tmp)[2] = Qfalse;
+    tmp[2] = Qfalse;
     if (txnst->db_assoc.ptr) {
         txnst->db_assoc.mark = Qtrue;
 	ary = txnst->db_assoc.ptr;
 	len = txnst->db_assoc.len;
 	for (i = 0; i < len; i++) {
-            RARRAY_PTR(tmp)[0] = ary[i];
-            rb_protect(txn_close_i, tmp, 0);
+            tmp[0] = ary[i];
+	    txn_close_i(tmp);
 	}
         txnst->db_assoc.mark = Qfalse;
 	txnst->db_assoc.ptr = 0;
@@ -73,7 +71,7 @@ txn_free(bdb_TXN *txnst)
 static void
 bdb_txn_free(bdb_TXN *txnst)
 {
-    rb_protect((VALUE (*)(ANYARGS))txn_free, (VALUE)txnst, 0);
+    txn_free(txnst);
     free(txnst);
 }
 
