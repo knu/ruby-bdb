@@ -6,6 +6,10 @@ File::unlink("exa.dbxml") rescue nil
 
 man = BDB::XML::Manager.new
 con = man.create_container("exa.dbxml")
+at_exit {
+   con.close
+   man.close
+}
 index = con.index
 
 index.add(BDB::XML::Namespace["uri"], BDB::XML::Name["default"], 

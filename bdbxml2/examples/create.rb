@@ -8,6 +8,10 @@ File.unlink("exa.dbxml") rescue nil
 
 man = Manager.new
 con = man.create_container("exa.dbxml")
+at_exit {
+   con.close
+   man.close
+}
 con.put("book12", 
         "<book><title>Knowledge Discovery in Databases I</title></book>")
 con.put("book21", 

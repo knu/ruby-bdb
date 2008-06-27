@@ -114,19 +114,19 @@ bdb_intern_shift_pop(VALUE obj, int depart, int len)
 
     rb_secure(4);
     INIT_TXN(txnid, obj, dbst);
-    MEMZERO(&key, DBT, 1);
-    INIT_RECNO(dbst, key, recno);
-    MEMZERO(&data, DBT, 1);
-    data.flags = DB_DBT_MALLOC;
-#if BDB_VERSION < 20600
-    bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
-#else
+#if HAVE_DB_CURSOR_4
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp, 0));
+#else
+    bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbcp));
 #endif
     SET_PARTIAL(dbst, data);
     flags = TEST_INIT_LOCK(dbst);
     res = rb_ary_new2(len);
     for (i = 0; i < len; i++) {
+	MEMZERO(&key, DBT, 1);
+	INIT_RECNO(dbst, key, recno);
+	MEMZERO(&data, DBT, 1);
+	data.flags = DB_DBT_MALLOC;
 	bdb_cache_error(dbcp->c_get(dbcp, &key, &data, depart | flags),
 			dbcp->c_close(dbcp), ret);
 	if (ret == DB_NOTFOUND) break;
@@ -996,7 +996,7 @@ void bdb_init_recnum()
     rb_define_method(bdb_cRecno, "to_ary", bdb_sary_to_a, 0);
     rb_define_method(bdb_cRecno, "pop", bdb_sary_pop, 0);
     /* QUEUE */
-#if BDB_VERSION >= 30000
+#if HAVE_CONST_DB_QUEUE
     rb_define_method(bdb_cQueue, "to_a", bdb_sary_to_a, 0);
     rb_define_method(bdb_cQueue, "to_ary", bdb_sary_to_a, 0);
 #endif

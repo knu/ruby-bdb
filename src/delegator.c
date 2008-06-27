@@ -12,7 +12,7 @@ bdb_deleg_mark(struct deleg_class *delegst)
 
 extern VALUE bdb_put _((int, VALUE *, VALUE));
 
-#ifndef HAVE_RB_BLOCK_CALL
+#if ! HAVE_RB_BLOCK_CALL
 
 static VALUE
 bdb_deleg_each(VALUE *tmp)

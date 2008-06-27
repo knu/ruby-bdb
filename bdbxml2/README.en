@@ -8,6 +8,10 @@
 .... first build bdb which is in '../src', and use this version of 
      bdb for use with bdbxml
 
+     IMPORTANT : use --enable-db-xml
+
+       ruby extconf.rb --enable-db-xml ...
+
 
 .... choose one of myconfig-2.2, myconfig-2.3 and copy it in myconfig
      modify './myconfig' to adapt it to your configuration

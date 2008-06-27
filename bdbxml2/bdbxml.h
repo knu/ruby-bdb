@@ -1,5 +1,5 @@
 #include "bdb.h"
-#include "version.h"
+#include "bdbxml_features.h"
 
 #include <fstream>
 #include <dbxml/DbXml.hpp>
@@ -9,7 +9,7 @@ using namespace DbXml;
 #define RMF(func) RUBY_METHOD_FUNC(func)
 #define RDF RUBY_DATA_FUNC
 
-#if RUBY_VERSION_CODE >= 180
+#if HAVE_DBXML_RB_NEW_PROTO
 #define RMFS(func) ((VALUE (*)(VALUE))func)
 #define RMFF(func) ((void (*)(VALUE))func)
 #else
@@ -64,7 +64,7 @@ typedef struct {
     VALUE txn;
     VALUE man;
     int opened;
-#if BDBXML_VERSION >= 20200
+#if HAVE_DBXML_XML_INDEX_LOOKUP
     VALUE look;
 #endif
 } xcon;
@@ -74,7 +74,7 @@ typedef struct {
     VALUE con;
 } xind;
 
-#if BDBXML_VERSION >= 20200
+#if HAVE_DBXML_XML_INDEX_LOOKUP
 
 typedef struct {
     XmlIndexLookup *look;
@@ -85,12 +85,16 @@ typedef struct {
 
 #endif
 
-#if BDBXML_VERSION >= 20300
+#if HAVE_DBXML_XML_EVENT_WRITER
 
 typedef struct {
     XmlEventWriter *ewr;
     VALUE con;
 } xewr;
+
+#endif
+
+#if HAVE_DBXML_XML_EVENT_READER
 
 typedef struct {
     XmlEventReader *erd;
@@ -317,7 +321,7 @@ get_ind(VALUE obj)
     return ind;
 }
 
-#if BDBXML_VERSION >= 20200
+#if HAVE_DBXML_XML_INDEX_LOOKUP
 
 static void xb_look_mark(xlook *);
 
@@ -382,7 +386,7 @@ rset_obj(VALUE obj)
 static void xb_res_free(xres *res);
 static void xb_res_mark(xres *res);
 
-#if BDBXML_VERSION >= 20300
+#if HAVE_DBXML_XML_EVENT_WRITER
 
 static void xb_ewr_free(xewr *ewr);
 static void xb_ewr_mark(xewr *ewr);
@@ -402,6 +406,10 @@ get_ewr(VALUE obj)
     get_con(ewr->con);
     return ewr;
 }
+
+#endif
+
+#if HAVE_DBXML_XML_EVENT_READER
 
 static void xb_erd_free(xerd *erd);
 static void xb_erd_mark(xerd *erd);

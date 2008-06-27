@@ -11,6 +11,11 @@ env = BDB::Env.new("tmp", BDB::CREATE | BDB::INIT_TRANSACTION)
 bdb = env.open_db(BDB::Btree, "tutu", nil, "a")
 man = env.manager
 doc = man.create_container("toto", BDB::XML::TRANSACTIONAL)
+at_exit {
+   doc.close
+   man.close
+}
+
 2.times do |i|
    doc.put("#{i}", "<bk><ttl id='#{i}'>title nb #{i}</ttl></bk>")
    bdb[i] = "bdb#{i}"

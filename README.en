@@ -22,6 +22,8 @@
 
   --with-db-dir=<prefix for library and include of bdb>
 
+  --enable-db-xml
+
   --help
 
  Example :

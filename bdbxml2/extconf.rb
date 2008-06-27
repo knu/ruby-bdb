@@ -76,6 +76,7 @@ end
 
 have_func("rb_block_call")
 
+require 'features.rb'
 create_makefile('bdbxml')
 
 begin

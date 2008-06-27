@@ -8,6 +8,11 @@ File::unlink("exa.dbxml") rescue nil
 
 man = XML::Manager.new
 con = man.create_container("exa.dbxml", XML::INDEX_NODES)
+at_exit {
+   con.close
+   man.close
+}
+
 upd = man.create_update_context
 
 con.add_index("", "foo", "node-element-equality-string")

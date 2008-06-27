@@ -8,6 +8,10 @@ File::unlink("exa.dbxml") rescue nil
 man = BDB::XML::Manager.new
 con = man.create_container("exa.dbxml", 0, BDB::XML::Container::NodeContainer)
 doc = man.create_document
+at_exit {
+   con.close
+   man.close
+}
 doc.name = 'doc'
 
 wrt = con.event_writer(doc, man.create_update_context)
@@ -30,5 +34,3 @@ wrt.end_document
 wrt.close
 
 puts con.get('doc')
-con.close
-man.close

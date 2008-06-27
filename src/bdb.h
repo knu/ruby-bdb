@@ -5,6 +5,8 @@
 #include <db.h>
 #include <errno.h>
 
+#include "bdb_features.h"
+
 #ifndef StringValue
 #define StringValue(x) do { 				\
     if (TYPE(x) != T_STRING) x = rb_str_to_str(x); 	\
@@ -49,8 +51,18 @@
 extern "C" {
 #endif
 
-#ifndef DB_AUTO_COMMIT
+#if (DB_VERSION_MAJOR == 2) || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR < 2)
+#define BDB_OLD_FUNCTION_PROTO 1
+#else
+#define BDB_OLD_FUNCTION_PROTO 0
+#endif
+
+#if ! HAVE_CONST_DB_AUTO_COMMIT
 #define DB_AUTO_COMMIT 0
+#endif
+
+#if ! HAVE_CONST_DB_NEXT_DUP
+#define DB_NEXT_DUP 0
 #endif
 
 #define BDB_VERSION (10000*DB_VERSION_MAJOR+100*DB_VERSION_MINOR+DB_VERSION_PATCH)
@@ -79,17 +91,33 @@ extern "C" {
 #define BDB_ENV_ENCRYPT    (1<<2)
 #define BDB_ENV_NOT_OPEN   (1<<3)
  
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DB_ASSOCIATE
 #define BDB_ERROR_PRIVATE 44444
+#endif
+
+#define HAVE_DB_STAT_4_TXN 0
+
+#if HAVE_DB_STAT_4
+#if HAVE_ST_DB_OPEN
+#if HAVE_DB_OPEN_7
+#undef HAVE_DB_STAT_4_TXN
+#define HAVE_DB_STAT_4_TXN 1
+#endif
+#endif
 #endif
 
 #define BDB_INIT_TRANSACTION (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG)
 #define BDB_INIT_LOMP (DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_LOG)
 #define BDB_NEED_CURRENT (BDB_MARSHAL | BDB_BT_COMPARE | BDB_BT_PREFIX | BDB_DUP_COMPARE | BDB_H_HASH | BDB_H_COMPARE | BDB_APPEND_RECNO | BDB_FEEDBACK)
 
+#if HAVE_ST_DB_ENV_SET_FEEDBACK || HAVE_ST_DB_ENV_REP_SET_TRANSPORT || \
+    HAVE_ST_DB_ENV_SET_REP_TRANSPORT || HAVE_ST_DB_ENV_SET_APP_DISPATCH
 #define BDB_NEED_ENV_CURRENT (BDB_FEEDBACK | BDB_APP_DISPATCH | BDB_REP_TRANSPORT)
+#else
+#define BDB_NEED_ENV_CURRENT 0
+#endif
 
-#if BDB_VERSION < 20600
+#if ! HAVE_CONST_DB_RMW
 #define DB_RMW 0
 #endif
 
@@ -100,12 +128,14 @@ extern VALUE bdb_mDb;
 extern VALUE bdb_cCommon, bdb_cBtree, bdb_cRecnum, bdb_cHash, bdb_cRecno, bdb_cUnknown;
 extern VALUE bdb_cDelegate;
 
-#if BDB_VERSION >= 30100
+#if HAVE_TYPE_DB_KEY_RANGE
 extern VALUE bdb_sKeyrange;
 #endif
 
-#if BDB_VERSION >= 30000
+#if HAVE_CONST_DB_QUEUE
 extern VALUE bdb_cQueue;
+#else
+#define DB_QUEUE DB_RECNO
 #endif
 
 extern VALUE bdb_cTxn, bdb_cTxnCatch;
@@ -120,10 +150,6 @@ extern ID bdb_id_current_db, bdb_id_current_env;
 
 extern VALUE bdb_deleg_to_orig _((VALUE));
 
-#if BDB_VERSION >= 40000
-extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
-#endif
-
 struct ary_st {
     int len, total, mark;
     VALUE *ptr;
@@ -135,36 +161,48 @@ typedef struct  {
     struct ary_st db_ary;
     VALUE home;
     DB_ENV *envp;
-#if BDB_VERSION <= 30105
+#if HAVE_DB_LOG_REGISTER_4 || HAVE_ST_DB_ENV_LG_INFO
     u_int32_t fidp;
 #endif
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_REP_SET_TRANSPORT || HAVE_ST_DB_ENV_SET_REP_TRANSPORT
     VALUE rep_transport;
 #endif
-#if BDB_VERSION >= 30000
+#if HAVE_ST_DB_ENV_SET_FEEDBACK
     VALUE feedback;
 #endif
-#if BDB_VERSION >= 40100
+#if HAVE_ST_DB_ENV_SET_APP_DISPATCH
     VALUE app_dispatch;
 #endif
-#if BDB_VERSION >= 40416
+#if HAVE_ST_DB_ENV_SET_MSGCALL
     VALUE msgcall;
+#endif
+#if HAVE_ST_DB_ENV_SET_THREAD_ID
     VALUE thread_id;
+#endif
+#if HAVE_ST_DB_ENV_SET_THREAD_ID_STRING
     VALUE thread_id_string;
+#endif
+#if HAVE_ST_DB_ENV_SET_ISALIVE
     VALUE isalive;
 #endif
-#if BDB_VERSION >= 40500
+#if HAVE_ST_DB_ENV_SET_EVENT_NOTIFY
     VALUE event_notify;
 #endif
 } bdb_ENV;
 
-#if BDB_VERSION >= 40000
+#if HAVE_DBXML_INTERFACE
 
 struct txn_rslbl {
     DB_TXN *txn;
     void *txn_cxx;
     VALUE man;
+    void (*txn_cxx_free) (void **);
+    int (*txn_cxx_abort)   (void *);
+    int (*txn_cxx_commit)  (void *, u_int32_t );
+    int (*txn_cxx_discard) (void *, u_int32_t );
 };
+
+extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
 
 #endif
 
@@ -176,9 +214,13 @@ typedef struct {
     VALUE env;
     DB_TXN *txnid;
     DB_TXN *parent;
-#if BDB_VERSION >= 40000
+#if HAVE_DBXML_INTERFACE
     void *txn_cxx;
     VALUE man;
+    void (*txn_cxx_free) (void **);
+    int (*txn_cxx_abort)   (void *);
+    int (*txn_cxx_commit)  (void *, u_int32_t );
+    int (*txn_cxx_discard) (void *, u_int32_t );
 #endif
 } bdb_TXN;
 
@@ -193,8 +235,11 @@ typedef struct {
     DBTYPE type;
     VALUE env, orig, secondary, txn;
     VALUE filename, database;
-    VALUE bt_compare, bt_prefix, dup_compare, h_hash;
-#if BDB_VERSION >= 40600
+    VALUE bt_compare, bt_prefix, h_hash;
+#if HAVE_CONST_DB_DUPSORT
+    VALUE dup_compare;
+#endif
+#if HAVE_ST_DB_SET_H_COMPARE
     VALUE h_compare;
 #endif
     VALUE filter[4];
@@ -206,22 +251,22 @@ typedef struct {
     u_int32_t dlen;
     u_int32_t doff;
     int array_base;
-#if BDB_VERSION < 30000
+#if HAVE_TYPE_DB_INFO
     DB_INFO *dbinfo;
 #else
     int re_len;
     char re_pad;
     VALUE feedback;
 #endif
-#if BDB_VERSION >= 40100
+#if HAVE_ST_DB_SET_APPEND_RECNO
     VALUE append_recno;
 #endif
-#ifdef DB_PRIORITY_DEFAULT
+#if HAVE_ST_DB_SET_CACHE_PRIORITY
     int priority;
 #endif
 } bdb_DB;
 
-#if BDB_VERSION >= 40300
+#if HAVE_TYPE_DB_SEQUENCE
 
 typedef struct {
     DB_SEQUENCE *seqp;
@@ -249,7 +294,7 @@ typedef struct {
 } bdb_LOCKID;
 
 typedef struct {
-#if BDB_VERSION < 30000
+#if HAVE_TYPE_DB_INFO
     DB_LOCK lock;
 #else
     DB_LOCK *lock;
@@ -273,15 +318,11 @@ struct deleg_class {
 struct dblsnst {
     VALUE env, self;
     DB_LSN *lsn;
-#if BDB_VERSION >= 40000
+#if HAVE_TYPE_DB_LOGC
     DB_LOGC *cursor;
     int flags;
 #endif
 };
-
-#if BDB_VERSION < 30000
-#define DB_QUEUE DB_RECNO
-#endif
 
 #define RECNUM_TYPE(dbst) ((dbst->type == DB_RECNO || dbst->type == DB_QUEUE) || (dbst->type == DB_BTREE && (dbst->flags & DB_RECNUM)))
 
@@ -329,6 +370,8 @@ struct dblsnst {
 
 #if BDB_VERSION < 20600
 
+#define HAVE_CURSOR_C_GET_KEY_MALLOC 1
+
 #define INIT_RECNO(dbst, key, recno)		\
 {						\
     recno = 1;					\
@@ -350,6 +393,8 @@ struct dblsnst {
 }
 
 #else
+
+#define HAVE_CURSOR_C_GET_KEY_MALLOC 0
 
 #define INIT_RECNO(dbst, key, recno)		\
 {						\
@@ -400,7 +445,7 @@ struct dblsnst {
 
 #define BDB_VALID(obj, type) (RTEST(obj) && BUILTIN_TYPE(obj) == (type))
 
-#if BDB_VERSION < 30000
+#if HAVE_TYPE_DB_INFO
 #define TEST_INIT_LOCK(dbst) (((dbst)->options & BDB_INIT_LOCK)?DB_RMW:0)
 #else
 #define TEST_INIT_LOCK(dbst) (0)
@@ -424,7 +469,7 @@ extern int bdb_errcall;
 
 extern int bdb_test_error _((int));
 
-#ifdef DB_INCOMPLETE
+#if HAVE_CONST_DB_INCOMPLETE
 
 #define bdb_cache_error(commande_, correction_, result_) do {	\
     result_ = commande_;					\
@@ -467,7 +512,7 @@ extern VALUE bdb_obj_init _((int, VALUE *, VALUE));
 
 extern ID bdb_id_call;
 
-#if BDB_VERSION < 30000
+#if ! HAVE_DB_STRERROR
 extern char *db_strerror _((int));
 #endif
 
@@ -487,7 +532,7 @@ extern VALUE bdb_each_key _((int, VALUE *, VALUE));
 extern VALUE bdb_each_value _((int, VALUE *, VALUE));
 extern VALUE bdb_each_valuec _((int, VALUE *, VALUE, int, VALUE));
 extern VALUE bdb_each_kvc _((int, VALUE *, VALUE, int, VALUE, int));
-#if BDB_VERSION >= 40300
+#if HAVE_DB_ENV_ERRCALL_3
 extern void bdb_env_errcall _((const DB_ENV *, const char *, const char *));
 #else
 extern void bdb_env_errcall _((const char *, char *));
@@ -513,9 +558,7 @@ extern void bdb_init_cursor _((void));
 extern void bdb_init_lock _((void));
 extern void bdb_init_log _((void));
 extern void bdb_init_delegator _((void));
-#if BDB_VERSION >= 40300
 extern void bdb_init_sequence _((void));
-#endif
 extern void bdb_clean_env _((VALUE, VALUE));
 extern VALUE bdb_makelsn _((VALUE));
 extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
@@ -526,14 +569,40 @@ extern VALUE bdb_ary_delete _((struct ary_st *, VALUE));
 extern void bdb_ary_mark _((struct ary_st *));
 extern VALUE bdb_respond_to _((VALUE, ID));
 
-#if BDB_VERSION >= 40600
+#if ! HAVE_ST_DBC_C_CLOSE && HAVE_ST_DBC_CLOSE
 #define c_close close
+#undef HAVE_ST_DBC_C_CLOSE
+#define HAVE_ST_DBC_C_CLOSE 1
+#endif
+#if ! HAVE_ST_DBC_C_COUNT && HAVE_ST_DBC_COUNT
 #define c_count count
+#undef HAVE_ST_DBC_C_COUNT
+#define HAVE_ST_DBC_C_COUNT 1
+#endif
+#if ! HAVE_ST_DBC_C_DEL && HAVE_ST_DBC_DEL
 #define c_del del
+#undef HAVE_ST_DBC_C_DEL
+#define HAVE_ST_DBC_C_DEL 1
+#endif
+#if ! HAVE_ST_DBC_C_DUP && HAVE_ST_DBC_DUP
 #define c_dup dup
+#undef HAVE_ST_DBC_C_DUP
+#define HAVE_ST_DBC_C_DUP 1
+#endif
+#if ! HAVE_ST_DBC_C_GET && HAVE_ST_DBC_GET
 #define c_get get
+#undef HAVE_ST_DBC_C_GET
+#define HAVE_ST_DBC_C_GET 1
+#endif
+#if ! HAVE_ST_DBC_C_PGET && HAVE_ST_DBC_PGET
 #define c_pget pget
+#undef HAVE_ST_DBC_C_PGET
+#define HAVE_ST_DBC_C_PGET 1
+#endif
+#if ! HAVE_ST_DBC_C_PUT && HAVE_ST_DBC_PUT
 #define c_put put
+#undef HAVE_ST_DBC_C_PUT
+#define HAVE_ST_DBC_C_PUT 1
 #endif
 
 #if defined(__cplusplus)

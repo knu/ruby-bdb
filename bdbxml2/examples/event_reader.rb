@@ -7,6 +7,10 @@ File::unlink("exa.dbxml") rescue nil
 
 man = BDB::XML::Manager.new
 con = man.create_container("exa.dbxml")
+at_exit {
+   con.close
+   man.close
+}
 con.put("doc", "<root><a a1=\"val1\">a text</a><b><c cattr=\"c1\"><d/></c></b></root>")
 
 doc = con.get("doc")

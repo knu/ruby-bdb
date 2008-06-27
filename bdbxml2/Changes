@@ -1,0 +1,6 @@
+
+* bdb must now be compiled with --enable-db-xml
+
+* Fix a memory leak for transaction
+  (thanks Alfons Hoogervorst <alfons@rebeltechnologies.nl>)
+

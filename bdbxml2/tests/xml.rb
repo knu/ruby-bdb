@@ -44,6 +44,7 @@ class TestXML < Inh::TestCase
       @flag ||= BDB::INIT_LOMP
       assert_kind_of(BDB::Env, $env = BDB::Env.new("tmp", 
 						   BDB::CREATE | @flag))
+      $man.close if $man
       assert_kind_of(BDB::XML::Manager, $man = $env.manager)
       if (@flag & BDB::INIT_TXN) != 0
          assert_kind_of(BDB::XML::Container, $glo = $man.create_container("glossary", BDB::XML::TRANSACTIONAL))
@@ -121,6 +122,7 @@ class TestXML < Inh::TestCase
    end
 
    def test_05_dump
+      assert_equal(nil, $man.close)
       assert_equal(nil, $env.close)
       assert_kind_of(BDB::Env, $env = BDB::Env.new("tmp", BDB::INIT_LOMP))
       assert_kind_of(BDB::XML::Manager, $man = $env.manager)
@@ -162,6 +164,7 @@ class TestXML < Inh::TestCase
    end
 
    def test_09_single
+      $man.close
       $env.close
       clean
       begin
@@ -227,9 +230,9 @@ class TestXML < Inh::TestCase
          end
       ensure
          data.close
+         man.close
       end
    end
-
 
 end
 

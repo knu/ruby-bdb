@@ -17,7 +17,7 @@ bdb_clean_env(VALUE env, VALUE obj)
 static void 
 lockid_free( bdb_LOCKID *dblockid)
 {
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_LOCK_ID_FREE
     bdb_ENV *envst;
 
     bdb_clean_env(dblockid->env, dblockid->self);
@@ -38,23 +38,21 @@ bdb_env_lockid(VALUE obj)
     VALUE a;
 
     GetEnvDB(obj, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
     bdb_test_error(lock_id(envst->envp->lk_info, &idp));
-#else
-#if BDB_VERSION >= 40000
+#elif HAVE_ST_DB_ENV_LOCK_ID
     bdb_test_error(envst->envp->lock_id(envst->envp, &idp));
 #else
     bdb_test_error(lock_id(envst->envp, &idp));
-#endif
 #endif
     a = Data_Make_Struct(bdb_cLockid, bdb_LOCKID, lockid_mark, lockid_free, dblockid);
     dblockid->lock = idp;
     dblockid->env = obj;
     dblockid->self = a;
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_LOCK_ID
     bdb_ary_push(&envst->db_ary, a);
 #endif
     return a;
@@ -68,7 +66,7 @@ bdb_env_lockid_close(VALUE obj)
 
     Data_Get_Struct(obj, bdb_LOCKID, dblockid);
     bdb_clean_env(dblockid->env, obj);
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_LOCK_ID_FREE
     GetEnvDB(dblockid->env, envst);
     RDATA(obj)->dfree = free;
     if (envst->envp) {
@@ -92,17 +90,15 @@ bdb_env_lockdetect(int argc, VALUE *argv, VALUE obj)
     }
     atype = NUM2INT(a);
     GetEnvDB(obj, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
     bdb_test_error(lock_detect(envst->envp->lk_info, flags, atype));
-#else
-#if BDB_VERSION >= 40000
+#elif HAVE_ST_DB_ENV_LOCK_DETECT
     bdb_test_error(envst->envp->lock_detect(envst->envp, flags, atype, &aborted));
 #else
     bdb_test_error(lock_detect(envst->envp, flags, atype, &aborted));
-#endif
 #endif
     return INT2NUM(aborted);
 }
@@ -116,7 +112,7 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     int flags;
 
     GetEnvDB(obj, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
@@ -138,17 +134,17 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
-#else
-#if BDB_VERSION >= 40000
+#elif HAVE_ST_DB_ENV_LOCK_STAT
     flags = 0;
     if (rb_scan_args(argc, argv, "01", &b) == 1) {
 	flags = NUM2INT(b);
     }
     bdb_test_error(envst->envp->lock_stat(envst->envp, &statp, flags));
     a = rb_hash_new();
-#if BDB_VERSION >= 40100
+#if HAVE_ST_DB_LOCK_STAT_ST_ID
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_id));
-#else
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_LASTID
     rb_hash_aset(a, rb_tainted_str_new2("st_lastid"), INT2NUM(statp->st_lastid));
 #endif
     rb_hash_aset(a, rb_tainted_str_new2("st_nmodes"), INT2NUM(statp->st_nmodes));
@@ -163,11 +159,17 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_maxnobjects"), INT2NUM(statp->st_maxnobjects));
     rb_hash_aset(a, rb_tainted_str_new2("st_nrequests"), INT2NUM(statp->st_nrequests));
     rb_hash_aset(a, rb_tainted_str_new2("st_nreleases"), INT2NUM(statp->st_nreleases));
-#if BDB_VERSION >= 40416
+#if HAVE_ST_DB_LOCK_STAT_ST_LOCK_NOWAIT
     rb_hash_aset(a, rb_tainted_str_new2("st_lock_nowait"), INT2NUM(statp->st_lock_nowait));
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_LOCK_WAIT
+
     rb_hash_aset(a, rb_tainted_str_new2("st_lock_wait"), INT2NUM(statp->st_lock_wait));
-#else
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_NNOWAITS
     rb_hash_aset(a, rb_tainted_str_new2("st_nnowaits"), INT2NUM(statp->st_nnowaits));
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_NCONFLICTS
     rb_hash_aset(a, rb_tainted_str_new2("st_nconflicts"), INT2NUM(statp->st_nconflicts));
 #endif
     rb_hash_aset(a, rb_tainted_str_new2("st_ndeadlocks"), INT2NUM(statp->st_ndeadlocks));
@@ -176,21 +178,29 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(statp->st_regsize));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
-#if BDB_VERSION >= 40600
+#if HAVE_ST_DB_LOCK_STAT_ST_OBJS_NOWAIT
     rb_hash_aset(a, rb_tainted_str_new2("st_objs_nowait"), INT2NUM(statp->st_objs_nowait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_objs_wait"), INT2NUM(statp->st_objs_wait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_lockers_nowait"), INT2NUM(statp->st_lockers_nowait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_lockers_wait"), INT2NUM(statp->st_lockers_wait));
-#if BDB_VERSION < 40700
-    rb_hash_aset(a, rb_tainted_str_new2("st_locks_nowait"), INT2NUM(statp->st_locks_nowait));
-    rb_hash_aset(a, rb_tainted_str_new2("st_locks_wait"), INT2NUM(statp->st_locks_wait));
 #endif
+#if HAVE_ST_DB_LOCK_STAT_ST_OBJS_WAIT
+    rb_hash_aset(a, rb_tainted_str_new2("st_objs_wait"), INT2NUM(statp->st_objs_wait));
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_LOCKERS_NOWAIT
+    rb_hash_aset(a, rb_tainted_str_new2("st_lockers_nowait"), INT2NUM(statp->st_lockers_nowait));
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_LOCKERS_WAIT
+    rb_hash_aset(a, rb_tainted_str_new2("st_lockers_wait"), INT2NUM(statp->st_lockers_wait));
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_LOCKS_NOWAIT
+    rb_hash_aset(a, rb_tainted_str_new2("st_locks_nowait"), INT2NUM(statp->st_locks_nowait));
+#endif
+#if HAVE_ST_DB_LOCK_STAT_ST_LOCKS_WAIT
+    rb_hash_aset(a, rb_tainted_str_new2("st_locks_wait"), INT2NUM(statp->st_locks_wait));
 #endif
 #else
     if (argc != 0) {
 	rb_raise(rb_eArgError, "invalid number of arguments (%d for 0)", argc);
     }
-#if BDB_VERSION < 30300
+#if HAVE_LOCK_STAT_3
     bdb_test_error(lock_stat(envst->envp, &statp, 0));
 #else
     bdb_test_error(lock_stat(envst->envp, &statp));
@@ -208,12 +218,11 @@ bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(statp->st_region_wait));
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(statp->st_region_nowait));
 #endif
-#endif
     free(statp);
     return a;
 }
 
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
 #define GetLockid(obj, lockid, envst)		\
 {						\
     Data_Get_Struct(obj, bdb_LOCKID, lockid);	\
@@ -239,7 +248,7 @@ lock_mark(bdb_LOCK *lock)
 static void
 lock_free(bdb_LOCK *lock)
 {
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     bdb_ENV *envst;
 
     Data_Get_Struct(lock->env, bdb_ENV, envst);			\
@@ -279,14 +288,13 @@ bdb_lockid_get(int argc, VALUE *argv, VALUE obj)
     objet.size = RSTRING_LEN(a);
     lock_mode = NUM2INT(b);
     GetLockid(obj, lockid, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
     bdb_test_error(lock_get(envst->envp->lk_info, lockid->lock, flags,
 			    &objet, lock_mode, &lock));
-#else
-#if BDB_VERSION >= 40000
+#elif HAVE_ST_DB_ENV_LOCK_GET
 
     bdb_test_error(envst->envp->lock_get(envst->envp, lockid->lock,
 					 flags, &objet, lock_mode, &lock));
@@ -294,9 +302,8 @@ bdb_lockid_get(int argc, VALUE *argv, VALUE obj)
     bdb_test_error(lock_get(envst->envp, lockid->lock, flags,
 			    &objet, lock_mode, &lock));
 #endif
-#endif
     res = Data_Make_Struct(bdb_cLock, bdb_LOCK, lock_mark, lock_free, lockst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     lockst->lock = lock;
 #else
     lockst->lock = ALLOC(DB_LOCK);
@@ -307,7 +314,7 @@ bdb_lockid_get(int argc, VALUE *argv, VALUE obj)
 }
 
 
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
 #define GetLock(obj, lock, envst)		\
 {						\
     Data_Get_Struct(obj, bdb_LOCK, lock);	\
@@ -362,13 +369,13 @@ bdb_lockid_each(VALUE obj, VALUE listobj)
 	    rb_raise(bdb_eFatal, "BDB::Lock expected");
 	}
 	GetLock(value, lockst, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
 	list->lock = lockst->lock;
 #else
 	MEMCPY(&list->lock, lockst->lock, DB_LOCK, 1);
 #endif
     }
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_LOCKREQ_TIMEOUT
     else if (strcmp(options, "timeout") == 0) {
 	list->timeout = rb_Integer(value);
     }
@@ -409,20 +416,18 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
 	rb_iterate(rb_each, b, bdb_lockid_each, listobj);
     }
     GetLockid(obj, lockid, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
     err = lock_vec(envst->envp->lk_info, lockid->lock, flags,
 		   list, RARRAY_LEN(a), NULL);
-#else
-#if BDB_VERSION >= 40000
+#elif HAVE_ST_DB_ENV_LOCK_VEC
     err = envst->envp->lock_vec(envst->envp, lockid->lock, flags,
 				list, RARRAY_LEN(a), NULL);
 #else    
     err = lock_vec(envst->envp, lockid->lock, flags,
 		   list, RARRAY_LEN(a), NULL);
-#endif
 #endif
     if (err != 0) {
 	for (i = 0; i < RARRAY_LEN(a); i++) {
@@ -442,7 +447,7 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
     for (i = 0; i < RARRAY_LEN(a); i++) {
 	if (list[i].op == DB_LOCK_GET) {
 	    c = Data_Make_Struct(bdb_cLock, bdb_LOCK, lock_mark, lock_free, lockst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
 	    lockst->lock = list[i].lock;
 #else
 	    lockst->lock = ALLOC(DB_LOCK);
@@ -466,17 +471,15 @@ bdb_lock_put(VALUE obj)
     bdb_ENV *envst;
 
     GetLock(obj, lockst, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_LK_INFO
     if (!envst->envp->lk_info) {
 	rb_raise(bdb_eLock, "lock region not open");
     }
     bdb_test_error(lock_put(envst->envp->lk_info, lockst->lock));
-#else
-#if BDB_VERSION >= 40000
+#elif HAVE_ST_DB_ENV_LOCK_PUT
     bdb_test_error(envst->envp->lock_put(envst->envp, lockst->lock));
 #else
     bdb_test_error(lock_put(envst->envp, lockst->lock));
-#endif
 #endif
     return Qnil;
 } 

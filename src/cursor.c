@@ -38,10 +38,10 @@ bdb_cursor(int argc, VALUE *argv, VALUE obj)
     if (argc) {
 	flags = NUM2INT(argv[0]);
     }
-#if BDB_VERSION < 20600
-    bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbc));
-#else
+#if HAVE_DB_CURSOR_4
     bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbc, flags));
+#else
+    bdb_test_error(dbst->dbp->cursor(dbst->dbp, txnid, &dbc));
 #endif
     a = Data_Make_Struct(bdb_cCursor, bdb_DBC, 0, bdb_cursor_free, dbcst);
     dbcst->dbc = dbc;
@@ -53,7 +53,7 @@ static VALUE
 bdb_write_cursor(VALUE obj)
 {
     VALUE f;
-#if BDB_VERSION >= 30000
+#if HAVE_CONST_DB_WRITECURSOR
     f = INT2NUM(DB_WRITECURSOR);
 #else
     f = INT2NUM(DB_RMW);
@@ -88,7 +88,7 @@ bdb_cursor_del(VALUE obj)
     return Qtrue;
 }
 
-#if BDB_VERSION >= 30000
+#if HAVE_ST_DBC_C_DUP
 
 static VALUE
 bdb_cursor_dup(int argc, VALUE *argv, VALUE obj)
@@ -114,10 +114,10 @@ bdb_cursor_dup(int argc, VALUE *argv, VALUE obj)
 static VALUE
 bdb_cursor_count(VALUE obj)
 {
-#if BDB_VERSION < 20600
+#if !HAVE_CONST_DB_NEXT_DUP
     rb_raise(bdb_eFatal, "DB_NEXT_DUP needs Berkeley DB 2.6 or later");
 #else
-#if BDB_VERSION < 30100
+#if !HAVE_ST_DBC_C_COUNT
     DBT key, data;
     DBT key_o, data_o;
     int ret;
@@ -127,7 +127,7 @@ bdb_cursor_count(VALUE obj)
     db_recno_t count;
 
     GetCursorDB(obj, dbcst, dbst);
-#if BDB_VERSION >= 30100
+#if HAVE_ST_DBC_C_COUNT
     bdb_test_error(dbcst->dbc->c_count(dbcst->dbc, &count, 0));
     return INT2NUM(count);
 #else
@@ -145,8 +145,17 @@ bdb_cursor_count(VALUE obj)
         return INT2NUM(0);
     count = 1;
     while (1) {
+	MEMZERO(&key, DBT, 1);
+	key.flags |= DB_DBT_MALLOC;
+	MEMZERO(&data, DBT, 1);
+	data.flags |= DB_DBT_MALLOC;
+	SET_PARTIAL(dbst, data);
 	ret = bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key, &data, DB_NEXT_DUP));
 	if (ret == DB_NOTFOUND) {
+	    MEMZERO(&key_o, DBT, 1);
+	    key_o.flags |= DB_DBT_MALLOC;
+	    MEMZERO(&data_o, DBT, 1);
+	    data_o.flags |= DB_DBT_MALLOC;
 	    bdb_test_error(dbcst->dbc->c_get(dbcst->dbc, &key_o, &data_o, DB_SET));
 
 	    FREE_KEY(dbst, key_o);
@@ -200,7 +209,7 @@ bdb_cursor_get_common(int argc, VALUE *argv, VALUE obj, int c_pget)
         b = bdb_test_recno(dbcst->db, &key, &recno, b);
 	data.flags |= DB_DBT_MALLOC;
     }
-#if BDB_VERSION >= 20600
+#if DB_GET_BOTH
     else if (flags == DB_GET_BOTH) {
         if (cnt != 3)
             rb_raise(bdb_eFatal, "invalid number of arguments");
@@ -216,7 +225,7 @@ bdb_cursor_get_common(int argc, VALUE *argv, VALUE obj, int c_pget)
 	data.flags |= DB_DBT_MALLOC;
     }
     SET_PARTIAL(dbst, data);
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DBC_C_PGET
     if (c_pget) {
 	if (dbst->secondary != Qnil) {
 	    rb_raise(bdb_eFatal, "pget must be used with a secondary index");
@@ -245,12 +254,14 @@ bdb_cursor_get(int argc, VALUE *argv, VALUE obj)
     return bdb_cursor_get_common(argc, argv, obj, 0);
 }
 
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DBC_C_PGET
+
 static VALUE
 bdb_cursor_pget(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_cursor_get_common(argc, argv, obj, 1);
 }
+
 #endif
 
 static VALUE
@@ -295,7 +306,7 @@ bdb_cursor_next(VALUE obj)
     return bdb_cursor_xxx(obj, DB_NEXT);
 }
 
-#if BDB_VERSION >= 20600
+#if HAVE_CONST_DB_NEXT_DUP
 
 static VALUE
 bdb_cursor_next_dup(VALUE obj)
@@ -379,7 +390,7 @@ bdb_cursor_put(int argc, VALUE *argv, VALUE obj)
     }
 }
 
-#if BDB_VERSION >= 40725
+#if HAVE_ST_DBC_GET_PRIORITY
 
 static VALUE
 bdb_cursor_set_priority(VALUE obj, VALUE a)
@@ -429,7 +440,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_del", bdb_cursor_del, 0);
     rb_define_method(bdb_cCursor, "del", bdb_cursor_del, 0);
     rb_define_method(bdb_cCursor, "delete", bdb_cursor_del, 0);
-#if BDB_VERSION >= 30000
+#if HAVE_ST_DBC_C_DUP
     rb_define_method(bdb_cCursor, "dup", bdb_cursor_dup, -1);
     rb_define_method(bdb_cCursor, "c_dup", bdb_cursor_dup, -1);
     rb_define_method(bdb_cCursor, "clone", bdb_cursor_dup, -1);
@@ -439,7 +450,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_count", bdb_cursor_count, 0);
     rb_define_method(bdb_cCursor, "get", bdb_cursor_get, -1);
     rb_define_method(bdb_cCursor, "c_get", bdb_cursor_get, -1);
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DBC_C_PGET
     rb_define_method(bdb_cCursor, "pget", bdb_cursor_pget, -1);
     rb_define_method(bdb_cCursor, "c_pget", bdb_cursor_pget, -1);
 #endif
@@ -447,7 +458,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "c_put", bdb_cursor_put, -1);
     rb_define_method(bdb_cCursor, "c_next", bdb_cursor_next, 0);
     rb_define_method(bdb_cCursor, "next", bdb_cursor_next, 0);
-#if BDB_VERSION >= 20600
+#if HAVE_CONST_DB_NEXT_DUP
     rb_define_method(bdb_cCursor, "c_next_dup", bdb_cursor_next_dup, 0);
     rb_define_method(bdb_cCursor, "next_dup", bdb_cursor_next_dup, 0);
 #endif
@@ -465,7 +476,7 @@ void bdb_init_cursor()
     rb_define_method(bdb_cCursor, "set_range", bdb_cursor_set_range, 1);
     rb_define_method(bdb_cCursor, "c_set_recno", bdb_cursor_set_recno, 1);
     rb_define_method(bdb_cCursor, "set_recno", bdb_cursor_set_recno, 1);
-#if BDB_VERSION >= 40725
+#if HAVE_ST_DBC_GET_PRIORITY
     rb_define_method(bdb_cCursor, "priority", bdb_cursor_priority, 0);
     rb_define_method(bdb_cCursor, "priority=", bdb_cursor_set_priority, 1);
 #endif

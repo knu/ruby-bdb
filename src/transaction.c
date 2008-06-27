@@ -54,16 +54,24 @@ static VALUE
 txn_free(bdb_TXN *txnst)
 {
     if (txnst->txnid && txnst->parent == NULL) {
-#if BDB_VERSION >= 40000
-	txnst->txnid->abort(txnst->txnid);
+#if HAVE_ST_DB_TXN_ABORT
+#if HAVE_DBXML_INTERFACE
+	if (txnst->txn_cxx_abort)
+	    bdb_test_error(txnst->txn_cxx_abort(txnst->txn_cxx) );
+	else
+#endif
+	    bdb_test_error(txnst->txnid->abort(txnst->txnid));
 #else
 	txn_abort(txnst->txnid);
 #endif
         txnst->txnid = NULL;
-#if BDB_VERSION >= 40000
-	if (txnst->txn_cxx) free(txnst->txn_cxx);
-#endif
     }
+#if HAVE_DBXML_INTERFACE
+    if (txnst->txn_cxx_free)
+        txnst->txn_cxx_free(&(txnst->txn_cxx));
+    if (txnst->txn_cxx) 
+        free(txnst->txn_cxx);
+#endif
     clean_ary(txnst, Qfalse);
     return Qnil;
 }
@@ -80,7 +88,7 @@ bdb_txn_mark(bdb_TXN *txnst)
 {
     rb_gc_mark(txnst->marshal);
     rb_gc_mark(txnst->mutex);
-#if BDB_VERSION >= 40000
+#if HAVE_DBXML_INTERFACE
     rb_gc_mark(txnst->man);
 #endif
     bdb_ary_mark(&txnst->db_ary);
@@ -138,13 +146,18 @@ bdb_txn_commit(int argc, VALUE *argv, VALUE obj)
     }
     GetTxnDB(obj, txnst);
     bdb_txn_close_all(obj, Qtrue);
-#if BDB_VERSION < 30000
-    bdb_test_error(txn_commit(txnst->txnid));
+#if HAVE_ST_DB_TXN_COMMIT
+#if HAVE_DBXML_INTERFACE
+    if (txnst->txn_cxx_commit)
+        bdb_test_error(txnst->txn_cxx_commit(txnst->txn_cxx, flags) );
+    else
+#endif
+	bdb_test_error(txnst->txnid->commit(txnst->txnid, flags));
 #else
-#if BDB_VERSION >= 40000
-    bdb_test_error(txnst->txnid->commit(txnst->txnid, flags));
-#else
+#if HAVE_TXN_COMMIT_2
     bdb_test_error(txn_commit(txnst->txnid, flags));
+#else
+    bdb_test_error(txn_commit(txnst->txnid));
 #endif
 #endif
     txnst->txnid = NULL;
@@ -162,8 +175,13 @@ bdb_txn_abort(VALUE obj)
 
     GetTxnDB(obj, txnst);
     bdb_txn_close_all(obj, Qfalse);
-#if BDB_VERSION >= 40000
-    bdb_test_error(txnst->txnid->abort(txnst->txnid));
+#if HAVE_ST_DB_TXN_ABORT
+#if HAVE_DBXML_INTERFACE
+    if (txnst->txn_cxx_abort)
+        bdb_test_error(txnst->txn_cxx_abort(txnst->txn_cxx) );
+    else
+#endif
+	bdb_test_error(txnst->txnid->abort(txnst->txnid));
 #else
     bdb_test_error(txn_abort(txnst->txnid));
 #endif
@@ -269,7 +287,7 @@ bdb_txn_i_options(VALUE obj, VALUE dbstobj)
 	    rb_raise(bdb_eFatal, "mutex must respond to #lock and #unlock");
 	}
     }
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_SET_TIMEOUT
     else if (strcmp(options, "timeout") == 0) {
 	opt->timeout = value;
     }
@@ -283,7 +301,7 @@ bdb_txn_i_options(VALUE obj, VALUE dbstobj)
     return Qnil;
 }
 	
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_SET_TIMEOUT
 static VALUE bdb_txn_set_timeout _((VALUE, VALUE));
 static VALUE bdb_txn_set_txn_timeout _((VALUE, VALUE));
 static VALUE bdb_txn_set_lock_timeout _((VALUE, VALUE));
@@ -340,19 +358,21 @@ bdb_env_rslbl_begin(VALUE origin, int argc, VALUE *argv, VALUE obj)
         envp = envst->envp;
 	marshal = envst->marshal;
     }
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_TX_INFO
     if (envp->tx_info == NULL) {
 	rb_raise(bdb_eFatal, "Transaction Manager not enabled");
     }
     bdb_test_error(txn_begin(envp->tx_info, txnpar, &txn));
 #else
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_TXN_BEGIN
     if (origin == Qfalse) {
 	bdb_test_error(envp->txn_begin(envp, txnpar, &txn, flags));
     }
+#if HAVE_DBXML_INTERFACE
     else {
 	txn = ((struct txn_rslbl *)origin)->txn;
     }
+#endif
 #else
     bdb_test_error(txn_begin(envp, txnpar, &txn, flags));
 #endif
@@ -369,14 +389,18 @@ bdb_env_rslbl_begin(VALUE origin, int argc, VALUE *argv, VALUE obj)
     if (commit) {
 	txnst->options |= BDB_TXN_COMMIT;
     }
-#if BDB_VERSION >= 40000
+#if HAVE_DBXML_INTERFACE
     if (origin != Qfalse) {
 	txnst->txn_cxx = ((struct txn_rslbl *)origin)->txn_cxx;
+	txnst->txn_cxx_free = ((struct txn_rslbl *)origin)->txn_cxx_free;
+	txnst->txn_cxx_abort   = ((struct txn_rslbl *)origin)->txn_cxx_abort;
+	txnst->txn_cxx_commit  = ((struct txn_rslbl *)origin)->txn_cxx_commit;
+	txnst->txn_cxx_discard = ((struct txn_rslbl *)origin)->txn_cxx_discard;
 	txnst->man = ((struct txn_rslbl *)origin)->man;
     }
 #endif
     b = bdb_txn_assoc(argc, argv, txnv);
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_SET_TIMEOUT
     if (!NIL_P(options)) {
 	bdb_txn_set_timeout(txnv, opt.timeout);
 	bdb_txn_set_txn_timeout(txnv, opt.txn_timeout);
@@ -436,7 +460,7 @@ bdb_txn_id(VALUE obj)
     int res;
 
     GetTxnDB(obj, txnst);
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_ID
     res = txnst->txnid->id(txnst->txnid);
 #else
     res = txn_id(txnst->txnid);
@@ -445,7 +469,7 @@ bdb_txn_id(VALUE obj)
 }
 
 static VALUE
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DB_TXN_PREPARE || HAVE_TXN_PREPARE
 bdb_txn_prepare(VALUE obj, VALUE txnid)
 #else
 bdb_txn_prepare(VALUE obj)
@@ -455,11 +479,11 @@ bdb_txn_prepare(VALUE obj)
     unsigned char id;
 
     GetTxnDB(obj, txnst);
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_PREPARE
     id = (unsigned char)NUM2INT(txnid);
     bdb_test_error(txnst->txnid->prepare(txnst->txnid, &id));
 #else
-#if BDB_VERSION >= 30300
+#if HAVE_TXN_PREPARE_2
     id = (unsigned char)NUM2INT(txnid);
     bdb_test_error(txn_prepare(txnst->txnid, &id));
 #else
@@ -478,7 +502,7 @@ bdb_env_check(int argc, VALUE *argv, VALUE obj)
 
     kbyte = min = flag = 0;
     a = b = Qnil;
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_TXN_CHECKPOINT || HAVE_TXN_CHECKPOINT_4
     switch (rb_scan_args(argc, argv, "03", &a, &b, &c)) {
     case 3:
 	flag = NUM2INT(c);
@@ -493,16 +517,16 @@ bdb_env_check(int argc, VALUE *argv, VALUE obj)
     if (!NIL_P(a))
 	kbyte = NUM2UINT(a);
     GetEnvDB(obj, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_TX_INFO
     if (envst->envp->tx_info == NULL) {
 	rb_raise(bdb_eFatal, "Transaction Manager not enabled");
     }
     bdb_test_error(txn_checkpoint(envst->envp->tx_info, kbyte, min));
 #else
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_TXN_CHECKPOINT
     bdb_test_error(envst->envp->txn_checkpoint(envst->envp, kbyte, min, flag));
 #else
-#if BDB_VERSION >= 30100
+#if HAVE_TXN_CHECKPOINT_4
     bdb_test_error(txn_checkpoint(envst->envp, kbyte, min, flag));
 #else
     bdb_test_error(txn_checkpoint(envst->envp, kbyte, min));
@@ -512,7 +536,7 @@ bdb_env_check(int argc, VALUE *argv, VALUE obj)
     return Qnil;
 }
 
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DB_ENV_TXN_RECOVER || HAVE_TXN_RECOVER
 
 static VALUE
 bdb_env_recover(VALUE obj)
@@ -536,7 +560,7 @@ bdb_env_recover(VALUE obj)
     txnst->options = envst->options & BDB_INIT_LOCK;
     flags = DB_FIRST;
     while (1) {
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_TXN_RECOVER
 	bdb_test_error(envst->envp->txn_recover(envst->envp, preplist, 1, &retp, flags));
 #else
 	bdb_test_error(txn_recover(envst->envp, preplist, 1, &retp, flags));
@@ -550,6 +574,10 @@ bdb_env_recover(VALUE obj)
     return obj;
 }
 
+#endif
+
+#if HAVE_ST_DB_TXN_DISCARD || HAVE_TXN_DISCARD
+
 static VALUE
 bdb_txn_discard(VALUE obj)
 {
@@ -559,8 +587,13 @@ bdb_txn_discard(VALUE obj)
     rb_secure(4);
     flags = 0;
     GetTxnDB(obj, txnst);
-#if BDB_VERSION >= 40000
-    bdb_test_error(txnst->txnid->discard(txnst->txnid, flags));
+#if HAVE_ST_DB_TXN_DISCARD
+#if HAVE_DBXML_INTERFACE
+    if (txnst->txn_cxx_discard)
+        bdb_test_error(txnst->txn_cxx_discard(txnst->txn_cxx, flags) );
+    else
+#endif
+        bdb_test_error(txnst->txnid->discard(txnst->txnid, flags));
 #else
     bdb_test_error(txn_discard(txnst->txnid, flags));
 #endif
@@ -578,7 +611,7 @@ bdb_env_stat(int argc, VALUE *argv, VALUE obj)
     DB_TXN_STAT *bdb_stat;
     int flags;
 
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_TXN_STAT
     flags = 0;
     if (rb_scan_args(argc, argv, "01", &b) == 1) {
 	flags = NUM2INT(b);
@@ -589,16 +622,16 @@ bdb_env_stat(int argc, VALUE *argv, VALUE obj)
     }
 #endif
     GetEnvDB(obj, envst);
-#if BDB_VERSION < 30000
+#if HAVE_ST_DB_ENV_TX_INFO
     if (envst->envp->tx_info == NULL) {
 	rb_raise(bdb_eFatal, "Transaction Manager not enabled");
     }
     bdb_test_error(txn_stat(envst->envp->tx_info, &bdb_stat, malloc));
 #else
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_ENV_TXN_STAT
     bdb_test_error(envst->envp->txn_stat(envst->envp, &bdb_stat, flags));
 #else
-#if BDB_VERSION < 30300
+#if HAVE_TXN_STAT_3
     bdb_test_error(txn_stat(envst->envp, &bdb_stat, malloc));
 #else
     bdb_test_error(txn_stat(envst->envp, &bdb_stat));
@@ -613,24 +646,32 @@ bdb_env_stat(int argc, VALUE *argv, VALUE obj)
     rb_hash_aset(a, rb_tainted_str_new2("st_nbegins"), INT2NUM(bdb_stat->st_nbegins));
     rb_hash_aset(a, rb_tainted_str_new2("st_ncommits"), INT2NUM(bdb_stat->st_ncommits));
     rb_hash_aset(a, rb_tainted_str_new2("st_nactive"), INT2NUM(bdb_stat->st_nactive));
-#if BDB_VERSION >= 30000
+#if HAVE_ST_DB_TXN_STAT_ST_MAXNACTIVE
     rb_hash_aset(a, rb_tainted_str_new2("st_maxnactive"), INT2NUM(bdb_stat->st_maxnactive));
+#endif
+#if HAVE_ST_DB_TXN_STAT_ST_REGSIZE
     rb_hash_aset(a, rb_tainted_str_new2("st_regsize"), INT2NUM(bdb_stat->st_regsize));
+#endif
+#if HAVE_ST_DB_TXN_STAT_ST_REGION_WAIT
     rb_hash_aset(a, rb_tainted_str_new2("st_region_wait"), INT2NUM(bdb_stat->st_region_wait));
+#endif
+#if HAVE_ST_DB_TXN_STAT_ST_REGION_NOWAIT
     rb_hash_aset(a, rb_tainted_str_new2("st_region_nowait"), INT2NUM(bdb_stat->st_region_nowait));
 #endif
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_STAT_ST_LAST_CKP
     {
 	struct dblsnst *lsnst;
 	VALUE ary, hash, lsn;
 	int i;
 
+#if HAVE_ST_DB_TXN_STAT_ST_NRESTORES
 	rb_hash_aset(a, rb_tainted_str_new2("st_nrestores"), INT2NUM(bdb_stat->st_nrestores));
+#endif
 	lsn = bdb_makelsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	MEMCPY(lsnst->lsn, &bdb_stat->st_last_ckp, DB_LSN, 1);
 	rb_hash_aset(a, rb_tainted_str_new2("st_last_ckp"), lsn);
-#if BDB_VERSION < 40100
+#if HAVE_ST_DB_TXN_STAT_ST_PENDING_CKP
 	lsn = bdb_makelsn(obj);
 	Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	MEMCPY(lsnst->lsn, &bdb_stat->st_pending_ckp, DB_LSN, 1);
@@ -640,13 +681,17 @@ bdb_env_stat(int argc, VALUE *argv, VALUE obj)
 	for (i = 0; i < bdb_stat->st_nactive; i++) {
 	    hash = rb_hash_new();
 	    rb_hash_aset(hash, rb_tainted_str_new2("txnid"), INT2NUM(bdb_stat->st_txnarray[i].txnid));
+#if HAVE_ST_DB_TXN_ACTIVE_PARENTID
 	    rb_hash_aset(hash, rb_tainted_str_new2("parentid"), INT2NUM(bdb_stat->st_txnarray[i].parentid));
+#endif
 	    lsn = bdb_makelsn(obj);
 	    Data_Get_Struct(lsn, struct dblsnst, lsnst);
 	    MEMCPY(lsnst->lsn, &bdb_stat->st_txnarray[i].lsn, DB_LSN, 1);
 	    rb_hash_aset(hash, rb_tainted_str_new2("lsn"), lsn);
-#if BDB_VERSION >= 40416
+#if HAVE_ST_DB_TXN_ACTIVE_TID
 	    rb_hash_aset(hash, rb_tainted_str_new2("thread_id"), INT2NUM(bdb_stat->st_txnarray[i].tid));
+#endif
+#if HAVE_ST_DB_TXN_ACTIVE_NAME
 	    rb_hash_aset(hash, rb_tainted_str_new2("name"), rb_tainted_str_new2(bdb_stat->st_txnarray[i].name));
 #endif
 	    rb_ary_push(ary, hash);
@@ -657,7 +702,7 @@ bdb_env_stat(int argc, VALUE *argv, VALUE obj)
     return a;
 }
 
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_SET_TIMEOUT
 
 static VALUE
 bdb_txn_set_txn_timeout(VALUE obj, VALUE a)
@@ -702,7 +747,9 @@ bdb_txn_set_timeout(VALUE obj, VALUE a)
     return obj;
 } 
 
-#if BDB_VERSION >= 40100
+#endif
+
+#if HAVE_ST_DB_ENV_DBREMOVE
 
 static VALUE
 bdb_env_dbremove(int argc, VALUE *argv, VALUE obj)
@@ -739,13 +786,19 @@ bdb_env_dbremove(int argc, VALUE *argv, VALUE obj)
     else {
 	GetEnvDB(obj, envst);
     }
+#if HAVE_CONST_DB_AUTO_COMMIT
     if (txnid == NULL && (envst->options & BDB_AUTO_COMMIT)) {
       flags |= DB_AUTO_COMMIT;
     }
+#endif
     bdb_test_error(envst->envp->dbremove(envst->envp, txnid,
 					 file, database, flags));
     return Qnil;
 }
+
+#endif
+
+#if HAVE_ST_DB_ENV_DBRENAME
 
 static VALUE
 bdb_env_dbrename(int argc, VALUE *argv, VALUE obj)
@@ -792,9 +845,11 @@ bdb_env_dbrename(int argc, VALUE *argv, VALUE obj)
     else {
 	GetEnvDB(obj, envst);
     }
+#if HAVE_CONST_DB_AUTO_COMMIT
     if (txnid == NULL && (envst->options & BDB_AUTO_COMMIT)) {
       flags |= DB_AUTO_COMMIT;
     }
+#endif
     bdb_test_error(envst->envp->dbrename(envst->envp, txnid,
 					 file, database, newname, flags));
     return Qnil;
@@ -802,9 +857,7 @@ bdb_env_dbrename(int argc, VALUE *argv, VALUE obj)
 
 #endif
 
-#endif
-
-#if BDB_VERSION >= 40416
+#if HAVE_ST_DB_TXN_SET_NAME
 
 static VALUE
 bdb_txn_set_name(VALUE obj, VALUE a)
@@ -829,7 +882,6 @@ bdb_txn_get_name(VALUE obj)
 
 #endif
 
-
 void bdb_init_transaction()
 {
     id_txn_close = rb_intern("__txn_close__");
@@ -848,7 +900,7 @@ void bdb_init_transaction()
     rb_define_method(bdb_cEnv, "txn_stat", bdb_env_stat, -1);
     rb_define_method(bdb_cEnv, "checkpoint", bdb_env_check, -1);
     rb_define_method(bdb_cEnv, "txn_checkpoint", bdb_env_check, -1);
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DB_ENV_TXN_RECOVER || HAVE_TXN_RECOVER
     rb_define_method(bdb_cEnv, "txn_recover", bdb_env_recover, 0);
     rb_define_method(bdb_cEnv, "recover", bdb_env_recover, 0);
 #endif
@@ -863,9 +915,11 @@ void bdb_init_transaction()
     rb_define_method(bdb_cTxn, "txn_abort", bdb_txn_abort, 0);
     rb_define_method(bdb_cTxn, "id", bdb_txn_id, 0);
     rb_define_method(bdb_cTxn, "txn_id", bdb_txn_id, 0);
-#if BDB_VERSION >= 30300
+#if HAVE_ST_DB_TXN_DISCARD || HAVE_TXN_DISCARD
     rb_define_method(bdb_cTxn, "discard", bdb_txn_discard, 0);
     rb_define_method(bdb_cTxn, "txn_discard", bdb_txn_discard, 0);
+#endif
+#if HAVE_ST_DB_TXN_PREPARE || HAVE_TXN_PREPARE
     rb_define_method(bdb_cTxn, "prepare", bdb_txn_prepare, 1);
     rb_define_method(bdb_cTxn, "txn_prepare", bdb_txn_prepare, 1);
 #else
@@ -876,21 +930,23 @@ void bdb_init_transaction()
     rb_define_method(bdb_cTxn, "txn_assoc", bdb_txn_assoc, -1);
     rb_define_method(bdb_cTxn, "associate", bdb_txn_assoc, -1);
     rb_define_method(bdb_cTxn, "open_db", bdb_env_open_db, -1);
-#if BDB_VERSION >= 40000
+#if HAVE_ST_DB_TXN_SET_TIMEOUT
     rb_define_method(bdb_cTxn, "set_timeout", bdb_txn_set_timeout, 1);
     rb_define_method(bdb_cTxn, "set_txn_timeout", bdb_txn_set_txn_timeout, 1);
     rb_define_method(bdb_cTxn, "set_lock_timeout", bdb_txn_set_lock_timeout, 1);
     rb_define_method(bdb_cTxn, "timeout=", bdb_txn_set_timeout, 1);
     rb_define_method(bdb_cTxn, "txn_timeout=", bdb_txn_set_txn_timeout, 1);
     rb_define_method(bdb_cTxn, "lock_timeout=", bdb_txn_set_lock_timeout, 1);
-#if BDB_VERSION >= 40100
+#endif
+#if HAVE_ST_DB_ENV_DBREMOVE
     rb_define_method(bdb_cEnv, "dbremove", bdb_env_dbremove, -1);
     rb_define_method(bdb_cTxn, "dbremove", bdb_env_dbremove, -1);
+#endif
+#if HAVE_ST_DB_ENV_DBRENAME
     rb_define_method(bdb_cEnv, "dbrename", bdb_env_dbrename, -1);
     rb_define_method(bdb_cTxn, "dbrename", bdb_env_dbrename, -1);
 #endif
-#endif    
-#if BDB_VERSION >= 40416
+#if HAVE_ST_DB_TXN_SET_NAME
     rb_define_method(bdb_cTxn, "name", bdb_txn_get_name, 0);
     rb_define_method(bdb_cTxn, "name=", bdb_txn_set_name, 1);
 #endif

@@ -1,6 +1,6 @@
 #include "bdb.h"
 
-#if BDB_VERSION >= 40300
+#if HAVE_TYPE_DB_SEQUENCE
 
 static VALUE bdb_cSeq;
 
@@ -306,7 +306,7 @@ bdb_seq_key(VALUE obj)
 
 void bdb_init_sequence()
 {
-#if BDB_VERSION >= 40300
+#if HAVE_TYPE_DB_SEQUENCE
     bdb_cSeq = rb_define_class_under(bdb_mDb, "Sequence", rb_cObject);
 #ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_undef_alloc_func(bdb_cSeq);
