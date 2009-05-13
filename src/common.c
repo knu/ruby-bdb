@@ -941,7 +941,7 @@ bdb_i_close(bdb_DB *dbst, int flags)
 		}
 	    }
 	    if (!(dbst->options & BDB_NOT_OPEN)) {
-		bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
+		dbst->dbp->close(dbst->dbp, flags);
 	    }
 	}
 	else {
@@ -950,7 +950,7 @@ bdb_i_close(bdb_DB *dbst, int flags)
 		bdb_ary_delete(&envst->db_ary, dbst->ori_val);
 	    }
 	    if (!(dbst->options & BDB_NOT_OPEN)) {
-		bdb_test_error(dbst->dbp->close(dbst->dbp, flags));
+		dbst->dbp->close(dbst->dbp, flags);
 	    }
 	}
     }
