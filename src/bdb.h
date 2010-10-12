@@ -1,9 +1,13 @@
-#include <ruby.h>
-#include <rubysig.h>
-#include <rubyio.h>
-
 #include <db.h>
 #include <errno.h>
+
+#include <ruby.h>
+#ifdef HAVE_RUBY_IO_H
+#include <ruby/io.h>
+#else
+#include <rubysig.h>
+#include <rubyio.h>
+#endif
 
 #include "bdb_features.h"
 

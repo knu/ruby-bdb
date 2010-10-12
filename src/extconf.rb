@@ -90,6 +90,12 @@ catch(:done) do
    raise "libdb#{version[-1]} not found"
 end
 
+headers = ["ruby.h"]
+if have_header("ruby/io.h")
+   headers << "ruby/io.h"
+else
+   headers << "rubyio.h"
+end
 ["rb_frame_this_func", "rb_block_proc", "rb_io_stdio_file", "rb_block_call"].each do |f|
    have_func(f, "ruby.h")
 end
@@ -103,8 +109,7 @@ end
       puts "no"
    end
 end
-
-have_type('rb_io_t', ['ruby.h', 'rubyio.h'])
+have_type('rb_io_t', headers)
 
 if enable_config('db-xml')
    $defs << '-DHAVE_DBXML_INTERFACE'
