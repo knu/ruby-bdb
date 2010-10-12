@@ -112,7 +112,7 @@ else
    $defs << '-DNOT_HAVE_DBXML_INTERFACE'
 end
 
-require 'features'
+require './features'
 
 create_makefile("bdb")
 if unknown
