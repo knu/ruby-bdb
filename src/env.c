@@ -364,8 +364,8 @@ bdb_env_thread_id(DB_ENV *dbenv, pid_t *pid, db_threadid_t *tid)
     if (TYPE(res) != T_ARRAY || RARRAY_LEN(res) != 2) {
 	rb_raise(bdb_eFatal, "expected [pid, threadid]");
     }
-    *pid = NUM2INT(RARRAY_PTR(res)[0]);
-    *tid = NUM2INT(RARRAY_PTR(res)[0]);
+    *pid = NUM2LONG(RARRAY_PTR(res)[0]);
+    *tid = (db_threadid_t)NUM2LONG(RARRAY_PTR(res)[0]);
     return;
 }
 
@@ -384,11 +384,11 @@ bdb_env_thread_id_string(DB_ENV *dbenv, pid_t pid, db_threadid_t tid, char *buf)
 
     GetIdEnv(obj, envst);
     if (NIL_P(envst->thread_id_string)) {
-	snprintf(buf, DB_THREADID_STRLEN, "%d/%d", pid, (int)tid);
+	snprintf(buf, DB_THREADID_STRLEN, "%d/%ld", pid, (long)tid);
 	return buf;
     }
-    a = INT2NUM(pid);
-    b = INT2NUM(tid);
+    a = LONG2NUM(pid);
+    b = LONG2NUM((long)tid);
     if (envst->thread_id_string == 0) {
 	res = rb_funcall(obj, id_thread_id_string, 2, a, b);
     }
@@ -418,8 +418,8 @@ bdb_env_isalive(DB_ENV *dbenv, pid_t pid, db_threadid_t tid, u_int32_t flags)
     if (NIL_P(envst->isalive)) {
 	return 0;
     }
-    a = INT2NUM(pid);
-    b = INT2NUM(tid);
+    a = LONG2NUM(pid);
+    b = LONG2NUM((long)tid);
     c = INT2NUM(flags);
     if (envst->isalive == 0) {
 	res = rb_funcall(obj, id_isalive, 3, a, b, c);
@@ -1903,9 +1903,9 @@ bdb_env_i_conf(VALUE obj, VALUE a)
 #endif
 #if HAVE_ST_DB_ENV_GET_MP_MMAPSIZE
     if (strcmp(str, "mp_mmapsize") == 0) {
-	u_int32_t size;
+	size_t size;
 	bdb_test_error(envst->envp->get_mp_mmapsize(envst->envp, &size));
-	return INT2NUM(size);
+	return LONG2NUM(size);
     }
 #endif
 #if HAVE_ST_DB_ENV_GET_OPEN_FLAGS
@@ -1981,7 +1981,7 @@ bdb_env_i_conf(VALUE obj, VALUE a)
 #endif
 #if    HAVE_ST_DB_ENV_REP_GET_PRIORITY
     if (strcmp(str, "rep_priority") == 0) {
-	size_t size = 0;
+	int size = 0;
 	bdb_test_error(envst->envp->rep_get_priority(envst->envp, &size));
 	return INT2NUM(size);
     }
@@ -2448,7 +2448,7 @@ static VALUE
 bdb_env_rep_get_nsites(VALUE obj, VALUE a)
 {
     bdb_ENV *envst;
-    u_int32_t offon;
+    int offon;
 
     GetEnvDB(obj, envst);
     bdb_test_error(envst->envp->rep_get_nsites(envst->envp, &offon));
@@ -2473,7 +2473,7 @@ static VALUE
 bdb_env_rep_get_priority(VALUE obj, VALUE a)
 {
     bdb_ENV *envst;
-    u_int32_t offon;
+    int offon;
 
     GetEnvDB(obj, envst);
     bdb_test_error(envst->envp->rep_get_priority(envst->envp, &offon));
