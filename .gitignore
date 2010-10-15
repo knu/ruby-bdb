@@ -1,0 +1,11 @@
+*.html
+Makefile
+bdbxml2/bdbxml_features.h
+bdbxml[12]/*.html
+bdbxml[12]/*.so
+bdbxml[12]/docs/*.html
+docs/*.html
+src/Makefile
+src/bdb.so
+src/bdb_features.h
+src/mkmf.log
