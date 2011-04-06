@@ -132,3 +132,9 @@ EOF
       make.close
    end
 end
+
+# Local variables:
+# ruby-indent-tabs-mode: nil
+# ruby-indent-level: 3
+# end:
+# vim: sw=3
