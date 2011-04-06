@@ -53,11 +53,7 @@ $bdb_libdir = lib_dir
 
 $CFLAGS += " -DBDB_NO_THREAD_COMPILE" if enable_config("thread") == false
 
-unique = if with_config("db-uniquename")
-	    with_config("db-uniquename")
-	 else
-	    ""
-	 end
+unique = with_config("db-uniquename") || ''
 
 if with_config("db-pthread")
    $LDFLAGS += " -lpthread"
@@ -70,14 +66,15 @@ catch(:done) do
    pthread = /-lpthread/ =~ $LDFLAGS
    loop do
       version.each do |with_ver|
-         if unique != true
+         if unique.is_a?(String)
             db_version = "db_version" + unique
             throw :done if have_library("db#{with_ver}", db_version, "db.h")
          end
-         if with_ver != "" && (unique == "" || unique == true)
-            /(\d)\.?(\d)?/ =~ with_ver
-            major = $1.to_i
-            minor = $2.to_i
+         next if with_ver.empty?
+         if !unique.is_a?(String) || unique.empty?
+            m = with_ver.match(/^[^0-9]*([2-9])\.?([0-9]{0,3})/)
+            major = m[1].to_i
+            minor = m[2].to_i
             db_version = "db_version_" + (1000 * major + minor).to_s
             throw :done if have_library("db#{with_ver}", db_version, "db.h")
          end
