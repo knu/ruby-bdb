@@ -280,3 +280,12 @@
 --- 0.6.4
 
 * update for db 4.7
+
+--- 0.6.5
+
+* massive compatibility fixes
+* introduced --enable-db-xml for use with bdbxml2
+
+--- 0.6.6
+
+* ruby 1.9 support
