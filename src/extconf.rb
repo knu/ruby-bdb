@@ -18,8 +18,9 @@ if ARGV.include?('--help') || ARGV.include?('-h')
   --with-db-lib=<library directory for Berkeley DB>
       default=/usr/lib
 
-  --with-db-version=<list of comma separated suffix to add to libdb>
-      default=-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,
+  --with-db-version=<list of comma separated suffixes to add to libdb>
+      default=auto-detected if above values include one, or suffixes
+              of all supported versions)
 
   --with-db-uniquename=<unique name associated with db_version>
       option --with-uniquename=NAME when Berkeley DB was build
@@ -43,7 +44,7 @@ if unknown = enable_config("unknown")
 			  Config::expand(CONFIG["archdir"].dup))
 end
 
-_,lib_dir = dir_config("db", "/usr/include", "/usr/lib")
+inc_dir, lib_dir = dir_config("db", "/usr/include", "/usr/lib")
 case Config::CONFIG["arch"]
 when /solaris2/
    $DLDFLAGS ||= ""
@@ -59,8 +60,29 @@ if with_config("db-pthread")
    $LDFLAGS += " -lpthread"
 end
 
-version  = with_config('db-version', "-4.7,47,-4.6,46,-4.5,45,-4.4,44,-4.3,43,-4.2,42,-4.1,41,-4.0,-4,40,4,3,2,").split(/,/, -1)
-version << "" if version.empty?
+if csv = with_config('db-version')
+   version = csv.split(',', -1)
+   version << '' if version.empty?
+elsif m = lib_dir.match(%r{/db(?:([2-9])|([2-9])([0-9])|-([2-9]).([0-9]))(?:$|/)}) ||
+          inc_dir.match(%r{/db(?:([2-9])|([2-9])([0-9])|-([2-9]).([0-9]))(?:$|/)})
+   if m[1]
+      version = [m[1], '']
+   else
+      if m[2]
+         major, minor = m[2], m[3]
+      else
+         major, minor = m[4], m[5]
+      end
+      version = ['-%d.%d' % [major, minor], '%d%d' % [major, minor], '']
+   end
+else
+   version = [
+      %w[4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 4 3 2].map { |ver|
+         major, minor = ver.split('.')
+         minor ? ['-%d.%d' % [major, minor], '%d%d' % [major, minor]] : major
+      }, ''
+   ].flatten
+end
 
 catch(:done) do
    pthread = /-lpthread/ =~ $LDFLAGS
@@ -84,7 +106,7 @@ catch(:done) do
       pthread = true
       puts 'Trying with -lpthread'
    end
-   raise "libdb#{version[-1]} not found"
+   raise "libdb#{version.last} not found"
 end
 
 headers = ["ruby.h"]
