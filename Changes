@@ -289,3 +289,7 @@
 --- 0.6.6
 
 * ruby 1.9 support
+
+--- 0.6.7
+
+* gemified.
