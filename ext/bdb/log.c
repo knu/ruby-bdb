@@ -74,7 +74,7 @@ bdb_s_log_put(int argc, VALUE *argv, VALUE obj)
 {
     VALUE a, b;
     int flag = 0;
-    
+
     if (argc == 0 || argc > 2) {
 	rb_raise(bdb_eFatal, "Invalid number of arguments");
     }
@@ -254,7 +254,7 @@ bdb_env_log_get(VALUE obj, VALUE a)
 
 #else
 
-static VALUE bdb_log_cursor _((VALUE));
+static VALUE bdb_log_cursor(VALUE);
 
 #endif
 
@@ -337,16 +337,16 @@ bdb_i_each_log_get(VALUE obj, int flag)
 }
 
 #if ! HAVE_ST_DB_ENV_LOG_CURSOR
- 
+
 static VALUE
-bdb_env_log_each(VALUE obj) 
-{ 
+bdb_env_log_each(VALUE obj)
+{
     return bdb_i_each_log_get(obj, DB_NEXT);
 }
 
 static VALUE
 bdb_env_log_hcae(VALUE obj)
-{ 
+{
     return bdb_i_each_log_get(obj, DB_PREV);
 }
 
@@ -372,7 +372,7 @@ bdb_log_cursor_close(VALUE obj)
 
     Data_Get_Struct(obj, struct dblsnst, lsnst);
     bdb_clean_env(lsnst->env, obj);
-    
+
     return log_cursor_close(obj);
 }
 
@@ -390,7 +390,7 @@ bdb_log_cursor(VALUE lsn)
     }
     return lsn;
 }
-    
+
 static VALUE
 bdb_env_log_cursor(VALUE obj)
 {
@@ -464,7 +464,7 @@ bdb_log_hcae(VALUE lsn)
     lsnst->flags = DB_PREV;
     return rb_ensure(bdb_log_i_get, lsn, bdb_log_cursor_close, lsn);
  }
- 
+
 
 #endif
  
@@ -685,7 +685,8 @@ bdb_log_unregister(VALUE obj)
 #endif
 }
 
-void bdb_init_log()
+void
+bdb_init_log(void)
 {
     rb_define_method(bdb_cEnv, "log_put", bdb_s_log_put, -1);
     rb_define_method(bdb_cEnv, "log_curlsn", bdb_s_log_curlsn, 0);
@@ -693,7 +694,7 @@ void bdb_init_log()
     rb_define_method(bdb_cEnv, "log_flush", bdb_s_log_flush, -1);
     rb_define_method(bdb_cEnv, "log_stat", bdb_env_log_stat, -1);
     rb_define_method(bdb_cEnv, "log_archive", bdb_env_log_archive, -1);
-#if ! HAVE_ST_DB_ENV_LOG_CURSOR 
+#if ! HAVE_ST_DB_ENV_LOG_CURSOR
     rb_define_method(bdb_cEnv, "log_get", bdb_env_log_get, 1);
 #else
     rb_define_method(bdb_cEnv, "log_cursor", bdb_env_log_cursor, 0);

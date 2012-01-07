@@ -152,7 +152,7 @@ extern VALUE bdb_mMarshal;
 extern ID bdb_id_dump, bdb_id_load;
 extern ID bdb_id_current_db, bdb_id_current_env;
 
-extern VALUE bdb_deleg_to_orig _((VALUE));
+extern VALUE bdb_deleg_to_orig(VALUE);
 
 struct ary_st {
     int len, total, mark;
@@ -206,7 +206,7 @@ struct txn_rslbl {
     int (*txn_cxx_discard) (void *, u_int32_t );
 };
 
-extern VALUE bdb_env_s_rslbl _((int, VALUE *,VALUE, DB_ENV *));
+extern VALUE bdb_env_s_rslbl(int, VALUE *,VALUE, DB_ENV *);
 
 #endif
 
@@ -471,7 +471,7 @@ struct dblsnst {
 extern VALUE bdb_errstr;
 extern int bdb_errcall;
 
-extern int bdb_test_error _((int));
+extern int bdb_test_error(int);
 
 #if HAVE_CONST_DB_INCOMPLETE
 
@@ -512,66 +512,66 @@ extern int bdb_test_error _((int));
 
 #endif
 
-extern VALUE bdb_obj_init _((int, VALUE *, VALUE));
+extern VALUE bdb_obj_init(int, VALUE *, VALUE);
 
 extern ID bdb_id_call;
 
 #if ! HAVE_DB_STRERROR
-extern char *db_strerror _((int));
+extern char *db_strerror(int);
 #endif
 
-extern VALUE bdb_local_aref _(());
-extern VALUE bdb_test_recno _((VALUE, DBT *, db_recno_t *, VALUE));
-extern VALUE bdb_test_dump _((VALUE, DBT *, VALUE, int));
-extern VALUE bdb_test_ret _((VALUE, VALUE, VALUE, int));
-extern VALUE bdb_test_load_key _((VALUE, DBT *));
-extern VALUE bdb_assoc _((VALUE, DBT *, DBT *));
-extern VALUE bdb_assoc3 _((VALUE, DBT *, DBT *, DBT *));
-extern VALUE bdb_assoc_dyna _((VALUE, DBT *, DBT *));
-extern VALUE bdb_clear _((int, VALUE *, VALUE));
-extern VALUE bdb_del _((VALUE, VALUE));
-extern void bdb_deleg_mark _((struct deleg_class *));
-extern VALUE bdb_each_eulav _((int, VALUE *, VALUE));
-extern VALUE bdb_each_key _((int, VALUE *, VALUE));
-extern VALUE bdb_each_value _((int, VALUE *, VALUE));
-extern VALUE bdb_each_valuec _((int, VALUE *, VALUE, int, VALUE));
-extern VALUE bdb_each_kvc _((int, VALUE *, VALUE, int, VALUE, int));
+extern VALUE bdb_local_aref(void);
+extern VALUE bdb_test_recno(VALUE, DBT *, db_recno_t *, VALUE);
+extern VALUE bdb_test_dump(VALUE, DBT *, VALUE, int);
+extern VALUE bdb_test_ret(VALUE, VALUE, VALUE, int);
+extern VALUE bdb_test_load_key(VALUE, DBT *);
+extern VALUE bdb_assoc(VALUE, DBT *, DBT *);
+extern VALUE bdb_assoc3(VALUE, DBT *, DBT *, DBT *);
+extern VALUE bdb_assoc_dyna(VALUE, DBT *, DBT *);
+extern VALUE bdb_clear(int, VALUE *, VALUE);
+extern VALUE bdb_del(VALUE, VALUE);
+extern void bdb_deleg_mark(struct deleg_class *);
+extern VALUE bdb_each_eulav(int, VALUE *, VALUE);
+extern VALUE bdb_each_key(int, VALUE *, VALUE);
+extern VALUE bdb_each_value(int, VALUE *, VALUE);
+extern VALUE bdb_each_valuec(int, VALUE *, VALUE, int, VALUE);
+extern VALUE bdb_each_kvc(int, VALUE *, VALUE, int, VALUE, int);
 #if HAVE_DB_ENV_ERRCALL_3
-extern void bdb_env_errcall _((const DB_ENV *, const char *, const char *));
+extern void bdb_env_errcall(const DB_ENV *, const char *, const char *);
 #else
-extern void bdb_env_errcall _((const char *, char *));
+extern void bdb_env_errcall(const char *, char *);
 #endif
-extern VALUE bdb_env_init _((int, VALUE *, VALUE));
-extern VALUE bdb_protect_close _((VALUE));
-extern VALUE bdb_env_open_db _((int, VALUE *, VALUE));
-extern VALUE bdb_get _((int, VALUE *, VALUE));
-extern VALUE bdb_env_p _((VALUE));
-extern VALUE bdb_has_value _((VALUE, VALUE));
-extern VALUE bdb_index _((VALUE, VALUE));
-extern VALUE bdb_internal_value _((VALUE, VALUE, VALUE, int));
-extern VALUE bdb_put _((int, VALUE *, VALUE));
-extern VALUE bdb_test_load _((VALUE, DBT *, int));
-extern VALUE bdb_to_type _((VALUE, VALUE, VALUE));
-extern VALUE bdb_tree_stat _((int, VALUE *, VALUE));
-extern VALUE bdb_init _((int, VALUE *, VALUE));
-extern void bdb_init_env _((void));
-extern void bdb_init_common _((void));
-extern void bdb_init_recnum _((void));
-extern void bdb_init_transaction _((void));
-extern void bdb_init_cursor _((void));
-extern void bdb_init_lock _((void));
-extern void bdb_init_log _((void));
-extern void bdb_init_delegator _((void));
-extern void bdb_init_sequence _((void));
-extern void bdb_clean_env _((VALUE, VALUE));
-extern VALUE bdb_makelsn _((VALUE));
-extern VALUE bdb_env_rslbl_begin _((VALUE, int, VALUE *, VALUE));
-extern VALUE bdb_return_err _((void));
-extern void bdb_ary_push _((struct ary_st *, VALUE));
-extern void bdb_ary_unshift _((struct ary_st *, VALUE));
-extern VALUE bdb_ary_delete _((struct ary_st *, VALUE));
-extern void bdb_ary_mark _((struct ary_st *));
-extern VALUE bdb_respond_to _((VALUE, ID));
+extern VALUE bdb_env_init(int, VALUE *, VALUE);
+extern VALUE bdb_protect_close(VALUE);
+extern VALUE bdb_env_open_db(int, VALUE *, VALUE);
+extern VALUE bdb_get(int, VALUE *, VALUE);
+extern VALUE bdb_env_p(VALUE);
+extern VALUE bdb_has_value(VALUE, VALUE);
+extern VALUE bdb_index(VALUE, VALUE);
+extern VALUE bdb_internal_value(VALUE, VALUE, VALUE, int);
+extern VALUE bdb_put(int, VALUE *, VALUE);
+extern VALUE bdb_test_load(VALUE, DBT *, int);
+extern VALUE bdb_to_type(VALUE, VALUE, VALUE);
+extern VALUE bdb_tree_stat(int, VALUE *, VALUE);
+extern VALUE bdb_init(int, VALUE *, VALUE);
+extern void bdb_init_env(void);
+extern void bdb_init_common(void);
+extern void bdb_init_recnum(void);
+extern void bdb_init_transaction(void);
+extern void bdb_init_cursor(void);
+extern void bdb_init_lock(void);
+extern void bdb_init_log(void);
+extern void bdb_init_delegator(void);
+extern void bdb_init_sequence(void);
+extern void bdb_clean_env(VALUE, VALUE);
+extern VALUE bdb_makelsn(VALUE);
+extern VALUE bdb_env_rslbl_begin(VALUE, int, VALUE *, VALUE);
+extern VALUE bdb_return_err(void);
+extern void bdb_ary_push(struct ary_st *, VALUE);
+extern void bdb_ary_unshift(struct ary_st *, VALUE);
+extern VALUE bdb_ary_delete(struct ary_st *, VALUE);
+extern void bdb_ary_mark(struct ary_st *);
+extern VALUE bdb_respond_to(VALUE, ID);
 
 #if ! HAVE_ST_DBC_C_CLOSE && HAVE_ST_DBC_CLOSE
 #define c_close close

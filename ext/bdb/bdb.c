@@ -157,7 +157,7 @@ bdb_test_error(int comm)
 }
 
 void
-Init_bdb()
+Init_bdb(void)
 {
     int major, minor, patch;
     VALUE version;

@@ -7,7 +7,7 @@ static ID id_feedback;
 #endif
 
 ID bdb_id_current_env;
-static void bdb_env_mark _((bdb_ENV *));
+static void bdb_env_mark(bdb_ENV *);
 
 #define GetIdEnv(obj, envst) do {					   	\
     VALUE th = rb_thread_current();						\
@@ -56,7 +56,6 @@ struct db_stoptions {
 static int
 bdb_env_rep_transport(DB_ENV *env, const DBT *control, const DBT *rec,
 		      const DB_LSN *lsn, int envid, u_int32_t flags)
-
 {
     VALUE obj, av, bv, res;
     bdb_ENV *envst;
@@ -74,7 +73,7 @@ bdb_env_rep_transport(DB_ENV *env, const DBT *control, const DBT *rec,
 			 INT2FIX(envid), INT2FIX(flags));
     }
     else {
-	res = rb_funcall(envst->rep_transport, bdb_id_call, 5, 
+	res = rb_funcall(envst->rep_transport, bdb_id_call, 5,
 			 av, bv, lsnobj, INT2FIX(envid), INT2FIX(flags));
     }
     return NUM2INT(res);
@@ -97,7 +96,7 @@ bdb_env_rep_transport(DB_ENV *env, const DBT *control, const DBT *rec,
 			 INT2FIX(envid), INT2FIX(flags));
     }
     else {
-	res = rb_funcall(envst->rep_transport, bdb_id_call, 4, 
+	res = rb_funcall(envst->rep_transport, bdb_id_call, 4,
 			 av, bv, INT2FIX(envid), INT2FIX(flags));
     }
     return NUM2INT(res);
@@ -127,7 +126,7 @@ bdb_env_rep_elect(int argc, VALUE *argv, VALUE env)
         nvotes = NUM2INT(nvo);
     }
 #endif
-    
+
 #if HAVE_DB_ENV_REP_ELECT_4
     bdb_test_error(envst->envp->rep_elect(envst->envp, NUM2INT(nb), nvotes, 0));
 #elif HAVE_DB_ENV_REP_ELECT_5
@@ -176,14 +175,14 @@ bdb_env_rep_process_message(VALUE env, VALUE av, VALUE bv, VALUE ev)
     Data_Get_Struct(lsn, struct dblsnst, lsnst);
 
 #if HAVE_DB_ENV_REP_PROCESS_MESSAGE_ENVID
-    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, 
+    ret = envst->envp->rep_process_message(envst->envp, &control, &rec,
 					   envid, lsnst->lsn);
 #else
-    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, 
+    ret = envst->envp->rep_process_message(envst->envp, &control, &rec,
 					   &envid, lsnst->lsn);
 #endif
 #else
-    ret = envst->envp->rep_process_message(envst->envp, &control, &rec, 
+    ret = envst->envp->rep_process_message(envst->envp, &control, &rec,
 					   &envid);
 #endif
     if (ret == DB_RUNRECOVERY) {
@@ -218,7 +217,7 @@ bdb_env_rep_start(VALUE env, VALUE ident, VALUE flags)
 	cdata.size = RSTRING_LEN(ident);
 	cdata.data = StringValuePtr(ident);
     }
-    bdb_test_error(envst->envp->rep_start(envst->envp, 
+    bdb_test_error(envst->envp->rep_start(envst->envp,
 					  NIL_P(ident)?NULL:&cdata,
 					  NUM2INT(flags)));
     return Qnil;
@@ -264,7 +263,7 @@ bdb_env_rep_limit(int argc, VALUE *argv, VALUE obj)
 }
 
 #endif
- 
+
 
 #if HAVE_ST_DB_ENV_SET_FEEDBACK
 
@@ -541,7 +540,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 		rb_raise(bdb_eFatal, "expected 3 values for cachesize");
 	    }
 #if HAVE_ST_DB_ENV_SET_CACHESIZE
-	    bdb_test_error(envp->set_cachesize(envp, 
+	    bdb_test_error(envp->set_cachesize(envp,
 					       NUM2UINT(RARRAY_PTR(value)[0]),
 					       NUM2UINT(RARRAY_PTR(value)[1]),
 					       NUM2INT(RARRAY_PTR(value)[2])));
@@ -776,7 +775,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
         switch (value) {
         case Qtrue: envst->marshal = bdb_mMarshal; break;
         case Qfalse: envst->marshal = Qfalse; break;
-        default: 
+        default:
 	    if (!bdb_respond_to(value, bdb_id_load) ||
 		!bdb_respond_to(value, bdb_id_dump)) {
 		rb_raise(bdb_eFatal, "marshal value must be true or false");
@@ -819,12 +818,12 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	if (TYPE(value) == T_ARRAY) {
 	    if (RARRAY_LEN(value) >= 1 && !NIL_P(RARRAY_PTR(value)[0])) {
 
-		bdb_test_error(envst->envp->set_timeout(envst->envp, 
+		bdb_test_error(envst->envp->set_timeout(envst->envp,
 							NUM2UINT(RARRAY_PTR(value)[0]),
 							DB_SET_TXN_TIMEOUT));
 	    }
 	    if (RARRAY_LEN(value) == 2 && !NIL_P(RARRAY_PTR(value)[1])) {
-		bdb_test_error(envst->envp->set_timeout(envst->envp, 
+		bdb_test_error(envst->envp->set_timeout(envst->envp,
 							NUM2UINT(RARRAY_PTR(value)[0]),
 							DB_SET_LOCK_TIMEOUT));
 	    }
@@ -977,7 +976,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	else {
 	    onoff = NUM2UINT(RARRAY_PTR(value)[1]);
 	}
-	bdb_test_error(envst->envp->rep_set_config(envst->envp, 
+	bdb_test_error(envst->envp->rep_set_config(envst->envp,
 						   NUM2UINT(RARRAY_PTR(value)[0]),
 						   onoff));
     }
@@ -988,7 +987,7 @@ bdb_env_i_options(VALUE obj, VALUE db_stobj)
 	if (TYPE(value) != T_ARRAY || RARRAY_LEN(value) != 2) {
 	    rb_raise(bdb_eFatal, "Expected an Array with 2 values");
 	}
-	bdb_test_error(envst->envp->rep_set_timeout(envst->envp, 
+	bdb_test_error(envst->envp->rep_set_timeout(envst->envp,
 						    NUM2UINT(RARRAY_PTR(value)[0]),
 						    NUM2UINT(RARRAY_PTR(value)[1])));
     }
@@ -1045,7 +1044,7 @@ struct env_iv {
 #if BDB_NEED_ENV_CURRENT
 
 static VALUE
-bdb_env_aref()
+bdb_env_aref(void)
 {
     VALUE obj;
     bdb_ENV *envst;
@@ -1132,7 +1131,7 @@ bdb_env_close(VALUE obj)
 
 static void
 bdb_env_mark(bdb_ENV *envst)
-{ 
+{
     rb_gc_mark(envst->marshal);
 #if HAVE_ST_DB_ENV_SET_REP_TRANSPORT
     rb_gc_mark(envst->rep_transport);
@@ -1221,7 +1220,7 @@ bdb_env_errcall(const char *errpfx, char *msg)
 #endif
 
 VALUE
-bdb_return_err()
+bdb_return_err(void)
 {
     if (bdb_errcall) {
 	bdb_errcall = 0;
@@ -1254,7 +1253,7 @@ bdb_func_sleep(unsigned long sec, unsigned long usec)
 #if HAVE_ST_DB_ENV_SET_FUNC_YIELD || HAVE_DB_JUMP_SET || HAVE_DB_ENV_SET_FUNC_SLEEP
 
 static int
-bdb_func_yield()
+bdb_func_yield(void)
 {
     rb_thread_schedule();
     return 0;
@@ -1424,7 +1423,7 @@ bdb_env_s_new(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_SET_ALLOC
 
-VALUE 
+VALUE
 bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
 {
     bdb_ENV *envst;
@@ -1737,7 +1736,7 @@ bdb_env_home(VALUE obj)
 static VALUE
 bdb_env_iterate(VALUE *tmp)
 {
-    return rb_funcall2(tmp[0], rb_intern("__bdb_thread_init__"), 
+    return rb_funcall2(tmp[0], rb_intern("__bdb_thread_init__"),
 		       (int)tmp[1], (VALUE *)tmp[2]);
 }
 
@@ -2061,7 +2060,7 @@ options[] = {
     "tx_max",
 #endif
 #if HAVE_ST_DB_ENV_REP_GET_PRIORITY
-    "rep_priority", 
+    "rep_priority",
 #endif
 #if HAVE_ST_DB_ENV_REP_GET_NSITES
     "rep_nsites",
@@ -2111,7 +2110,7 @@ bdb_env_conf(int argc, VALUE *argv, VALUE obj)
 
 static VALUE
 bdb_env_lsn_reset(int argc, VALUE *argv, VALUE obj)
-{  
+{
     char *file;
     int flags;
     VALUE a, b;
@@ -2133,7 +2132,7 @@ bdb_env_lsn_reset(int argc, VALUE *argv, VALUE obj)
 
 static VALUE
 bdb_env_fileid_reset(int argc, VALUE *argv, VALUE obj)
-{  
+{
     char *file;
     int flags;
     VALUE a, b;
@@ -2270,7 +2269,7 @@ bdb_env_repmgr_add_remote(int argc, VALUE *argv, VALUE obj)
 	flags = NUM2INT(c);
     }
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->repmgr_add_remote_site(envst->envp, 
+    bdb_test_error(envst->envp->repmgr_add_remote_site(envst->envp,
 						       StringValuePtr(a),
 						       NUM2UINT(b),
 						       &eid, flags));
@@ -2318,7 +2317,7 @@ bdb_env_repmgr_set_local_site(int argc, VALUE *argv, VALUE obj)
 	flags = NUM2INT(c);
     }
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->repmgr_set_local_site(envst->envp, 
+    bdb_test_error(envst->envp->repmgr_set_local_site(envst->envp,
 						      StringValuePtr(a),
 						      NUM2UINT(b),
 						      flags));
@@ -2338,7 +2337,7 @@ bdb_env_repmgr_site_list(VALUE obj)
     DB_REPMGR_SITE *list;
 
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->repmgr_site_list(envst->envp, 
+    bdb_test_error(envst->envp->repmgr_site_list(envst->envp,
 						 &count, &list));
     res = rb_ary_new();
     for (i = 0; i < count; i++) {
@@ -2384,10 +2383,10 @@ static VALUE bdb_env_rep_set_transport(VALUE obj, VALUE a, VALUE b)
     }
     envst->rep_transport = b;
 #if HAVE_ST_DB_ENV_REP_SET_TRANSPORT
-    bdb_test_error(envst->envp->rep_set_transport(envst->envp, NUM2INT(a), 
+    bdb_test_error(envst->envp->rep_set_transport(envst->envp, NUM2INT(a),
 						  bdb_env_rep_transport));
 #else
-    bdb_test_error(envst->envp->set_rep_transport(envst->envp, NUM2INT(a), 
+    bdb_test_error(envst->envp->set_rep_transport(envst->envp, NUM2INT(a),
 						  bdb_env_rep_transport));
 #endif
     return obj;
@@ -2853,11 +2852,12 @@ bdb_env_log_config(VALUE obj, VALUE a)
     }
     return Qfalse;
 }
- 
+
 #endif
 
 
-void bdb_init_env()
+void
+bdb_init_env(void)
 {
     bdb_id_call = rb_intern("call");
 #if HAVE_ST_DB_ENV_SET_FEEDBACK
@@ -2959,7 +2959,7 @@ void bdb_init_env()
     rb_define_method(bdb_cInt, "[]=", bdb_intern_set, 2);
 #endif
 #if HAVE_ST_DB_ENV_REPMGR_ADD_REMOTE_SITE
-    rb_define_method(bdb_cEnv, "repmgr_add_remote_site", 
+    rb_define_method(bdb_cEnv, "repmgr_add_remote_site",
 		     bdb_env_repmgr_add_remote, -1);
 #endif
 #if HAVE_ST_DB_ENV_REPMGR_SET_ACK_POLICY
@@ -3040,4 +3040,3 @@ void bdb_init_env()
 #endif
 
 }
-

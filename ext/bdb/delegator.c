@@ -10,7 +10,7 @@ bdb_deleg_mark(struct deleg_class *delegst)
     rb_gc_mark(delegst->obj);
 }
 
-extern VALUE bdb_put _((int, VALUE *, VALUE));
+extern VALUE bdb_put(int, VALUE *, VALUE);
 
 #if ! HAVE_RB_BLOCK_CALL
 
@@ -50,9 +50,9 @@ bdb_deleg_missing(int argc, VALUE *argv, VALUE obj)
 	VALUE nargv[2];
 
 	if (!SPECIAL_CONST_P(res) &&
-	    (TYPE(res) != T_DATA || 
+	    (TYPE(res) != T_DATA ||
 	     RDATA(res)->dmark != (RUBY_DATA_FUNC)bdb_deleg_mark)) {
-	    new = Data_Make_Struct(bdb_cDelegate, struct deleg_class, 
+	    new = Data_Make_Struct(bdb_cDelegate, struct deleg_class,
 				   bdb_deleg_mark, free, newst);
 	    newst->db = delegst->db;
 	    newst->obj = res;
@@ -127,7 +127,8 @@ bdb_deleg_load(VALUE obj, VALUE str)
     return rb_funcall(dbst->marshal, bdb_id_load, 1, str);
 }
 
-void bdb_init_delegator()
+void
+bdb_init_delegator(void)
 {
     id_send = rb_intern("send");
     bdb_cDelegate = rb_define_class_under(bdb_mDb, "Delegate", rb_cObject);

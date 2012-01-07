@@ -484,7 +484,8 @@ bdb_lock_put(VALUE obj)
     return Qnil;
 } 
 
-void bdb_init_lock()
+void
+bdb_init_lock(void)
 {
     rb_define_method(bdb_cEnv, "lock_id", bdb_env_lockid, 0);
     rb_define_method(bdb_cEnv, "lock", bdb_env_lockid, 0);

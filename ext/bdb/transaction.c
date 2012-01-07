@@ -50,7 +50,7 @@ clean_ary(bdb_TXN *txnst, VALUE result)
     }
 }
 
-static VALUE 
+static VALUE
 txn_free(bdb_TXN *txnst)
 {
     if (txnst->txnid && txnst->parent == NULL) {
@@ -69,7 +69,7 @@ txn_free(bdb_TXN *txnst)
 #if HAVE_DBXML_INTERFACE
     if (txnst->txn_cxx_free)
         txnst->txn_cxx_free(&(txnst->txn_cxx));
-    if (txnst->txn_cxx) 
+    if (txnst->txn_cxx)
         free(txnst->txn_cxx);
 #endif
     clean_ary(txnst, Qfalse);
@@ -83,7 +83,7 @@ bdb_txn_free(bdb_TXN *txnst)
     free(txnst);
 }
 
-static void 
+static void
 bdb_txn_mark(bdb_TXN *txnst)
 {
     rb_gc_mark(txnst->marshal);
@@ -302,9 +302,9 @@ bdb_txn_i_options(VALUE obj, VALUE dbstobj)
 }
 	
 #if HAVE_ST_DB_TXN_SET_TIMEOUT
-static VALUE bdb_txn_set_timeout _((VALUE, VALUE));
-static VALUE bdb_txn_set_txn_timeout _((VALUE, VALUE));
-static VALUE bdb_txn_set_lock_timeout _((VALUE, VALUE));
+static VALUE bdb_txn_set_timeout(VALUE, VALUE);
+static VALUE bdb_txn_set_txn_timeout(VALUE, VALUE);
+static VALUE bdb_txn_set_lock_timeout(VALUE, VALUE);
 #endif
 
 VALUE
@@ -745,7 +745,7 @@ bdb_txn_set_timeout(VALUE obj, VALUE a)
 	}
     }
     return obj;
-} 
+}
 
 #endif
 
@@ -882,7 +882,8 @@ bdb_txn_get_name(VALUE obj)
 
 #endif
 
-void bdb_init_transaction()
+void
+bdb_init_transaction(void)
 {
     id_txn_close = rb_intern("__txn_close__");
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);

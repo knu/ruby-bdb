@@ -93,10 +93,10 @@ bdb_seq_i_options(VALUE obj, VALUE seqobj)
     }
     else if (strcmp(options, "set_range") == 0) {
         Check_Type(value, T_ARRAY);
-        if (RARRAY_LEN(value) != 2) { 
+        if (RARRAY_LEN(value) != 2) {
             rb_raise(bdb_eFatal, "expected 2 values for range");
         }
-        if (seqst->seqp->set_range(seqst->seqp, 
+        if (seqst->seqp->set_range(seqst->seqp,
                                    NUM2LONG(RARRAY_PTR(value)[0]),
                                    NUM2LONG(RARRAY_PTR(value)[1]))) {
             seqst->seqp->remove(seqst->seqp, 0, 0);
@@ -182,7 +182,7 @@ bdb_seq_s_open(int argc, VALUE *argv, VALUE obj)
     return bdb_seq_open(argc + 1, args, obj);
 }
 
-        
+
 static VALUE
 bdb_seq_remove(int argc, VALUE *argv, VALUE obj)
 {
@@ -304,7 +304,8 @@ bdb_seq_key(VALUE obj)
 
 #endif
 
-void bdb_init_sequence()
+void
+bdb_init_sequence(void)
 {
 #if HAVE_TYPE_DB_SEQUENCE
     bdb_cSeq = rb_define_class_under(bdb_mDb, "Sequence", rb_cObject);

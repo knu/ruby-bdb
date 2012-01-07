@@ -22,7 +22,7 @@ static ID id_h_compare;
 static ID id_feedback;
 #endif
 
-static void bdb_mark _((bdb_DB *));
+static void bdb_mark(bdb_DB *);
 
 #define GetIdDb(obj_, dbst_) do {				\
     VALUE th = rb_thread_current();				\
@@ -958,7 +958,7 @@ bdb_i_close(bdb_DB *dbst, int flags)
 }
 
 VALUE
-bdb_local_aref()
+bdb_local_aref(void)
 {
     bdb_DB *dbst;
     VALUE obj;
@@ -1101,8 +1101,7 @@ bdb_close(int argc, VALUE *argv, VALUE obj)
 #if ! HAVE_ST_DB_BTREE_STAT_BT_NKEYS
 
 static long
-bdb_hard_count(dbp)
-    DB *dbp;
+bdb_hard_count(DB *dbp)
 {
     DBC *dbcp;
     DBT key, data;
@@ -1140,8 +1139,7 @@ bdb_hard_count(dbp)
 #endif
 
 static long
-bdb_is_recnum(dbp)
-    DB *dbp;
+bdb_is_recnum(DB *dbp)
 {
     DB_BTREE_STAT *bdb_stat;
     long count;
@@ -1172,8 +1170,7 @@ bdb_is_recnum(dbp)
 }
 
 static VALUE
-bdb_recno_length(obj)
-    VALUE obj;
+bdb_recno_length(VALUE obj)
 {
     bdb_DB *dbst;
     DB_BTREE_STAT *bdb_stat;
@@ -1625,8 +1622,7 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_s_alloc(obj)
-    VALUE obj;
+bdb_s_alloc(VALUE obj)
 {
     VALUE res, cl;
     bdb_DB *dbst;
@@ -1671,8 +1667,7 @@ bdb_s_alloc(obj)
 }
 
 static VALUE
-bdb_i_s_create(obj, db)
-    VALUE obj, db;
+bdb_i_s_create(VALUE obj, VALUE db)
 {
     VALUE tmp[2];
     tmp[0] = rb_ary_entry(obj, 0);
@@ -1718,8 +1713,7 @@ struct re {
 };
 
 static VALUE
-bdb_queue_i_search_re_len(obj, restobj)
-    VALUE obj, restobj;
+bdb_queue_i_search_re_len(VALUE obj, VALUE restobj)
 {
     VALUE key, value;
     char *str;
@@ -1790,9 +1784,7 @@ bdb_queue_s_new(int argc, VALUE *argv, VALUE obj)
 #endif
 
 static VALUE
-bdb_append_internal(argc, argv, obj, flag, retval)
-    int argc, flag;
-    VALUE *argv, obj;
+bdb_append_internal(int argc, VALUE *argv, VALUE obj, int flag, int retval)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -1850,8 +1842,7 @@ bdb_append_m(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_append(obj, val)
-    VALUE val, obj;
+bdb_append(VALUE obj, VALUE val)
 {
     return bdb_append_internal(1, &val, obj, DB_APPEND, Qfalse);
 }
@@ -1924,8 +1915,7 @@ bdb_put(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_aset(obj, a, b)
-    VALUE obj, a, b;
+bdb_aset(VALUE obj, VALUE a, VALUE b)
 {
     VALUE tmp[2];
     tmp[0] = a;
@@ -1935,9 +1925,7 @@ bdb_aset(obj, a, b)
 }
 
 VALUE
-bdb_test_load_key(obj, key)
-    VALUE obj;
-    DBT *key;
+bdb_test_load_key(VALUE obj, DBT *key)
 {
     bdb_DB *dbst;
     Data_Get_Struct(obj, bdb_DB, dbst);
@@ -1947,18 +1935,14 @@ bdb_test_load_key(obj, key)
 }
 
 VALUE
-bdb_assoc(obj, key, data)
-    VALUE obj;
-    DBT *key, *data;
+bdb_assoc(VALUE obj, DBT *key, DBT *data)
 {
     return rb_assoc_new(bdb_test_load_key(obj, key), 
 			bdb_test_load(obj, data, FILTER_VALUE));
 }
 
 VALUE
-bdb_assoc_dyna(obj, key, data)
-    VALUE obj;
-    DBT *key, *data;
+bdb_assoc_dyna(VALUE obj, DBT *key, DBT *data)
 {
     VALUE k, v;
     int to_free = key->flags & DB_DBT_MALLOC;
@@ -1976,9 +1960,7 @@ bdb_assoc_dyna(obj, key, data)
 #if HAVE_ST_DB_PGET
 
 static VALUE
-bdb_assoc2(obj, skey, pkey, data)
-    VALUE obj;
-    DBT *skey, *pkey, *data;
+bdb_assoc2(VALUE obj, DBT *skey, DBT *pkey, DBT *data)
 {
     return rb_assoc_new(
 	rb_assoc_new(bdb_test_load_key(obj, skey), bdb_test_load_key(obj, pkey)),
@@ -1988,30 +1970,23 @@ bdb_assoc2(obj, skey, pkey, data)
 #endif
 
 VALUE
-bdb_assoc3(obj, skey, pkey, data)
-    VALUE obj;
-    DBT *skey, *pkey, *data;
+bdb_assoc3(VALUE obj, DBT *skey, DBT *pkey, DBT *data)
 {
     return rb_ary_new3(3, bdb_test_load_key(obj, skey), 
 		       bdb_test_load_key(obj, pkey),
 		       bdb_test_load(obj, data, FILTER_VALUE));
 }
 
-static VALUE bdb_has_both _((VALUE, VALUE, VALUE));
+static VALUE bdb_has_both(VALUE, VALUE, VALUE);
 #if (BDB_VERSION < 30100) || ! HAVE_CONST_DB_GET_BOTH
 #define CANT_DB_CURSOR_GET_BOTH 1
-static VALUE bdb_has_both_internal _((VALUE, VALUE, VALUE, VALUE));
+static VALUE bdb_has_both_internal(VALUE, VALUE, VALUE, VALUE);
 #else
 #define CANT_DB_CURSOR_GET_BOTH 0
 #endif
 
 static VALUE
-bdb_get_internal(argc, argv, obj, notfound, dyna)
-    int argc;
-    VALUE *argv;
-    VALUE obj;
-    VALUE notfound;
-    int dyna;
+bdb_get_internal(int argc, VALUE *argv, VALUE obj, VALUE notfound, int dyna)
 {
     VALUE a = Qnil;
     VALUE b = Qnil;
@@ -2174,8 +2149,7 @@ bdb_pget(int argc, VALUE *argv, VALUE obj)
 #if HAVE_TYPE_DB_KEY_RANGE
 
 static VALUE
-bdb_btree_key_range(obj, a)
-    VALUE obj, a;
+bdb_btree_key_range(VALUE obj, VALUE a)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2203,8 +2177,7 @@ struct data_flags {
 };
 
 static VALUE
-bdb_compact_i(obj, dataobj)
-    VALUE obj, dataobj;
+bdb_compact_i(VALUE obj, VALUE dataobj)
 {
     VALUE key, value;
     char *str;
@@ -2301,8 +2274,7 @@ bdb_treerec_compact(int argc, VALUE *argv, VALUE obj)
 #if HAVE_CONST_DB_NEXT_DUP
 
 static VALUE
-bdb_count(obj, a)
-    VALUE obj, a;
+bdb_count(VALUE obj, VALUE a)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2364,8 +2336,7 @@ bdb_count(obj, a)
 #if HAVE_CONST_DB_CONSUME
 
 static VALUE
-bdb_consume(obj)
-    VALUE obj;
+bdb_consume(VALUE obj)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2396,8 +2367,7 @@ bdb_consume(obj)
 #endif
 
 static VALUE
-bdb_has_key(obj, key)
-    VALUE obj, key;
+bdb_has_key(VALUE obj, VALUE key)
 {
     return (bdb_get_internal(1, &key, obj, Qundef, 0) == Qundef)?Qfalse:Qtrue;
 }
@@ -2405,8 +2375,7 @@ bdb_has_key(obj, key)
 #if CANT_DB_CURSOR_GET_BOTH
 
 static VALUE
-bdb_has_both_internal(obj, a, b, flag)
-    VALUE obj, a, b, flag;
+bdb_has_both_internal(VALUE obj, VALUE a, VALUE b, VALUE flag)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2491,8 +2460,7 @@ bdb_has_both_internal(obj, a, b, flag)
 #endif
 
 static VALUE
-bdb_has_both(obj, a, b)
-    VALUE obj, a, b;
+bdb_has_both(VALUE obj, VALUE a, VALUE b)
 {
 #if ! HAVE_CONST_DB_GET_BOTH
     return bdb_has_both_internal(obj, a, b, Qfalse);
@@ -2540,8 +2508,7 @@ bdb_has_both(obj, a, b)
 }
 
 VALUE
-bdb_del(obj, a)
-    VALUE a, obj;
+bdb_del(VALUE obj, VALUE a)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2568,8 +2535,7 @@ bdb_del(obj, a)
 }
 
 static VALUE
-bdb_empty(obj)
-    VALUE obj;
+bdb_empty(VALUE obj)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2603,8 +2569,7 @@ bdb_empty(obj)
 }
 
 static VALUE
-bdb_lgth_intern(obj, delete)
-    VALUE obj, delete;
+bdb_lgth_intern(VALUE obj, VALUE delete)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2646,8 +2611,7 @@ bdb_lgth_intern(obj, delete)
 }
 
 static VALUE
-bdb_length(obj)
-    VALUE obj;
+bdb_length(VALUE obj)
 {
     return bdb_lgth_intern(obj, Qfalse);
 }
@@ -2680,9 +2644,7 @@ bdb_each_ensure(st)
 }
 
 static void
-bdb_treat(st, pkey, key, data)
-    eachst *st;
-    DBT *pkey, *key, *data;
+bdb_treat(eachst *st, DBT *pkey, DBT *key, DBT *data)
 {
     bdb_DB *dbst;
     DBC *dbcp;
@@ -2772,10 +2734,7 @@ bdb_treat(st, pkey, key, data)
 }
 
 static int
-bdb_i_last_prefix(dbcp, key, pkey, data, orig, st)
-    DBC *dbcp;
-    DBT *key, *pkey, *data, *orig;
-    eachst *st;
+bdb_i_last_prefix(DBC *dbcp, DBT *key, DBT *pkey, DBT *data, DBT *orig, eachst *st)
 {
     int ret, flags = DB_LAST;
 
@@ -2811,8 +2770,7 @@ bdb_i_last_prefix(dbcp, key, pkey, data, orig, st)
 }
 
 static VALUE
-bdb_i_each_kv(st)
-    eachst *st;
+bdb_i_each_kv(eachst *st)
 {
     bdb_DB *dbst;
     DBC *dbcp;
@@ -2929,8 +2887,7 @@ bdb_i_each_kv(st)
 #if HAVE_CONST_DB_MULTIPLE_KEY
 
 static VALUE
-bdb_i_each_kv_bulk(st)
-    eachst *st;
+bdb_i_each_kv_bulk(eachst *st)
 {
     bdb_DB *dbst;
     DBC *dbcp;
@@ -2990,11 +2947,7 @@ bdb_i_each_kv_bulk(st)
 #endif
 
 VALUE
-bdb_each_kvc(argc, argv, obj, sens, replace, type)
-    VALUE obj, *argv;
-    int argc, sens;
-    VALUE replace;
-    int type;
+bdb_each_kvc(int argc, VALUE *argv, VALUE obj, int sens, VALUE replace, int type)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -3211,8 +3164,7 @@ bdb_each_riap_prim(int argc, VALUE *argv, VALUE obj)
 }
 
 VALUE
-bdb_to_type(obj, result, flag)
-    VALUE obj, result, flag;
+bdb_to_type(VALUE obj, VALUE result, VALUE flag)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -3266,15 +3218,13 @@ bdb_to_type(obj, result, flag)
 }
 
 static VALUE
-bdb_to_a(obj)
-    VALUE obj;
+bdb_to_a(VALUE obj)
 {
     return bdb_to_type(obj, rb_ary_new(), Qtrue);
 }
 
 static VALUE
-bdb_update_i(pair, obj)
-    VALUE pair, obj;
+bdb_update_i(VALUE pair, VALUE obj)
 {
     Check_Type(pair, T_ARRAY);
     if (RARRAY_LEN(pair) < 2) {
@@ -3285,15 +3235,13 @@ bdb_update_i(pair, obj)
 }
 
 static VALUE
-each_pair(obj)
-    VALUE obj;
+each_pair(VALUE obj)
 {
     return rb_funcall(obj, rb_intern("each_pair"), 0, 0);
 }
 
 static VALUE
-bdb_update(obj, other)
-    VALUE obj, other;
+bdb_update(VALUE obj, VALUE other)
 {
     rb_iterate(each_pair, other, bdb_update_i, obj);
     return obj;
@@ -3364,23 +3312,19 @@ bdb_replace(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_invert(obj)
-    VALUE obj;
+bdb_invert(VALUE obj)
 {
     return bdb_to_type(obj, rb_hash_new(), Qfalse);
 }
 
 static VALUE
-bdb_to_hash(obj)
-    VALUE obj;
+bdb_to_hash(VALUE obj)
 {
     return bdb_to_type(obj, rb_hash_new(), Qtrue);
 }
  
 static VALUE
-bdb_kv(obj, type)
-    VALUE obj;
-    int type;
+bdb_kv(VALUE obj, int type)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -3426,23 +3370,19 @@ bdb_kv(obj, type)
 }
 
 static VALUE
-bdb_values(obj)
-    VALUE obj;
+bdb_values(VALUE obj)
 {
     return bdb_kv(obj, BDB_ST_VALUE);
 }
 
 static VALUE
-bdb_keys(obj)
-    VALUE obj;
+bdb_keys(VALUE obj)
 {
     return bdb_kv(obj, BDB_ST_KEY);
 }
 
 VALUE
-bdb_internal_value(obj, a, b, sens)
-    VALUE obj, a, b;
-    int sens;
+bdb_internal_value(VALUE obj, VALUE a, VALUE b, int sens)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -3490,8 +3430,7 @@ bdb_internal_value(obj, a, b, sens)
 }
 
 VALUE
-bdb_index(obj, a)
-    VALUE obj, a;
+bdb_index(VALUE obj, VALUE a)
 {
     return bdb_internal_value(obj, a, Qtrue, DB_NEXT);
 }
@@ -3545,15 +3484,13 @@ bdb_select(int argc, VALUE *argv, VALUE obj)
 }
 
 VALUE
-bdb_has_value(obj, a)
-    VALUE obj, a;
+bdb_has_value(VALUE obj, VALUE a)
 {
     return bdb_internal_value(obj, a, Qfalse, DB_NEXT);
 }
 
 static VALUE
-bdb_sync(obj)
-    VALUE obj;
+bdb_sync(VALUE obj)
 {
     bdb_DB *dbst;
 
@@ -3766,8 +3703,7 @@ bdb_queue_stat(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_queue_padlen(obj)
-    VALUE obj;
+bdb_queue_padlen(VALUE obj)
 {
     bdb_DB *dbst;
     DB_QUEUE_STAT *bdb_stat;
@@ -3802,8 +3738,7 @@ bdb_queue_padlen(obj)
 #endif
 
 static VALUE
-bdb_set_partial(obj, a, b)
-    VALUE obj, a, b;
+bdb_set_partial(VALUE obj, VALUE a, VALUE b)
 {
     bdb_DB *dbst;
     VALUE ret;
@@ -3823,8 +3758,7 @@ bdb_set_partial(obj, a, b)
 }
 
 static VALUE
-bdb_clear_partial(obj)
-    VALUE obj;
+bdb_clear_partial(VALUE obj)
 {
     bdb_DB *dbst;
     VALUE ret;
@@ -3844,8 +3778,7 @@ bdb_clear_partial(obj)
 #if HAVE_ST_DB_SET_ERRCALL
 
 static VALUE
-bdb_i_create(obj)
-    VALUE obj;
+bdb_i_create(VALUE obj)
 {
     DB *dbp;
     bdb_ENV *envst = 0;
@@ -3959,8 +3892,7 @@ bdb_s_rename(int argc, VALUE *argv, VALUE obj)
 #if HAVE_ST_DB_JOIN
 
 static VALUE
-bdb_i_joinclose(st)
-    eachst *st;
+bdb_i_joinclose(eachst *st)
 {
     bdb_DB *dbst;
 
@@ -3973,8 +3905,7 @@ bdb_i_joinclose(st)
 
  
 static VALUE
-bdb_i_join(st)
-    eachst *st;
+bdb_i_join(eachst *st)
 {
     int ret;
     DBT key, data;
@@ -4050,8 +3981,7 @@ bdb_join(int argc, VALUE *argv, VALUE obj)
 #if HAVE_ST_DB_BYTESWAPPED || HAVE_ST_DB_GET_BYTESWAPPED
 
 static VALUE
-bdb_byteswapp(obj)
-    VALUE obj;
+bdb_byteswapp(VALUE obj)
 {
     bdb_DB *dbst;
     int byteswap = 0;
@@ -4072,18 +4002,13 @@ bdb_byteswapp(obj)
 #if HAVE_ST_DB_ASSOCIATE
 
 static VALUE
-bdb_internal_second_call(tmp)
-    VALUE *tmp;
+bdb_internal_second_call(VALUE *tmp)
 {
     return rb_funcall2(tmp[0], bdb_id_call, 3, tmp + 1);
 }
 
 static int
-bdb_call_secondary(secst, pkey, pdata, skey)
-    DB *secst;
-    DBT *pkey;
-    DBT *pdata;
-    DBT *skey;
+bdb_call_secondary(DB *secst, DBT *pkey, DBT *pdata, DBT *skey)
 {
     VALUE obj, ary, second;
     bdb_DB *dbst, *secondst;
@@ -4189,8 +4114,7 @@ bdb_associate(int argc, VALUE *argv, VALUE obj)
 #endif
 
 static VALUE
-bdb_filename(obj)
-    VALUE obj;
+bdb_filename(VALUE obj)
 {
     bdb_DB *dbst;
     GetDB(obj, dbst);
@@ -4198,8 +4122,7 @@ bdb_filename(obj)
 }
 
 static VALUE
-bdb_database(obj)
-    VALUE obj;
+bdb_database(VALUE obj)
 {
     bdb_DB *dbst;
     GetDB(obj, dbst);
@@ -4346,8 +4269,7 @@ bdb_feedback_set(VALUE obj, VALUE a)
 #endif
 
 static VALUE
-bdb_i_conf(obj, a)
-    VALUE obj, a;
+bdb_i_conf(VALUE obj, VALUE a)
 {
     bdb_DB *dbst;
     u_int32_t value;
@@ -4539,8 +4461,7 @@ struct optst {
 };
 
 static VALUE
-bdb_intern_conf(optp)
-    struct optst *optp;
+bdb_intern_conf(struct optst *optp)
 {
     return bdb_i_conf(optp->obj, optp->str);
 }
@@ -4619,7 +4540,8 @@ bdb_priority(VALUE obj)
 
 #endif
 
-void bdb_init_common()
+void
+bdb_init_common(void)
 {
     id_bt_compare = rb_intern("bdb_bt_compare");
     id_bt_prefix = rb_intern("bdb_bt_prefix");

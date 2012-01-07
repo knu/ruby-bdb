@@ -422,7 +422,8 @@ bdb_cursor_priority(VALUE obj)
 
 #endif
 
-void bdb_init_cursor()
+void
+bdb_init_cursor(void)
 {
     rb_define_method(bdb_cCommon, "db_cursor", bdb_cursor, -1);
     rb_define_method(bdb_cCommon, "cursor", bdb_cursor, -1);
