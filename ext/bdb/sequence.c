@@ -309,11 +309,7 @@ bdb_init_sequence(void)
 {
 #if HAVE_TYPE_DB_SEQUENCE
     bdb_cSeq = rb_define_class_under(bdb_mDb, "Sequence", rb_cObject);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_undef_alloc_func(bdb_cSeq);
-#else
-    rb_undef_method(CLASS_OF(bdb_cSeq), "allocate");
-#endif
     rb_undef_method(CLASS_OF(bdb_cSeq), "new");
     rb_define_method(bdb_cCommon, "open_sequence", bdb_seq_open, -1);
     rb_define_method(bdb_cCommon, "create_sequence", bdb_seq_s_open, -1);

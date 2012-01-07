@@ -1217,11 +1217,7 @@ bdb_s_new(int argc, VALUE *argv, VALUE obj)
     bdb_DB *dbst;
     DB_ENV *envp = 0;
 
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     res = rb_obj_alloc(obj);
-#else
-    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
-#endif
     Data_Get_Struct(res, bdb_DB, dbst);
     if (argc && TYPE(argv[argc - 1]) == T_HASH) {
 	VALUE v, f = argv[argc - 1];
@@ -4561,11 +4557,7 @@ bdb_init_common(void)
     bdb_cCommon = rb_define_class_under(bdb_mDb, "Common", rb_cObject);
     rb_define_private_method(bdb_cCommon, "initialize", bdb_init, -1);
     rb_include_module(bdb_cCommon, rb_mEnumerable);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_define_alloc_func(bdb_cCommon, bdb_s_alloc);
-#else
-    rb_define_singleton_method(bdb_cCommon, "allocate", bdb_s_alloc, 0);
-#endif
     rb_define_singleton_method(bdb_cCommon, "new", bdb_s_new, -1);
     rb_define_singleton_method(bdb_cCommon, "create", bdb_s_new, -1);
     rb_define_singleton_method(bdb_cCommon, "open", bdb_s_open, -1);

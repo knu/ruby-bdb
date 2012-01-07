@@ -492,11 +492,7 @@ bdb_init_lock(void)
     rb_define_method(bdb_cEnv, "lock_stat", bdb_env_lockstat, -1);
     rb_define_method(bdb_cEnv, "lock_detect", bdb_env_lockdetect, -1);
     bdb_cLockid = rb_define_class_under(bdb_mDb, "Lockid", rb_cObject);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_undef_alloc_func(bdb_cLockid);
-#else
-    rb_undef_method(CLASS_OF(bdb_cLockid), "allocate");
-#endif
     rb_undef_method(CLASS_OF(bdb_cLockid), "new");
     rb_define_method(bdb_cLockid, "lock_get", bdb_lockid_get, -1);
     rb_define_method(bdb_cLockid, "get", bdb_lockid_get, -1);

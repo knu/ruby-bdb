@@ -888,11 +888,7 @@ bdb_init_transaction(void)
     id_txn_close = rb_intern("__txn_close__");
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);
     bdb_cTxnCatch = rb_define_class_under(bdb_mDb, "DBTxnCatch", bdb_cTxn);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_undef_alloc_func(bdb_cTxn);
-#else
-    rb_undef_method(CLASS_OF(bdb_cTxn), "allocate");
-#endif
     rb_undef_method(CLASS_OF(bdb_cTxn), "new");
     rb_define_method(bdb_cEnv, "begin", bdb_env_begin, -1);
     rb_define_method(bdb_cEnv, "txn_begin", bdb_env_begin, -1);

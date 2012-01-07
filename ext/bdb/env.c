@@ -1380,11 +1380,7 @@ bdb_env_s_new(int argc, VALUE *argv, VALUE obj)
     VALUE res;
     int flags = 0;
 
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     res = rb_obj_alloc(obj);
-#else
-    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
-#endif
     Data_Get_Struct(res, bdb_ENV, envst);
 #if ! HAVE_DB_ENV_CREATE
     envst->envp = ALLOC(DB_ENV);
@@ -1429,11 +1425,7 @@ bdb_env_s_rslbl(int argc, VALUE *argv, VALUE obj, DB_ENV *env)
     bdb_ENV *envst;
     VALUE res;
 
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     res = rb_obj_alloc(obj);
-#else
-    res = rb_funcall2(obj, rb_intern("allocate"), 0, 0);
-#endif
     Data_Get_Struct(res, bdb_ENV, envst);
     envst->envp = env;
     envst->envp->set_errpfx(envst->envp, "BDB::");
@@ -2884,11 +2876,7 @@ bdb_init_env(void)
 #endif
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
     rb_define_private_method(bdb_cEnv, "initialize", bdb_env_init, -1);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_define_alloc_func(bdb_cEnv, bdb_env_s_alloc);
-#else
-    rb_define_singleton_method(bdb_cEnv, "allocate", bdb_env_s_alloc, 0);
-#endif
     rb_define_singleton_method(bdb_cEnv, "new", bdb_env_s_new, -1);
     rb_define_singleton_method(bdb_cEnv, "create", bdb_env_s_new, -1);
     rb_define_singleton_method(bdb_cEnv, "open", bdb_env_s_open, -1);
@@ -2949,11 +2937,7 @@ bdb_init_env(void)
 #endif
 #if HAVE_ST_DB_ENV_REP_SET_TIMEOUT || HAVE_ST_DB_ENV_REP_SET_CONFIG
     bdb_cInt = rb_define_class_under(bdb_mDb, "Intern__", rb_cObject);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_undef_alloc_func(bdb_cInt);
-#else
-    rb_undef_method(CLASS_OF(bdb_cInt), "allocate");
-#endif
     rb_undef_method(CLASS_OF(bdb_cInt), "new");
     rb_define_method(bdb_cInt, "[]", bdb_intern_get, 1);
     rb_define_method(bdb_cInt, "[]=", bdb_intern_set, 2);

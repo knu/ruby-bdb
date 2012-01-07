@@ -705,11 +705,7 @@ bdb_init_log(void)
     rb_define_method(bdb_cCommon, "log_unregister", bdb_log_unregister, 0);
     bdb_cLsn = rb_define_class_under(bdb_mDb, "Lsn", rb_cObject);
     rb_include_module(bdb_cLsn, rb_mComparable);
-#ifdef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_undef_alloc_func(bdb_cLsn);
-#else
-    rb_undef_method(CLASS_OF(bdb_cLsn), "allocate");
-#endif
     rb_undef_method(CLASS_OF(bdb_cLsn), "new");
     rb_define_method(bdb_cLsn, "env", bdb_lsn_env, 0);
 #if HAVE_ST_DB_ENV_LOG_CURSOR
