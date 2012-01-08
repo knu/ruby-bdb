@@ -108,6 +108,18 @@ bdb_env_rep_transport(DB_ENV *env, const DBT *control, const DBT *rec,
 
 #if HAVE_ST_DB_ENV_REP_ELECT
 
+/*
+ * call-seq:
+ *     elect(sites, priority, timeout)
+ *     rep_elect(sites, priority, timeout)
+ *
+ * Only for DB >= 4.
+ *
+ * Holds an election for the master of a replication group, returning
+ * the new master's ID.
+ *
+ * Raise <code>BDB::RepUnavail</code> if the +timeout+ expires.
+ */
 static VALUE
 bdb_env_rep_elect(int argc, VALUE *argv, VALUE env)
 {
@@ -147,6 +159,16 @@ bdb_env_rep_elect(int argc, VALUE *argv, VALUE env)
 
 #if HAVE_ST_DB_ENV_REP_PROCESS_MESSAGE
 
+/*
+ * call-seq:
+ *     process_message(control, rec, envid)
+ *     rep_process_message(control, rec, envid)
+ *
+ * Only for DB >= 4.
+ *
+ * Processes an incoming replication message sent by a member of the
+ * replication group to the local database environment.
+ */
 static VALUE
 bdb_env_rep_process_message(VALUE env, VALUE av, VALUE bv, VALUE ev)
 {
@@ -204,6 +226,17 @@ bdb_env_rep_process_message(VALUE env, VALUE av, VALUE bv, VALUE ev)
 
 #if HAVE_ST_DB_ENV_REP_START
 
+/*
+ * call-seq:
+ *     start(cdata, flags)
+ *     rep_start(cdata, flags)
+ *
+ * Only for DB >= 4.
+ *
+ * +cdata+ is an identifier.  +flags+ must be one of
+ * <code>BDB::REP_CLIENT</code>, <code>BDB::REP_MASTER</code> or
+ * <code>BDB::REP_LOGSONLY</code>.
+ */
 static VALUE
 bdb_env_rep_start(VALUE env, VALUE ident, VALUE flags)
 {
@@ -1115,6 +1148,9 @@ bdb_env_free(bdb_ENV *envst)
     free(envst);
 }
 
+/*
+ * Close the environnement.
+ */
 static VALUE
 bdb_env_close(VALUE obj)
 {
@@ -1161,6 +1197,16 @@ bdb_env_mark(bdb_ENV *envst)
     bdb_ary_mark(&envst->db_ary);
 }
 
+/*
+ * call-seq:
+ *     open_db(type, name = nil, subname = nil, flags = 0, mode = 0)
+ *
+ * Open the database in the current environment. type must be one of
+ * the constant <code>BDB::BTREE</code>, <code>BDB::HASH</code>,
+ * <code>BDB::RECNO</code>, <code>BDB::QUEUE</code>.
+
+ * See +open()+ for other arguments.
+ */
 VALUE
 bdb_env_open_db(int argc, VALUE *argv, VALUE obj)
 {
@@ -1373,6 +1419,219 @@ bdb_env_s_alloc(VALUE obj)
     return res;
 }
 
+/*
+ * call-seq:
+ *     new(home, flags = 0, mode = 0, options = {})
+ *     create(home, flags = 0, mode = 0, options = {})
+ *
+ * Open the Berkeley DB environment.
+ *
+ * * home
+ *     If this argument is non-NULL, its value may be used as the
+ *     database home, and files named relative to its path.
+ *
+ * * mode
+ *     Mode for creation.  See +chmod(2)+.
+ *
+ * * flags
+ *     Must be set to 0 or by OR'ing with:
+ *
+ *     * BDB::INIT_CDB
+ *         Initialize locking.
+ *
+ *     * BDB::INIT_LOCK
+ *         Initialize the locking subsystem.
+ *
+ *     * BDB::INIT_LOG
+ *         Initialize the logging subsystem.
+ *
+ *     * BDB::INIT_MPOOL
+ *         Initialize the shared memory buffer pool subsystem.
+ *
+ *     * BDB::INIT_TXN
+ *         Initialize the transaction subsystem.
+ *
+ *     * BDB::INIT_TRANSACTION
+ *         Equivalent to +DB_INIT_LOCK | DB_INIT_MPOOL | DB_INIT_TXN |
+ *         DB_INIT_LOG+.
+ *
+ *     * BDB::RECOVER
+ *         Run normal recovery on this environment before opening it
+ *         for normal use.  If this flag is set, the DB_CREATE flag
+ *         must also be set since the regions will be removed and
+ *         recreated.
+ *
+ *     * BDB::RECOVER_FATAL
+ *         Run catastrophic recovery on this environment before
+ *         opening it for normal use.  If this flag is set, the
+ *         +DB_CREATE+ flag must also be set since the regions will be
+ *         removed and recreated.
+ *
+ *     * BDB::USE_ENVIRON
+ *         The Berkeley DB process' environment may be permitted to
+ *         specify information to be used when naming files.
+ *
+ *     * BDB::USE_ENVIRON_ROOT
+ *         The Berkeley DB process' environment may be permitted to
+ *         specify information to be used when naming files; if the
+ *         +DB_USE_ENVIRON_ROOT+ flag is set, environment information
+ *         will be used for file naming only for users with
+ *         appropriate permissions.
+ *
+ *     * BDB::CREATE
+ *         Cause Berkeley DB subsystems to create any underlying
+ *         files, as necessary.
+ *
+ *     * BDB::LOCKDOWN
+ *         Lock shared Berkeley DB environment files and memory mapped
+ *         databases into memory.
+ *
+ *     * BDB::NOMMAP
+ *         Always copy read-only database files in this environment
+ *         into the local cache instead of potentially mapping them
+ *         into process memory.
+ *
+ *     * BDB::PRIVATE
+ *         Specify that the environment will only be accessed by a
+ *         single process.
+ *
+ *     * BDB::SYSTEM_MEM
+ *         Allocate memory from system shared memory instead of from
+ *         memory backed by the filesystem.
+ *
+ *     * BDB::TXN_NOSYNC
+ *         Do not synchronously flush the log on transaction commit or
+ *         prepare. This means that transactions exhibit the ACI
+ *         (atomicity, consistency and isolation) properties, but not
+ *         D (durability), i.e., database integrity will be maintained
+ *         but it is possible that some number of the most recently
+ *         committed transactions may be undone during recovery
+ *         instead of being redone.
+ *
+ *     * BDB::CDB_ALLDB
+ *         For Berkeley DB Concurrent Data Store applications, perform
+ *         locking on an environment-wide basis rather than
+ *         per-database.
+ *
+ * * options
+ *      Hash, Possible options are (see the documentation of Berkeley
+ *      DB for more informations):
+ *
+ *      +set_app_dispatch+
+ *         Configure application recovery interface. (DB >= 4.1)
+ *
+ *	+set_cachesize+
+ *         Set the database cache size.
+ *
+ *	+set_data_dir+
+ *         Set the environment data directory. (DB >= 3)
+ *
+ *	+set_encrypt+
+ *         Set the environment cryptographic key. (DB >= 4.1)
+ *
+ *	+set_feedback+
+ *         Set feedback callback. (DB >= 3)
+ *
+ *	+set_flags+
+ *         Environment configuration. (DB >= 3.2)
+ *
+ *	+set_lg_bsize+
+ *         Set log buffer size. (DB >= 3)
+ *
+ *	+set_lg_dir+
+ *         Set the environment logging directory. (DB >= 3)
+ *
+ *	+set_lg_max+
+ *         Set log file size.
+ *
+ *	+set_lg_regionmax+
+ *         Set logging region size. (DB >= 3)
+ *
+ *	+set_lk_conflicts+
+ *         Set lock conflicts matrix. (DB >= 3)
+ *
+ *	+set_lk_detect+
+ *         Set automatic deadlock detection.
+ *
+ *	+set_lk_max_lockers+
+ *         Set maximum number of lockers.
+ *
+ *	+set_lk_max_locks+
+ *         Set maximum number of locks.
+ *
+ *	+set_lk_max_objects+
+ *         Set maximum number of lock objects.
+ *
+ *	+set_rep_transport+
+ *         Configure replication transport. (DB >= 4)
+ *
+ *	+set_rep_limit+
+ *         Limit data sent in response to a single message. (DB >=
+ *         4.1)
+ *
+ *	+set_rep_nsites+
+ *         Configure replication group site count. (DB >= 4.5)
+ *
+ *	+set_rep_priority+
+ *         Configure replication site priority. (DB >= 4.5)
+ *
+ *	+set_rep_config+
+ *         Configure the replication subsystem. (DB >= 4.5)
+ *
+ *	+set_rep_timeout+
+ *         Configure replication timeouts. (DB >= 4.5)
+ *
+ *	+set_rpc_server+
+ *         Establish an RPC server connection. (DB >= 3.1)
+ *
+ *	+set_tas_spins+
+ *         Set the number of test-and-set spins. (DB >= 3)
+ *
+ *	+set_tmp_dir+
+ *         Set the environment temporary file directory. (DB >= 3)
+ *
+ *	+set_timeout+
+ *         Set lock and transaction timeout. (DB >= 4)
+ *
+ *	+set_tx_max+
+ *         Set maximum number of transactions. (DB >= 3)
+ *
+ *	+set_tx_timestamp+
+ *         Set recovery timestamp. (DB >= 3.1)
+ *
+ *	+set_verbose+
+ *         Set verbose messages.
+ *
+ *	+set_verb_chkpoint+
+ *         Display checkpoint location information when searching the
+ *         log for checkpoints. (DB >= 3)
+ *
+ *	+set_verb_deadlock+
+ *         Display additional information when doing deadlock
+ *         detection. (DB >= 3)
+ *
+ *	+set_verb_recovery+
+ *         Display additional information when performing
+ *         recovery. (DB >= 3)
+ *
+ *	+set_verb_replication+
+ *         Display additional information when processing replication
+ *         messages. (DB >= 4)
+ *
+ *	+set_verb_waitsfor+
+ *         Display the waits-for table when doing deadlock
+ *         detection. (DB >= 3)
+ *
+ *
+ *      Proc given to +set_feedback+, +set_app_dispatch+ and
+ *      +set_rep_transport+ can be also specified as a
+ *      method. (replace the prefix +set_+ with +bdb_+)
+ *
+ *      For +bdb_rep_transport+ the constant +ENVID+ must be defined.
+ *
+ *      The constant +BDB_ENCRYPT+ can be used to replace
+ *      +set_encrypt+.
+ */
 static VALUE
 bdb_env_s_new(int argc, VALUE *argv, VALUE obj)
 {
@@ -1631,6 +1890,15 @@ bdb_env_internal_close(VALUE obj)
     return rb_funcall2(obj, rb_intern("close"), 0, 0);
 }
 
+/*
+ * call-seq:
+ *     open(home, flags = 0, mode = 0, options = {})
+ *     open(home, flags = 0, mode = 0, options = {}) { |obj| ... }
+ *
+ * Same as +new+ except if a block is given it is yielded with the
+ * created environment object, ensuring that it is closed as soon as
+ * the block ends.
+ */
 static VALUE
 bdb_env_s_open(int argc, VALUE *argv, VALUE obj)
 {
@@ -1641,6 +1909,13 @@ bdb_env_s_open(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
+/*
+ * call-seq:
+ *     remove()
+ *     unlink()
+ *
+ * Remove the environnement.
+ */
 static VALUE
 bdb_env_s_remove(int argc, VALUE *argv, VALUE obj)
 {
@@ -1684,6 +1959,17 @@ bdb_env_s_remove(int argc, VALUE *argv, VALUE obj)
     return Qtrue;
 }
 
+/*
+ * call-seq:
+ *     set_flags(flags, onoff = true)
+ *
+ * Only with DB >= 3.2.
+ *
+ * +flags+ can have the value <code>BDB::CDB_ALLDB</code>,
+ * <code>BDB::NOMMAP</code>, <code>BDB::TXN_NOSYNC</code>.
+ *
+ * If +onoff+ is false, the specified flags are cleared.
+ */
 static VALUE
 bdb_env_set_flags(int argc, VALUE *argv, VALUE obj)
 {
@@ -1713,6 +1999,9 @@ bdb_env_set_flags(int argc, VALUE *argv, VALUE obj)
     return Qnil;
 }
 
+/*
+ * Return the name of the directory.
+ */
 static VALUE
 bdb_env_home(VALUE obj)
 {
@@ -1761,26 +2050,29 @@ bdb_thread_init(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_SET_FEEDBACK
 
+/*
+ * Monitor the progress of some operations.
+ */
 static VALUE
-bdb_env_feedback_set(VALUE obj, VALUE a)
+bdb_env_feedback_set(VALUE obj, VALUE proc)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    if (NIL_P(a)) {
-	envst->feedback = a;
+    if (NIL_P(proc)) {
+	envst->feedback = proc;
     }
     else {
-	if (!rb_respond_to(a, bdb_id_call)) {
+	if (!rb_respond_to(proc, bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "arg must respond to #call");
 	}
-	envst->feedback = a;
+	envst->feedback = proc;
 	if (!(envst->options & BDB_NEED_ENV_CURRENT)) {
 	    envst->options |= BDB_FEEDBACK;
 	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_env, obj);
 	}
     }
-    return a;
+    return proc;
 }
 
 #endif
@@ -2100,6 +2392,20 @@ bdb_env_conf(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_LSN_RESET
 
+/*
+ * call-seq:
+ *     lsn_reset(file, flags = 0)
+ *
+ * Only for DB >= 4.4.
+ *
+ * Reset database file LSN.
+ *
+ * The +lsn_reset+ method allows database files to be moved from one
+ * transactional database environment to another.
+ *
+ * +file+ is the name of the physical file in which the LSNs are to be
+ * cleared.  +flags+ must be set to 0 or <code>BDB::ENCRYPT</code>.
+ */
 static VALUE
 bdb_env_lsn_reset(int argc, VALUE *argv, VALUE obj)
 {
@@ -2122,6 +2428,22 @@ bdb_env_lsn_reset(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_FILEID_RESET
 
+/*
+ * call-seq:
+ *     fileid_reset(file, flags = 0)
+ *
+ * Only for DB >= 4.4.
+ *
+ * Reset database file ID.
+ *
+ * The +ileid_reset+ method allows database files to be copied, and
+ * then the copy used in the same database environment as the
+ * original.
+ *
+ * +file+ is the name of the physical file in which new file IDs are
+ * to be created.  +flags+ must be set to 0 or
+ * <code>BDB::ENCRYPT</code>.
+ */
 static VALUE
 bdb_env_fileid_reset(int argc, VALUE *argv, VALUE obj)
 {
@@ -2144,24 +2466,35 @@ bdb_env_fileid_reset(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_SET_MSGCALL
 
+/*
+ * Only for DB >= 4.4.
+ *
+ * There are interfaces in the Berkeley DB library which either
+ * directly output informational messages or statistical information:
+ * +msgcall+ is used to set callback which will called by BDB.
+ *
+ * The value given must be +nil+ to unconfigure the callback, or and
+ * object which respond to +call+.  It will called with a String as
+ * argument.
+ */
 static VALUE
-bdb_env_set_msgcall(VALUE obj, VALUE a)
+bdb_env_set_msgcall(VALUE obj, VALUE call_proc)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    if (NIL_P(a)) {
+    if (NIL_P(call_proc)) {
 	envst->msgcall = Qnil;
 	envst->envp->set_msgcall(envst->envp, NULL);
 	return obj;
     }
-    if (!rb_respond_to(a, bdb_id_call)) {
+    if (!rb_respond_to(call_proc, bdb_id_call)) {
 	rb_raise(rb_eArgError, "object must respond to #call");
     }
     if (!RTEST(envst->msgcall)) {
 	envst->envp->set_msgcall(envst->envp, bdb_env_msgcall);
     }
-    envst->msgcall = a;
+    envst->msgcall = call_proc;
     return obj;
 }
 
@@ -2169,19 +2502,35 @@ bdb_env_set_msgcall(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_SET_THREAD_ID
 
+/*
+ * Only for DB >= 4.4.
+ *
+ * Declare a proc object which returns a unique identifier pair for
+ * the current thread of control.
+ *
+ * The proc must return a pair of:
+ *
+ * * pid
+ *
+ *     Process ID of the current thread.
+ *
+ * * tid
+ *
+ *     Thread ID of the current thread.
+ */
 static VALUE
-bdb_env_set_thread_id(VALUE obj, VALUE a)
+bdb_env_set_thread_id(VALUE obj, VALUE call_proc)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    if (!rb_respond_to(a, bdb_id_call)) {
+    if (!rb_respond_to(call_proc, bdb_id_call)) {
 	rb_raise(rb_eArgError, "object must respond to #call");
     }
     if (!RTEST(envst->thread_id)) {
 	envst->envp->set_thread_id(envst->envp, bdb_env_thread_id);
     }
-    envst->thread_id = a;
+    envst->thread_id = call_proc;
     return obj;
 }
 
@@ -2189,19 +2538,27 @@ bdb_env_set_thread_id(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_SET_THREAD_ID_STRING
 
+/*
+ * Only for DB >= 4.4.
+ *
+ * Declare a proc that formats a process ID and thread ID identifier
+ * pair for display.
+ *
+ * The proc will be called with 2 arguments and must return a String.
+ */
 static VALUE
-bdb_env_set_thread_id_string(VALUE obj, VALUE a)
+bdb_env_set_thread_id_string(VALUE obj, VALUE call_proc)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    if (!rb_respond_to(a, bdb_id_call)) {
+    if (!rb_respond_to(call_proc, bdb_id_call)) {
 	rb_raise(rb_eArgError, "object must respond to #call");
     }
     if (!RTEST(envst->thread_id_string)) {
 	envst->envp->set_thread_id_string(envst->envp, bdb_env_thread_id_string);
     }
-    envst->thread_id_string = a;
+    envst->thread_id_string = call_proc;
     return obj;
 }
 
@@ -2209,19 +2566,27 @@ bdb_env_set_thread_id_string(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_SET_ISALIVE
 
+/*
+ * Only for DB >= 4.4.
+ *
+ * Declare a proc that returns if a thread of control (either a true
+ * thread or a process) is still running.
+ *
+ * The proc will be called with 2 arguments +(pid, tid)+.
+ */
 static VALUE
-bdb_env_set_isalive(VALUE obj, VALUE a)
+bdb_env_set_isalive(VALUE obj, VALUE call_proc)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    if (!rb_respond_to(a, bdb_id_call)) {
+    if (!rb_respond_to(call_proc, bdb_id_call)) {
 	rb_raise(rb_eArgError, "object must respond to #call");
     }
     if (!RTEST(envst->isalive)) {
 	envst->envp->set_isalive(envst->envp, bdb_env_isalive);
     }
-    envst->isalive = a;
+    envst->isalive = call_proc;
     return obj;
 }
 
@@ -2229,6 +2594,18 @@ bdb_env_set_isalive(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_FAILCHK
 
+/*
+ * call-seq:
+ *     failcheck(flag = 0)
+ *
+ * Only for DB >= 4.4.
+ *
+ * The method checks for threads of control (either a true thread or a
+ * process) that have exited while manipulating Berkeley DB library
+ * data structures.
+ *
+ * +flag+ is actually unused and must be set to 0.
+ */
 static VALUE
 bdb_env_failcheck(int argc, VALUE *argv, VALUE obj)
 {
@@ -2249,6 +2626,17 @@ bdb_env_failcheck(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_REPMGR_ADD_REMOTE_SITE
 
+/*
+ * call-seq:
+ *     repmgr_add_remote(host, port, flag = 0)
+ *
+ * Only for DB >= 4.5.
+ *
+ * Adds a new replication site to the replication manager's list of
+ * known sites.
+ *
+ * Return the environment ID assigned to the remote site.
+ */
 static VALUE
 bdb_env_repmgr_add_remote(int argc, VALUE *argv, VALUE obj)
 {
@@ -2271,17 +2659,36 @@ bdb_env_repmgr_add_remote(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_REPMGR_SET_ACK_POLICY
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Specifies how master and client sites will handle acknowledgment of
+ * replication messages which are necessary for "permanent" records.
+ *
+ * +policy+ must be set to one of the following values
+ * <code>BDB::REPMGR_ACKS_ALL</code>,
+ * <code>BDB::REPMGR_ACKS_ALL_PEERS</code>,
+ * <code>BDB::REPMGR_ACKS_NONE</code>,
+ * <code>BDB::REPMGR_ACKS_ONE</code>,
+ * <code>BDB::REPMGR_ACKS_ONE_PEER</code>,
+ * <code>BDB::REPMGR_ACKS_QUORUM</code>.
+ */
 static VALUE
-bdb_env_repmgr_set_ack_policy(VALUE obj, VALUE a)
+bdb_env_repmgr_set_ack_policy(VALUE obj, VALUE policy)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->repmgr_set_ack_policy(envst->envp, 
-						      NUM2UINT(a)));
-    return a;
+    bdb_test_error(envst->envp->repmgr_set_ack_policy(envst->envp,
+						      NUM2UINT(policy)));
+    return policy;
 }
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Returns the replication manager's client acknowledgment policy.
+ */
 static VALUE
 bdb_env_repmgr_get_ack_policy(VALUE obj)
 {
@@ -2297,6 +2704,15 @@ bdb_env_repmgr_get_ack_policy(VALUE obj)
 
 #if HAVE_ST_DB_ENV_REPMGR_SET_LOCAL_SITE
 
+/*
+ * call-seq:
+ *     repmgr_set_local_site(host, port, flag = 0)
+ *
+ * Only for DB >= 4.5.
+ *
+ * Specifies the host identification string and port number for the
+ * local system.
+ */
 static VALUE
 bdb_env_repmgr_set_local_site(int argc, VALUE *argv, VALUE obj)
 {
@@ -2320,6 +2736,12 @@ bdb_env_repmgr_set_local_site(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_REPMGR_SITE_LIST
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Returns an array with the status of the sites currently known by
+ * the replication manager.
+ */
 static VALUE
 bdb_env_repmgr_site_list(VALUE obj)
 {
@@ -2348,13 +2770,18 @@ bdb_env_repmgr_site_list(VALUE obj)
 
 #if HAVE_ST_DB_ENV_REPMGR_START
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Starts the replication manager.
+ */
 static VALUE
-bdb_env_repmgr_start(VALUE obj, VALUE a, VALUE b)
+bdb_env_repmgr_start(VALUE obj, VALUE count, VALUE flag)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->repmgr_start(envst->envp, NUM2INT(a), NUM2INT(b)));
+    bdb_test_error(envst->envp->repmgr_start(envst->envp, NUM2INT(count), NUM2INT(flag)));
     return obj;
 }
 
@@ -2425,18 +2852,28 @@ bdb_env_rep_get_config(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_REP_SET_NSITES
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Specifies the total number of sites in a replication group.
+ */
 static VALUE
-bdb_env_rep_set_nsites(VALUE obj, VALUE a)
+bdb_env_rep_set_nsites(VALUE obj, VALUE sites)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->rep_set_nsites(envst->envp, NUM2UINT(a)));
+    bdb_test_error(envst->envp->rep_set_nsites(envst->envp, NUM2UINT(sites)));
     return a;
 }
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Returns the total number of sites in a replication group.
+ */
 static VALUE
-bdb_env_rep_get_nsites(VALUE obj, VALUE a)
+bdb_env_rep_get_nsites(VALUE obj)
 {
     bdb_ENV *envst;
     int offon;
@@ -2450,18 +2887,28 @@ bdb_env_rep_get_nsites(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_REP_SET_PRIORITY
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Specifies the priority in the replication group elections.
+ */
 static VALUE
-bdb_env_rep_set_priority(VALUE obj, VALUE a)
+bdb_env_rep_set_priority(VALUE obj, VALUE priority)
 {
     bdb_ENV *envst;
 
     GetEnvDB(obj, envst);
-    bdb_test_error(envst->envp->rep_set_priority(envst->envp, NUM2UINT(a)));
-    return a;
+    bdb_test_error(envst->envp->rep_set_priority(envst->envp, NUM2UINT(priority)));
+    return priority;
 }
 
+/*
+ * Only for DB >= 4.5.
+ *
+ * Returns the database environment priority.
+ */
 static VALUE
-bdb_env_rep_get_priority(VALUE obj, VALUE a)
+bdb_env_rep_get_priority(VALUE obj)
 {
     bdb_ENV *envst;
     int offon;
@@ -2667,6 +3114,7 @@ bdb_env_rep_stat(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_REP_SET_TIMEOUT || HAVE_ST_DB_ENV_REP_SET_CONFIG
 
+/* nodoc: */
 static VALUE bdb_cInt;
 
 struct bdb_intern {
@@ -2691,10 +3139,44 @@ bdb_env_rep_intern_##str_(VALUE obj)				\
 }
 
 #if HAVE_ST_DB_ENV_REP_SET_CONFIG
+/*
+ * Document-method: BDB::Env#rep_config
+ *
+ * call-seq:
+ *     rep_config[which] = onoff
+ *
+ * Only for DB >= 4.5.
+ *
+ * Configures the Berkeley DB replication subsystem.
+ *
+ * +which+ can have the value <code>BDB::REP_CONF_BULK</code>,
+ * <code>BDB::REP_CONF_DELAYCLIENT</code>,
+ * <code>BDB::REP_CONF_NOAUTOINIT</code>,
+ * <code>BDB::REP_CONF_NOWAIT</code>.
+ *
+ * +onoff+ can have the value +true+ or +false+.
+ */
 REP_INTERN(config, BDB_INTERN_CONFIG)
 #endif
 
 #if HAVE_ST_DB_ENV_REP_SET_TIMEOUT
+/*
+ * Document-method: BDB::Env#rep_timeout
+ *
+ * call-seq:
+ *     rep_timeout?[which]
+ *     rep_timeout[which] = timeout
+ *
+ * Only for DB >= 4.5.
+ *
+ * Returns or specifies the timeout in the replication group
+ * elections.
+ *
+ * +which+ can have the value <code>BDB::REP_ACK_TIMEOUT</code>,
+ * <code>BDB::REP_ELECTION_TIMEOUT</code>,
+ * <code>BDB::REP_ELECTION_RETRY</code>,
+ * <code>BDB::REP_CONNECTION_RETRY</code>.
+ */
 REP_INTERN(timeout, BDB_INTERN_TIMEOUT)
 #endif
 
@@ -2873,6 +3355,9 @@ bdb_init_env(void)
 #endif
 #if HAVE_ST_DB_ENV_SET_ENV_NOTIFY
     id_event_notify = rb_intern("bdb_event_notify");
+#endif
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
 #endif
     bdb_cEnv = rb_define_class_under(bdb_mDb, "Env", rb_cObject);
     rb_define_private_method(bdb_cEnv, "initialize", bdb_env_init, -1);

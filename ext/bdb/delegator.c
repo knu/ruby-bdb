@@ -131,6 +131,9 @@ void
 bdb_init_delegator(void)
 {
     id_send = rb_intern("send");
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cDelegate = rb_define_class_under(bdb_mDb, "Delegate", rb_cObject);
     {
 	VALUE ary = Qfalse, tmp;

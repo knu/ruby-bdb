@@ -2,6 +2,11 @@
 
 #if HAVE_TYPE_DB_SEQUENCE
 
+/*
+ * A sequence is created with
+ * <code>BDB::Common::create_sequence</code> or
+ * <code>BDB::Common::open_sequence</code> (Only with DB >= 4.3).
+ */
 static VALUE bdb_cSeq;
 
 static void
@@ -22,6 +27,9 @@ bdb_seq_mark(bdb_SEQ *seqst)
     rb_gc_mark(seqst->orig);
 }
 
+/*
+ * Close the sequence.
+ */
 static VALUE
 bdb_seq_close(VALUE obj)
 {
@@ -111,6 +119,29 @@ bdb_seq_i_options(VALUE obj, VALUE seqobj)
     return Qnil;
 }
 
+/*
+ * call-seq:
+ *     open_sequence(key, flags = 0, init = nil, options = {}) {|sequence| }
+ *
+ * Create or open a sequence (see <code>BDB::Sequence</code>).
+ *
+ * * key
+ *     Key for the sequence.
+ *
+ * * flags
+ *     Flags can have <code>BDB::CREATE</code>,
+ *     <code>BDB::EXCL</code>, <code>BDB::AUTO_COMMIT</code>,
+ *     <code>BDB::THREAD</code>.
+ *
+ * * init
+ *     Initial value for the sequence.
+ *
+ * * options
+ *     Hash with the possible keys <code>"set_cachesize"</code>,
+ *     <code>"set_flags"</code> and <code>"set_range"</code>
+ *
+ * Return (or yield) an object <code>BDB::Sequence</code>.
+ */
 static VALUE
 bdb_seq_open(int argc, VALUE *argv, VALUE obj)
 {
@@ -163,6 +194,18 @@ bdb_seq_open(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
+/*
+ * call-seq:
+ *     create_sequence(key, init = nil, options = {}) {|sequence| }
+ *
+ * Create a new sequence (see also +open_sequence+).
+ *
+ * Equivalent to:
+ *
+ *     open_sequence(key, BDB::CREATE|BDB::EXCL, init, options)
+ *
+ * Return (or yield) an object <code>BDB::Sequence</code>.
+ */
 static VALUE
 bdb_seq_s_open(int argc, VALUE *argv, VALUE obj)
 {
@@ -182,7 +225,15 @@ bdb_seq_s_open(int argc, VALUE *argv, VALUE obj)
     return bdb_seq_open(argc + 1, args, obj);
 }
 
-
+/*
+ * call-seq:
+ *     remove(flags = 0)
+ *
+ * Remove the sequence.
+ *
+ * +flags+ can have the value <code>BDB::AUTO_COMMIT</code>,
+ * <code>BDB::TXN_NOSYNC</code>.
+ */
 static VALUE
 bdb_seq_remove(int argc, VALUE *argv, VALUE obj)
 {
@@ -201,6 +252,16 @@ bdb_seq_remove(int argc, VALUE *argv, VALUE obj)
     return Qnil;
 }
 
+/*
+ * call-seq:
+ *     get(delta = 1, flags = 0)
+ *
+ * Return the next available element in the sequence and changes the
+ * sequence value by +delta+.
+ *
+ * +flags+ can have the value <code>BDB::AUTO_COMMIT</code>,
+ * <code>BDB::TXN_NOSYNC</code>.
+ */
 static VALUE
 bdb_seq_get(int argc, VALUE *argv, VALUE obj)
 {
@@ -221,10 +282,12 @@ bdb_seq_get(int argc, VALUE *argv, VALUE obj)
     return LONG2NUM(val);
 }
 
+/*
+ * Return the current cache size.
+ */
 static VALUE
 bdb_seq_cachesize(VALUE obj)
 {
-
     bdb_SEQ *seqst;
     int size;
 
@@ -233,6 +296,9 @@ bdb_seq_cachesize(VALUE obj)
     return INT2NUM(size);
 }
 
+/*
+ * Return the current flags.
+ */
 static VALUE
 bdb_seq_flags(VALUE obj)
 {
@@ -245,6 +311,9 @@ bdb_seq_flags(VALUE obj)
     return INT2NUM(flags);
 }
 
+/*
+ * Return the range of values in the sequence.
+ */
 static VALUE
 bdb_seq_range(VALUE obj)
 {
@@ -256,6 +325,14 @@ bdb_seq_range(VALUE obj)
     return rb_assoc_new(LONG2NUM(deb), LONG2NUM(fin));
 }
 
+/*
+ * call-seq:
+ *     stat(flags = 0)
+ *
+ * Return statistics about the sequence.
+ *
+ * +flags+ can have the value <code>BDB::STAT_CLEAR</code>.
+ */
 static VALUE
 bdb_seq_stat(int argc, VALUE *argv, VALUE obj)
 {
@@ -282,6 +359,9 @@ bdb_seq_stat(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
+/*
+ * Return the bdb file associated with the sequence.
+ */
 static VALUE
 bdb_seq_db(VALUE obj)
 {
@@ -291,6 +371,9 @@ bdb_seq_db(VALUE obj)
     return seqst->db;
 }
 
+/*
+ * Return the key associated with the sequence.
+ */
 static VALUE
 bdb_seq_key(VALUE obj)
 {
@@ -308,6 +391,9 @@ void
 bdb_init_sequence(void)
 {
 #if HAVE_TYPE_DB_SEQUENCE
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cSeq = rb_define_class_under(bdb_mDb, "Sequence", rb_cObject);
     rb_undef_alloc_func(bdb_cSeq);
     rb_undef_method(CLASS_OF(bdb_cSeq), "new");

@@ -1,13 +1,207 @@
 #include "bdb.h"
 
+/*
+ * Berkeley DB is an embedded database system that supports keyed
+ * access to data.
+ *
+ * ---
+ *
+ * With DB >= 0.5.5 +nil+ is stored as an empty string (when marshal
+ * is not used).
+ *
+ * Open the database with:
+ *
+ *     "store_nil_as_null" => true
+ *
+ * if you want the old behavior (+nil+ stored as +'\000'+).
+ *
+ * ---
+ *
+ * Developers may choose to store data in any of several different
+ * storage structures to satisfy the requirements of a particular
+ * application.  In database terminology, these storage structures and
+ * the code that operates on them are called access methods.
+ *
+ * * B+tree: Stores keys in sorted order, using a default function
+ *   that does lexicographical ordering of keys.
+ *
+ * * Hashing: Stores records in a hash table for fast searches based
+ *   on strict equality, using a default that hashes on the key as a
+ *   bit string.  Extended Linear Hashing modifies the hash function
+ *   used by the table as new records are inserted, in order to keep
+ *   buckets underfull in the steady state.
+ *
+ * * Fixed and Variable-Length Records: Stores fixed- or
+ *   variable-length records in sequential order.  Record numbers may
+ *   be immutable, requiring that new records be added only at the end
+ *   of the database, or mutable, permitting new records to be
+ *   inserted between existing records.
+ *
+ * Berkeley DB environment is an encapsulation of one or more
+ * databases, log files and shared information about the database
+ * environment such as shared memory buffer cache pages.
+ *
+ * The transaction subsystem makes operations atomic, consistent,
+ * isolated, and durable in the face of system and application
+ * failures.  The subsystem requires that the data be properly logged
+ * and locked in order to attain these properties.  Berkeley DB
+ * contains all the components necessary to transaction-protect the
+ * Berkeley DB access methods and other forms of data may be protected
+ * if they are logged and locked appropriately.
+ *
+ * A database cursor is a sequential pointer to the database entries.
+ * It allows traversal of the database and access to duplicate keyed
+ * entries.  Cursors are used for operating on collections of records,
+ * for iterating over a database, and for saving handles to individual
+ * records, so that they can be modified after they have been read.
+ *
+ * The lock subsystem provides interprocess and intraprocess
+ * concurrency control mechanisms.  While the locking system is used
+ * extensively by the Berkeley DB access methods and transaction
+ * system, it may also be used as a stand-alone subsystem to provide
+ * concurrency control to any set of designated resources.
+ *
+ * The logging subsystem is the logging facility used by Berkeley DB.
+ * It is largely Berkeley DB specific, although it is potentially
+ * useful outside of the Berkeley DB package for applications wanting
+ * write-ahead logging support.  Applications wanting to use the log
+ * for purposes other than logging file modifications based on a set
+ * of open file descriptors will almost certainly need to make source
+ * code modifications to the Berkeley DB code base.
+ */
+VALUE bdb_mDb;
+
+/*
+ * Berkeley DB environment is an encapsulation of one or more
+ * databases, log files and shared information about the database
+ * environment such as shared memory buffer cache pages.
+ *
+ * The simplest way to administer a Berkeley DB application
+ * environment is to create a single home directory that stores the
+ * files for the applications that will share the environment. The
+ * environment home directory must be created before any Berkeley DB
+ * applications are run.  Berkeley DB itself never creates the
+ * environment home directory. The environment can then be identified
+ * by the name of that directory.
+ *
+ * == The Lock subsystem
+ *
+ * This subsystem provides interprocess and intraprocess concurrency
+ * control mechanisms.  While the locking system is used extensively
+ * by the Berkeley DB access methods and transaction system, it may
+ * also be used as a stand-alone subsystem to provide concurrency
+ * control to any set of designated resources.
+ *
+ * The lock subsystem is created, initialized, and opened by calls to
+ * +BDB::Env#open+ with the <code>DBD::INIT_LOCK</code> or
+ * <code>DBB::INIT_CDB</code> flags specified.
+ *
+ * The following options can be given when the environment is created:
+ *
+ * * "set_lk_conflicts"
+ *     Set lock conflicts matrix.
+ *
+ * * "set_lk_detect"
+ *     Set automatic deadlock detection.
+ *
+ * * "set_lk_max"
+ *     Set maximum number of locks.
+ *
+ * == The Logging subsystem
+ *
+ * This subsystem is used when recovery from application or system
+ * failure is necessary.
+ *
+ * The log is stored in one or more files in the environment
+ * directory.  Each file is named using the format log.NNNNNNNNNN,
+ * where NNNNNNNNNN is the sequence number of the file within the log.
+ *
+ * If the log region is being created and log files are already
+ * present, the log files are reviewed and subsequent log writes are
+ * appended to the end of the log, rather than overwriting current log
+ * entries.
+ *
+ * The logging subsystem is created, initialized, and opened by calls
+ * to +BDB::Env#open+ with the <code>BDB::INIT_LOG</code> flag
+ * specified.
+ *
+ * The following options can be given when the environnement is
+ * created:
+ *
+ * * "set_lg_bsize"
+ *     Set log buffer size.
+ *
+ * * "set_lg_dir"
+ *     Set the environment logging directory.
+ *
+ * * "set_lg_max"
+ *     Set log file size.
+ *
+ * == The Transaction subsystem
+ *
+ * This subsystem makes operations atomic, consistent, isolated, and
+ * durable in the face of system and application failures. The
+ * subsystem requires that the data be properly logged and locked in
+ * order to attain these properties.  Berkeley DB contains all the
+ * components necessary to transaction-protect the Berkeley DB access
+ * methods and other forms of data may be protected if they are logged
+ * and locked appropriately.
+ *
+ * The transaction subsystem is created, initialized, and opened by
+ * calls to +BDB::Env#open+ with the <code>BDB::INIT_TXN</code> flag
+ * (or <code>BDB::INIT_TRANSACTION</code>) specified.  Note that
+ * enabling transactions automatically enables logging, but does not
+ * enable locking, as a single thread of control that needed atomicity
+ * and recoverability would not require it.
+ *
+ * The following option can be given when the environnement is created:
+ *
+ * * "set_tx_max"
+ *     Set maximum number of transactions.
+ *
+ * and with DB >= 4.0:
+ *
+ * * "set_timeout"
+ * * "set_txn_timeout"
+ * * "set_lock_timeout"
+ */
 VALUE bdb_cEnv;
+
+/* General error */
 VALUE bdb_eFatal;
-VALUE bdb_eLock, bdb_eLockDead, bdb_eLockHeld, bdb_eLockGranted;
+/* Lock related error */
+VALUE bdb_eLock;
+/* Locker killed to resolve a deadlock */
+VALUE bdb_eLockDead;
+/* Lock not held by locker */
+VALUE bdb_eLockHeld;
+/* Lock not granted */
+VALUE bdb_eLockGranted;
 #if HAVE_CONST_DB_REP_UNAVAIL
 VALUE bdb_eRepUnavail;
 #endif
-VALUE bdb_mDb;
-VALUE bdb_cCommon, bdb_cBtree, bdb_cRecnum, bdb_cHash, bdb_cRecno, bdb_cUnknown;
+/* Implement common methods for access to data. */
+VALUE bdb_cCommon;
+/* Implementation of a sorted, balanced tree structure. */
+VALUE bdb_cBtree;
+/*
+ * Don't mix these methods with methods of <code>BDB::Cursor</code>.
+ *
+ * All instance methods has the same syntax as the methods of Array.
+ *
+ * BDB::Recnum.open(name, subname, flags, mode)
+ *
+ * is equivalent to
+ *
+ * BDB::Recno.open(name, subname, flags, mode,
+ * "set_flags" => BDB::RENUMBER, "set_array_base" => 0)
+ */
+VALUE bdb_cRecnum;
+/* Implementation of Extended Linear Hashing. */
+VALUE bdb_cHash;
+/* Stores both fixed and variable-length records with logical record numbers as keys. */
+VALUE bdb_cRecno;
+VALUE bdb_cUnknown;
 VALUE bdb_cDelegate;
 
 #if HAVE_TYPE_DB_KEY_RANGE
@@ -15,12 +209,44 @@ VALUE bdb_sKeyrange;
 #endif
 
 #if HAVE_CONST_DB_QUEUE
+/*
+ * Stores fixed-length records with logical record numbers as keys.
+ * It is designed for fast inserts at the tail and has a special
+ * cursor consume operation that deletes and returns a record from the
+ * head of the queue.
+ */
 VALUE bdb_cQueue;
 #endif
 
-VALUE bdb_cTxn, bdb_cTxnCatch;
+/*
+ * The transaction is created with +BDB::Env#begin+
+ * or with +BDB::Txn#begin+.
+ *
+ * See also +BDB::Env#txn_stat+ and +BDB::Env#txn_checkpoint+.
+ */
+VALUE bdb_cTxn;
+VALUE bdb_cTxnCatch;
+/*
+ * A database cursor is a sequential pointer to the database entries.
+ * It allows traversal of the database and access to duplicate keyed
+ * entries.  Cursors are used for operating on collections of records,
+ * for iterating over a database, and for saving handles to individual
+ * records, so that they can be modified after they have been read.
+ *
+ * See also BDB::Common#each().
+ */
 VALUE bdb_cCursor;
-VALUE bdb_cLock, bdb_cLockid;
+VALUE bdb_cLock;
+/*
+ * A lock ID can be obtained with +BDB::Env#lock_id+.
+ *
+ * See also +BDB::Env#lock_stat+ and +BDB::Env#lock_detect+.
+ */
+VALUE bdb_cLockid;
+/*
+ * A BDB::Lsn object is created by the method +log_checkpoint+,
+ * +log_curlsn+, +log_flush+, +log_put+
+ */
 VALUE bdb_cLsn;
 
 VALUE bdb_mMarshal;
@@ -960,5 +1186,4 @@ Init_bdb(void)
 
     bdb_errstr = rb_tainted_str_new(0, 0);
     rb_global_variable(&bdb_errstr);
-    
 }

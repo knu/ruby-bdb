@@ -1,6 +1,6 @@
 #include "bdb.h"
 
-static void 
+static void
 lockid_mark( bdb_LOCKID *dblockid)
 {
     rb_gc_mark(dblockid->env);
@@ -13,8 +13,8 @@ bdb_clean_env(VALUE env, VALUE obj)
     Data_Get_Struct(env, bdb_ENV, envst);
     bdb_ary_delete(&envst->db_ary, obj);
 }
-    
-static void 
+
+static void
 lockid_free( bdb_LOCKID *dblockid)
 {
 #if HAVE_ST_DB_ENV_LOCK_ID_FREE
@@ -29,6 +29,9 @@ lockid_free( bdb_LOCKID *dblockid)
     free(dblockid);
 }
 
+/*
+ * Acquire a locker ID.
+ */
 static VALUE
 bdb_env_lockid(VALUE obj)
 {
@@ -77,6 +80,25 @@ bdb_env_lockid_close(VALUE obj)
     return Qnil;
 }
 
+/*
+ * call-seq:
+ *     lock_detect(type, flags = 0)
+ *
+ * The lock_detect function runs one iteration of the deadlock
+ * detector.  The deadlock detector traverses the lock table, and for
+ * each deadlock it finds, marks one of the participating transactions
+ * for abort.
+ *
+ * +type+ can have one the value <code>BDB::LOCK_OLDEST</code>,
+ * <code>BDB::LOCK_RANDOM</code> or <code>BDB::LOCK_YOUNGUEST</code>
+ *
+ * +flags+ can have the value <code>BDB::LOCK_CONFLICT</code>, in this
+ * case the deadlock detector is run only if a lock conflict has
+ * occurred since the last time that the deadlock detector was run.
+ *
+ * Return the number of transactions aborted by the lock_detect
+ * function if DB >= 3, or +zero+.
+ */
 static VALUE
 bdb_env_lockdetect(int argc, VALUE *argv, VALUE obj)
 {
@@ -103,6 +125,9 @@ bdb_env_lockdetect(int argc, VALUE *argv, VALUE obj)
     return INT2NUM(aborted);
 }
 
+/*
+ * Return lock subsystem statistics.
+ */
 static VALUE
 bdb_env_lockstat(int argc, VALUE *argv, VALUE obj)
 {
@@ -260,6 +285,23 @@ lock_free(bdb_LOCK *lock)
     free(lock);
 }
 
+/*
+ * call-seq:
+ *     get(string, mode , flags = 0)
+ *     lock_get(string, mode [, flags])
+ *
+ * The lock_get function acquires a lock from the lock table, it
+ * return an object <code>BDB::Lock</code>.
+ *
+ * +string+ specifies the object to be locked or released.
+ *
+ * +mode+ is an index into the environment's lock conflict array.
+ *
+ * +flags+ value must be set to 0 or the value
+ * <code>BDBD::LOCK_NOWAIT</code>, in this case if a lock cannot be
+ * granted because the requested lock conflicts with an existing lock,
+ * raise an error <code>BDB::LockGranted</code>.
+ */
 static VALUE
 bdb_lockid_get(int argc, VALUE *argv, VALUE obj)
 {
@@ -383,6 +425,42 @@ bdb_lockid_each(VALUE obj, VALUE listobj)
     return Qnil;
 }
 
+/*
+ * call-seq:
+ *     vec(array, flags = 0)
+ *     lock_vec(array, flags = 0)
+ *
+ * The +lock_vec+ function atomically obtains and releases one or more
+ * locks from the lock table.  The +lock_vec+ function is intended to
+ * support acquisition or trading of multiple locks under one lock
+ * table semaphore, as is needed for lock coupling or in
+ * multigranularity locking for lock escalation.
+ *
+ * * array
+ *     ARRAY of HASH with the following keys.
+ *
+ *     * "op"
+ *         The operation to be performed, which must be set to one of
+ *         the following values <code>BDB::LOCK_GET</code>,
+ *         <code>BDB::LOCK_PUT</code>, <code>BDB::LOCK_PUT_ALL</code>
+ *         or <code>BDB::LOCK_PUT_OBJ</code>.
+ *
+ *     * "obj"
+ *         The object (String) to be locked or released.
+ *
+ *     * "mode"
+ *         An index into the environment's lock conflict array.
+ *
+ *     * "lock"
+ *         An object <code>BDB::Lock</code>.
+ *
+ * * flags
+ *     Value must be set to 0 or the value
+ *     <code>BDBD::LOCK_NOWAIT</code>, in this case if a lock cannot
+ *     be granted because the requested lock conflicts with an
+ *     existing lock, raise an error
+ *     <code>BDB::LockGranted</code>return immediately.
+ */
 static VALUE
 bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
 {
@@ -425,7 +503,7 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
 #elif HAVE_ST_DB_ENV_LOCK_VEC
     err = envst->envp->lock_vec(envst->envp, lockid->lock, flags,
 				list, RARRAY_LEN(a), NULL);
-#else    
+#else
     err = lock_vec(envst->envp, lockid->lock, flags,
 		   list, RARRAY_LEN(a), NULL);
 #endif
@@ -441,7 +519,7 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
         }
         else
             rb_raise(res, "%s", db_strerror(err));
-    }			
+    }
     res = rb_ary_new2(RARRAY_LEN(a));
     n = 0;
     for (i = 0; i < RARRAY_LEN(a); i++) {
@@ -464,6 +542,9 @@ bdb_lockid_vec(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
+/*
+ * The +lock_put+ function releases lock from the lock table.
+ */
 static VALUE
 bdb_lock_put(VALUE obj)
 {
@@ -482,7 +563,7 @@ bdb_lock_put(VALUE obj)
     bdb_test_error(lock_put(envst->envp, lockst->lock));
 #endif
     return Qnil;
-} 
+}
 
 void
 bdb_init_lock(void)
@@ -491,6 +572,9 @@ bdb_init_lock(void)
     rb_define_method(bdb_cEnv, "lock", bdb_env_lockid, 0);
     rb_define_method(bdb_cEnv, "lock_stat", bdb_env_lockstat, -1);
     rb_define_method(bdb_cEnv, "lock_detect", bdb_env_lockdetect, -1);
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cLockid = rb_define_class_under(bdb_mDb, "Lockid", rb_cObject);
     rb_undef_alloc_func(bdb_cLockid);
     rb_undef_method(CLASS_OF(bdb_cLockid), "new");

@@ -119,7 +119,7 @@ bdb_ary_unshift(struct ary_st *db_ary, VALUE obj)
 	if (db_ary->total) {
 	    REALLOC_N(db_ary->ptr, VALUE, db_ary->total + 5);
 	}
-	else { 
+	else {
 	    db_ary->ptr = ALLOC_N(VALUE, 5);
 	}
 	db_ary->total += 5;
@@ -301,11 +301,11 @@ test_load_dyna1(VALUE obj, DBT *key, DBT *val)
     bdb_DB *dbst;
     VALUE del, res, tmp;
     struct deleg_class *delegst;
-    
+
     Data_Get_Struct(obj, bdb_DB, dbst);
     res = bdb_test_load(obj, val, FILTER_VALUE);
     if (dbst->marshal && !SPECIAL_CONST_P(res)) {
-	del = Data_Make_Struct(bdb_cDelegate, struct deleg_class, 
+	del = Data_Make_Struct(bdb_cDelegate, struct deleg_class,
 			       bdb_deleg_mark, free, delegst);
 	delegst->db = obj;
 	if (RECNUM_TYPE(dbst)) {
@@ -315,7 +315,7 @@ test_load_dyna1(VALUE obj, DBT *key, DBT *val)
 	    tmp = rb_str_new(key->data, key->size);
 	    if (dbst->filter[2 + FILTER_VALUE]) {
 		if (FIXNUM_P(dbst->filter[2 + FILTER_VALUE])) {
-		    tmp = rb_funcall(obj, 
+		    tmp = rb_funcall(obj,
 				     NUM2INT(dbst->filter[2 + FILTER_VALUE]),
 				     1, tmp);
 		}
@@ -423,7 +423,7 @@ bdb_bt_compare(DB *dbbd, const DBT *a, const DBT *b)
 	res = rb_funcall(dbst->bt_compare, bdb_id_call, 2, av, bv);
     }
     return NUM2INT(res);
-} 
+}
 
 static size_t
 #if BDB_OLD_FUNCTION_PROTO
@@ -446,7 +446,7 @@ bdb_bt_prefix(DB *dbbd, const DBT *a, const DBT *b)
     else
 	res = rb_funcall(dbst->bt_prefix, bdb_id_call, 2, av, bv);
     return NUM2INT(res);
-} 
+}
 
 #if HAVE_CONST_DB_DUPSORT
 
@@ -708,13 +708,13 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 	    break;
 	default:
 	    Check_Type(value, T_ARRAY);
-	    if (RARRAY_LEN(value) < 3) { 
+	    if (RARRAY_LEN(value) < 3) {
 		rb_raise(bdb_eFatal, "expected 3 values for cachesize");
 	    }
 #if HAVE_TYPE_DB_INFO
 	    dbst->dbinfo->db_cachesize = NUM2INT(RARRAY_PTR(value)[1]);
 #else
-	    bdb_test_error(dbp->set_cachesize(dbp, 
+	    bdb_test_error(dbp->set_cachesize(dbp,
 					      NUM2INT(RARRAY_PTR(value)[0]),
 					      NUM2INT(RARRAY_PTR(value)[1]),
 					      NUM2INT(RARRAY_PTR(value)[2])));
@@ -815,15 +815,15 @@ bdb_i_options(VALUE obj, VALUE dbstobj)
 #endif
     else if (strcmp(options, "marshal") == 0) {
         switch (value) {
-        case Qtrue: 
-	    dbst->marshal = bdb_mMarshal; 
+        case Qtrue:
+	    dbst->marshal = bdb_mMarshal;
 	    dbst->options |= BDB_MARSHAL;
 	    break;
-        case Qfalse: 
-	    dbst->marshal = Qfalse; 
+        case Qfalse:
+	    dbst->marshal = Qfalse;
 	    dbst->options &= ~BDB_MARSHAL;
 	    break;
-        default: 
+        default:
 	    if (!bdb_respond_to(value, bdb_id_load) ||
 		!bdb_respond_to(value, bdb_id_dump)) {
 		rb_raise(bdb_eFatal, "marshal value must be true or false");
@@ -1073,6 +1073,13 @@ bdb_txn_p(VALUE obj)
     return (RTEST(dbst->txn)?Qtrue:Qfalse);
 }
 
+/*
+ * call-seq:
+ *     close(flags = 0)
+ *     db_close(flags = 0)
+ *
+ * Closes the file.
+ */
 static VALUE
 bdb_close(int argc, VALUE *argv, VALUE obj)
 {
@@ -1208,6 +1215,177 @@ bdb_recno_length(VALUE obj)
     return hash;
 }
 
+/*
+ * call-seq:
+ *     new(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+ *     open(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+ *     create(name = nil, subname = nil, flags = 0, mode = 0, options = {})
+ *
+ *     open(name = nil, subname = nil, flags = 0, mode = 0, options = {}) { |db| ... }
+ *     create(name = nil, subname = nil, flags = 0, mode = 0, options = {}) { |db| ... }
+ *
+ * Open the database.
+ *
+ * * name
+ *     The argument name is used as the name of a single physical file
+ *     on disk that will be used to back the database.
+ *
+ * * subname
+ *     The subname argument allows applications to have subdatabases,
+ *     i.e., multiple databases inside of a single physical file.
+ *     This is useful when the logical databases are both numerous and
+ *     reasonably small, in order to avoid creating a large number of
+ *     underlying files.  It is an error to attempt to open a
+ *     subdatabase in a database file that was not initially created
+ *     using a subdatabase name.
+ *
+ * * flags
+ *     The flags must be the string "r", "r+", "w", "w+", "a", "a+" or
+ *     and integer value.
+ *
+ *     The flags value must be set to 0 or by bitwise inclusively
+ *     OR'ing together one or more of the following values.
+ *
+ *     * BDB::CREATE
+ *         Create any underlying files, as necessary.  If the files do
+ *         not already exist and the DB_CREATE flag is not specified,
+ *         the call will fail.
+ *
+ *     * BDB::EXCL
+ *         Return an error if the database already exists.  Underlying
+ *         filesystem primitives are used to implement this flag.  For
+ *         this reason it is only applicable to the physical database
+ *         file and cannot be used to test if a subdatabase already
+ *         exists.
+ *
+ *     * BDB::NOMMAP
+ *         Do not map this database into process memory.
+ *
+ *     * BDB::RDONLY
+ *         Open the database for reading only.  Any attempt to modify
+ *         items in the database will fail regardless of the actual
+ *         permissions of any underlying files.
+ *
+ *     * BDB::TRUNCATE
+ *         Physically truncate the underlying database file,
+ *         discarding all previous subdatabases or databases.
+ *         Underlying filesystem primitives are used to implement this
+ *         flag.  For this reason it is only applicable to the
+ *         physical database file and cannot be used to discard
+ *         subdatabases.
+ *
+ *     The <code>BDB::TRUNCATE</code> flag cannot be transaction
+ *     protected, and it is an error to specify it in a transaction
+ *     protected environment.
+ *
+ * * options
+ *     Hash, Possible options are (see the documentation of Berkeley
+ *     DB for more informations):
+ *
+ *     * store_nil_as_null
+ *         If +true+ will store +nil+ as +\000+, otherwise as an empty
+ *         string (default +false+).
+ *
+ *     * set_array_base
+ *         Base index for <code>BDB::Recno</code>,
+ *         <code>BDB::Queue</code> or <code>BDB::Btree</code> (with
+ *         <code>BDB::RECNUM</code>). Must be 0 or 1.
+ *
+ *     * set_bt_compare
+ *         Specify a Btree comparison function.
+ *
+ *     * set_bt_minkey
+ *         Set the minimum number of keys per Btree page.
+ *
+ *     * set_bt_prefix
+ *         Specify a Btree prefix comparison function
+ *
+ *     * set_cachesize
+ *         Set the database cache size
+ *
+ *     * set_dup_compare
+ *         Specify a duplicate comparison function
+ *
+ *     * set_store_key
+ *         Specify a Proc called before a key is stored.
+ *
+ *     * set_fetch_key
+ *         Specify a Proc called after a key is read.
+`*
+ *     * set_store_value
+ *         Specify a Proc called before a value is stored.
+ *
+ *     * set_fetch_value
+ *         Specify a Proc called after a value is read.
+ *
+ *     * set_flags
+ *         General database configuration.
+ *
+ *     * set_h_ffactor
+ *         Set the Hash table density.
+ *
+ *     * set_h_hash
+ *         Specify a hashing function.
+ *
+ *     * set_h_nelem
+ *         Set the Hash table size.
+ *
+ *     * set_lorder
+ *         Set the database byte order.
+ *
+ *     * set_pagesize
+ *         Set the underlying database page size.
+ *
+ *     * set_re_delim
+ *         Set the variable-length record delimiter.
+ *
+ *     * set_re_len
+ *         Set the fixed-length record length.
+ *
+ *     * set_re_pad
+ *         Set the fixed-length record pad byte.
+ *
+ *     * set_re_source
+ *         Set the backing Recno text file.
+ *
+ *     * set_append_recno
+ *         Modify the stored data for <code>BDB::APPEND</code>.
+ *
+ *     * set_encrypt
+ *         Set the password used.
+ *
+ *     * set_feedback
+ *         Set the function to monitor some operations
+ *
+ *     * env
+ *         Open the database in the environnement given as the value.
+ *
+ *     * txn
+ *         Open the database in the transaction given as the value.
+ *
+ *     +set_append_recno+ will be called with +(key, value)+ and it
+ *     must return +nil+ or the modified value.
+ *
+ *     +set_encrypt+ take an Array as arguments with the values
+ *     +[password, flags]+, where +flags+ can be 0 or
+ *     <code>BDB::ENCRYPT_AES</code>.
+ *
+ *     Proc given to +set_bt_compare+, +set_bt_prefix+,
+ *     +set_dup_compare+, +set_h_hash+, +set_store_key+
+ *     +set_fetch_key+, +set_store_value+, +set_fetch_value+
+ *     +set_feedback+ and +set_append_recno+ can be also specified as
+ *     a method (replace the prefix +set_+ with +bdb_+).
+ *
+ *     For example:
+ *
+ *         module BDB
+ *           class Btreesort < Btree
+ *             def bdb_bt_compare(a, b)
+ *               b.downcase <=> a.downcase
+ *             end
+ *           end
+ *         end
+ */
 static VALUE
 bdb_s_new(int argc, VALUE *argv, VALUE obj)
 {
@@ -1244,11 +1422,11 @@ bdb_s_new(int argc, VALUE *argv, VALUE obj)
 	    dbst->options |= envst->options & BDB_NO_THREAD;
 	    dbst->marshal = envst->marshal;
 	}
-#if HAVE_CONST_DB_ENCRYPT 
+#if HAVE_CONST_DB_ENCRYPT
 	if (envst && (envst->options & BDB_ENV_ENCRYPT)) {
 	    VALUE tmp = rb_str_new2("set_flags");
 	    if ((v = rb_hash_aref(f, rb_intern("set_flags"))) != RHASH(f)->ifnone) {
-		rb_hash_aset(f, rb_intern("set_flags"), 
+		rb_hash_aset(f, rb_intern("set_flags"),
 			     INT2NUM(NUM2INT(v) | DB_ENCRYPT));
 	    }
 	    else if ((v = rb_hash_aref(f, tmp)) != RHASH(f)->ifnone) {
@@ -1463,7 +1641,7 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 	if (name == NULL && (flags & DB_RDONLY)) {
 	    flags &= ~DB_RDONLY;
 	}
-	    
+
 	if ((ret = db_open(name, dbst->type, flags, mode, envp,
 			   dbst->dbinfo, &dbp)) != 0) {
 	    if (bdb_errcall) {
@@ -1485,7 +1663,7 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 	    if (flags & DB_RDONLY) {
 		flags &= ~DB_RDONLY;
 	    }
-#if HAVE_DB_OPEN_7 
+#if HAVE_DB_OPEN_7
 #if HAVE_DB_OPEN_7_DB_CREATE
 	    flags |= DB_CREATE;
 #endif
@@ -1628,15 +1806,15 @@ bdb_s_alloc(VALUE obj)
     cl = obj;
     while (cl) {
 	if (cl == bdb_cBtree || RCLASS(cl)->m_tbl == RCLASS(bdb_cBtree)->m_tbl) {
-	    dbst->type = DB_BTREE; 
+	    dbst->type = DB_BTREE;
 	    break;
 	}
 	if (cl == bdb_cRecnum || RCLASS(cl)->m_tbl == RCLASS(bdb_cRecnum)->m_tbl) {
-	    dbst->type = DB_RECNO; 
+	    dbst->type = DB_RECNO;
 	    break;
 	}
 	else if (cl == bdb_cHash || RCLASS(cl)->m_tbl == RCLASS(bdb_cHash)->m_tbl) {
-	    dbst->type = DB_HASH; 
+	    dbst->type = DB_HASH;
 	    break;
 	}
 	else if (cl == bdb_cRecno || RCLASS(cl)->m_tbl == RCLASS(bdb_cRecno)->m_tbl) {
@@ -1670,10 +1848,10 @@ bdb_i_s_create(VALUE obj, VALUE db)
     tmp[1] = rb_ary_entry(obj, 1);
     bdb_put(2, tmp, db);
     return Qnil;
-} 
+}
 
 static VALUE
-bdb_s_create(int argc, VALUE *argv, VALUE obj)
+bdb_s_aref(int argc, VALUE *argv, VALUE obj)
 {
     VALUE res;
     int i;
@@ -1692,6 +1870,9 @@ bdb_s_create(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
+/*
+ * See +new+.
+ */
 static VALUE
 bdb_s_open(int argc, VALUE *argv, VALUE obj)
 {
@@ -1740,7 +1921,7 @@ bdb_queue_i_search_re_len(VALUE obj, VALUE restobj)
 #define DEFAULT_RECORD_PAD 0x20
 
 static VALUE
-bdb_queue_s_new(int argc, VALUE *argv, VALUE obj) 
+bdb_queue_s_new(int argc, VALUE *argv, VALUE obj)
 {
     VALUE *nargv, ret, restobj;
     struct re *rest;
@@ -1831,12 +2012,28 @@ bdb_append_internal(int argc, VALUE *argv, VALUE obj, int flag, int retval)
     return obj;
 }
 
+
+/*
+ * call-seq:
+ *     append(key, value, ...)
+ *     db_append(key, value, ...)
+ *
+ * Append the +value+(s) associating with +key+.
+ */
 static VALUE
 bdb_append_m(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_append_internal(argc, argv, obj, DB_APPEND, Qtrue);
 }
 
+/*
+ * call-seq:
+ *     db << value
+ *     db.append(value)
+ *     db.db_append(value)
+ *
+ * Append the +value+.
+ */
 static VALUE
 bdb_append(VALUE obj, VALUE val)
 {
@@ -1860,6 +2057,22 @@ bdb_unshift(int argc, VALUE *argv, VALUE obj)
     return bdb_append_internal(argc, argv, obj, flag, Qtrue);
 }
 
+/*
+ * call-seq:
+ *     put(key, value, flags = 0)
+ *     db_put(key, value, flags = 0)
+ *     store(key, value, flags = 0)
+ *
+ * Stores the +value+ associating with +key+.
+ *
+ * If +nil+ is given as the value, the association from the +key+ will
+ * be removed.  It returns the object deleted or +nil+ if the
+ * specified key don't exist.
+ *
+ * +flags+ can have the value <code>DBD::NOOVERWRITE</code>, in this
+ * case it will return +nil+ if the specified key exist, otherwise
+ * +true+.
+ */
 VALUE
 bdb_put(int argc, VALUE *argv, VALUE obj)
 {
@@ -1910,6 +2123,15 @@ bdb_put(int argc, VALUE *argv, VALUE obj)
     }
 }
 
+/*
+ * call-seq:
+ *     db[key] = value
+ *
+ * Stores the +value+ associating with +key+.
+ *
+ * If +nil+ is given as the value, the association from the key will be
+ * removed.
+ */
 static VALUE
 bdb_aset(VALUE obj, VALUE a, VALUE b)
 {
@@ -1933,7 +2155,7 @@ bdb_test_load_key(VALUE obj, DBT *key)
 VALUE
 bdb_assoc(VALUE obj, DBT *key, DBT *data)
 {
-    return rb_assoc_new(bdb_test_load_key(obj, key), 
+    return rb_assoc_new(bdb_test_load_key(obj, key),
 			bdb_test_load(obj, data, FILTER_VALUE));
 }
 
@@ -1968,7 +2190,7 @@ bdb_assoc2(VALUE obj, DBT *skey, DBT *pkey, DBT *data)
 VALUE
 bdb_assoc3(VALUE obj, DBT *skey, DBT *pkey, DBT *data)
 {
-    return rb_ary_new3(3, bdb_test_load_key(obj, skey), 
+    return rb_ary_new3(3, bdb_test_load_key(obj, skey),
 		       bdb_test_load_key(obj, pkey),
 		       bdb_test_load(obj, data, FILTER_VALUE));
 }
@@ -2059,12 +2281,36 @@ bdb_get(int argc, VALUE *argv, VALUE obj)
     return bdb_get_internal(argc, argv, obj, Qnil, 0);
 }
 
+/*
+ * call-seq:
+ *     db.get(key, flags = 0)
+ *     db.db_get(key, flags = 0)
+ *     db[key, flags = 0]
+ *
+ * Returns the value correspondind the +key+.
+ *
+ * +flags+ can have the values <code>BDB::GET_BOTH</code>,
+ * <code>BDB::SET_RECNO</code> or <code>BDB::RMW</code>
+ *
+ * In presence of duplicates it will return the first data item, use
+ * #duplicates if you want all duplicates (see also #each_dup)
+ */
 static VALUE
 bdb_get_dyna(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_get_internal(argc, argv, obj, Qnil, 1);
 }
 
+/*
+ * call-seq:
+ *     fetch(key, ifnone)
+ *     fetch(key) { |key| ... }
+ *
+ * Returns the value correspondind the +key+.
+ *
+ * If none is found, returns +ifnone+ or the return value of the block
+ * given.
+ */
 static VALUE
 bdb_fetch(int argc, VALUE *argv, VALUE obj)
 {
@@ -2090,6 +2336,15 @@ bdb_fetch(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_PGET
 
+/*
+ * call-seq:
+ *     pget(key, flags = 0)
+ *
+ * Returns the primary key and the value corresponding to +key+ in the
+ * secondary index.
+ *
+ * Only for DB >= 3.3.11.
+ */
 static VALUE
 bdb_pget(int argc, VALUE *argv, VALUE obj)
 {
@@ -2158,9 +2413,9 @@ bdb_btree_key_range(VALUE obj, VALUE a)
     MEMZERO(&key, DBT, 1);
     b = bdb_test_recno(obj, &key, &recno, a);
     bdb_test_error(dbst->dbp->key_range(dbst->dbp, txnid, &key, &key_range, 0));
-    return rb_struct_new(bdb_sKeyrange, 
+    return rb_struct_new(bdb_sKeyrange,
 			 rb_float_new(key_range.less),
-			 rb_float_new(key_range.equal), 
+			 rb_float_new(key_range.equal),
 			 rb_float_new(key_range.greater));
 }
 #endif
@@ -2198,7 +2453,40 @@ bdb_compact_i(VALUE obj, VALUE dataobj)
     }
     return Qnil;
 }
-    
+
+/*
+ * call-seq:
+ *     compact(start = nil, stop = nil, options = nil)
+ *
+ * Compact the database.
+ *
+ * Only for Btree and Recno (DB VERSION >= 4.4).
+ *
+ * * start
+ *     Starting point for compaction in a Btree or Recno database.
+ *     Compaction will start at the smallest key greater than or equal
+ *     to the specified key.
+ *
+ * * stop
+ *     The stopping point for compaction in a Btree or Recno database.
+ *     Compaction will stop at the page with the smallest key greater
+ *     than the specified key.
+ *
+ * * options
+ *     Hash with the possible keys:
+ *
+ *     * "flags"
+ *         The value 0, <code>BDB::FREELIST_ONLY</code>, or
+ *         <code>BDB::FREE_SPACE</code>.
+ *
+ *     * "compact_fillpercent"
+ *         The goal for filling pages, specified as a percentage
+ *         between 1 and 100.
+ *
+ *     * "compact_timeout"
+ *         The lock timeout set for implicit transactions, in
+ *         microseconds.
+ */
 static VALUE
 bdb_treerec_compact(int argc, VALUE *argv, VALUE obj)
 {
@@ -2223,7 +2511,7 @@ bdb_treerec_compact(int argc, VALUE *argv, VALUE obj)
 	else {
 	    struct data_flags *dtf;
 	    VALUE dtobj;
-		
+
 	    dtobj = Data_Make_Struct(rb_cData, struct data_flags, 0, free, dtf);
 	    dtf->cdata = &cdata;
 	    dtf->flags = 0;
@@ -2269,6 +2557,13 @@ bdb_treerec_compact(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_CONST_DB_NEXT_DUP
 
+/*
+ * call-seq:
+ *     count(key)
+ *     dup_count(key)
+ *
+ * Return the count of duplicate for +key+.
+ */
 static VALUE
 bdb_count(VALUE obj, VALUE a)
 {
@@ -2455,6 +2750,13 @@ bdb_has_both_internal(VALUE obj, VALUE a, VALUE b, VALUE flag)
 
 #endif
 
+/*
+ * call-seq:
+ *     both?(key, value)
+ *     has_both?(key, value)
+ *
+ * Returns true if the association from +key+ is +value+.
+ */
 static VALUE
 bdb_has_both(VALUE obj, VALUE a, VALUE b)
 {
@@ -2503,8 +2805,19 @@ bdb_has_both(VALUE obj, VALUE a, VALUE b)
 #endif
 }
 
+/*
+ * call-seq:
+ *     del(key)
+ *     delete(key)
+ *     db_del(key)
+ *
+ * Removes the association from the key.
+ *
+ * It returns the object deleted or +nil+ if the specified key don't
+ * exist.
+ */
 VALUE
-bdb_del(VALUE obj, VALUE a)
+bdb_del(VALUE obj, VALUE key)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2522,7 +2835,7 @@ bdb_del(VALUE obj, VALUE a)
     }
 #endif
     MEMZERO(&key, DBT, 1);
-    b = bdb_test_recno(obj, &key, &recno, a);
+    b = bdb_test_recno(obj, &key, &recno, key);
     ret = bdb_test_error(dbst->dbp->del(dbst->dbp, txnid, &key, flag));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qnil;
@@ -2530,6 +2843,9 @@ bdb_del(VALUE obj, VALUE a)
         return obj;
 }
 
+/*
+ * Returns true if the database is empty.
+ */
 static VALUE
 bdb_empty(VALUE obj)
 {
@@ -2758,7 +3074,7 @@ bdb_i_last_prefix(DBC *dbcp, DBT *key, DBT *pkey, DBT *data, DBT *orig, eachst *
 	    !memcmp(key->data, orig->data, orig->size)) {
 	    return 0;
 	}
-	if (memcmp(key->data, orig->data, 
+	if (memcmp(key->data, orig->data,
 		   (key->size > orig->size)?orig->size:key->size) < 0) {
 	    return DB_NOTFOUND;
 	}
@@ -2774,7 +3090,7 @@ bdb_i_each_kv(eachst *st)
     int ret, init = Qfalse, prefix = Qfalse;
     db_recno_t recno;
     volatile VALUE res = Qnil;
-    
+
     prefix = st->type & BDB_ST_PREFIX;
     st->type &= ~BDB_ST_PREFIX;
     GetDB(st->db, dbst);
@@ -2801,7 +3117,7 @@ bdb_i_each_kv(eachst *st)
 	else {
 #if HAVE_CONST_DB_MULTIPLE_KEY
 	    if (st->type == BDB_ST_KV && st->primary) {
-		ret = bdb_test_error(dbcp->c_pget(dbcp, &key, &pkey, &data, 
+		ret = bdb_test_error(dbcp->c_pget(dbcp, &key, &pkey, &data,
 						  (st->type & BDB_ST_DUP)?DB_SET:
 						  DB_SET_RANGE));
 	    }
@@ -2814,7 +3130,7 @@ bdb_i_each_kv(eachst *st)
 		MEMZERO(&data, DBT, 1);
 		data.flags = DB_DBT_MALLOC;
 		SET_PARTIAL(dbst, data);
-		ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, 
+		ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data,
                                              (st->type & BDB_ST_DUP)?DB_SET:
                                              DB_SET_RANGE));
 #if HAVE_CURSOR_C_GET_KEY_MALLOC
@@ -2894,7 +3210,7 @@ bdb_i_each_kv_bulk(eachst *st)
     db_recno_t recno;
     void *p;
     volatile VALUE res = Qnil;
-    
+
     GetDB(st->db, dbst);
     dbcp = st->dbcp;
     MEMZERO(&key, DBT, 1);
@@ -2912,7 +3228,7 @@ bdb_i_each_kv_bulk(eachst *st)
     do {
 	if (init && !NIL_P(st->set)) {
 	    res = bdb_test_recno(st->db, &key, &recno, st->set);
-	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data, 
+	    ret = bdb_test_error(dbcp->c_get(dbcp, &key, &data,
                                              ((st->type & BDB_ST_DUP)?DB_SET:
                                               DB_SET_RANGE)|DB_MULTIPLE_KEY));
 	    init = 0;
@@ -2926,7 +3242,7 @@ bdb_i_each_kv_bulk(eachst *st)
 	if (ret == DB_KEYEMPTY) continue;
 	for (DB_MULTIPLE_INIT(p, &data);;) {
 	    if (RECNUM_TYPE(dbst)) {
-		DB_MULTIPLE_RECNO_NEXT(p, &data, recno, 
+		DB_MULTIPLE_RECNO_NEXT(p, &data, recno,
 				       rdata.data, rdata.size);
 	    }
 	    else {
@@ -2959,7 +3275,7 @@ bdb_each_kvc(int argc, VALUE *argv, VALUE obj, int sens, VALUE replace, int type
 	}
 	argc--;
     }
-	
+
     MEMZERO(&st, eachst, 1);
 
 #if HAVE_CONST_DB_MULTIPLE_KEY
@@ -3045,6 +3361,12 @@ bdb_get_dup(int argc, VALUE *argv, VALUE obj)
     return bdb_each_kvc(argc, argv, obj, DB_NEXT_DUP, result, BDB_ST_DUPU);
 }
 
+/*
+ * call-seq:
+ *     each_dup(key, bulk = 0) { |key, value| ... }
+ *
+ * Iterates over each duplicate associations for +key+.
+ */
 static VALUE
 bdb_common_each_dup(int argc, VALUE *argv, VALUE obj)
 {
@@ -3054,6 +3376,12 @@ bdb_common_each_dup(int argc, VALUE *argv, VALUE obj)
     return bdb_each_kvc(argc, argv, obj, DB_NEXT_DUP, Qfalse, BDB_ST_DUPKV);
 }
 
+/*
+ * call-seq:
+ *     each_dup_value(key, bulk = 0) { |value| ... }
+ *
+ * Iterates over each duplicate values for +key+.
+ */
 static VALUE
 bdb_common_each_dup_val(int argc, VALUE *argv, VALUE obj)
 {
@@ -3063,6 +3391,14 @@ bdb_common_each_dup_val(int argc, VALUE *argv, VALUE obj)
     return bdb_each_kvc(argc, argv, obj, DB_NEXT_DUP, Qfalse, BDB_ST_DUPVAL);
 }
 
+/*
+ * call-seq:
+ *     duplicates(key , assoc = true)
+ *
+ * Return an array of all duplicate associations for +key+.
+ *
+ * If +assoc+ is +false+ return only the values.
+ */
 static VALUE
 bdb_common_dups(int argc, VALUE *argv, VALUE obj)
 {
@@ -3088,15 +3424,28 @@ bdb_delete_if(int argc, VALUE *argv, VALUE obj)
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_DELETE | BDB_ST_ONE);
 }
 
+/*
+ * call-seq:
+ *     reject { |key, value| ... }
+ *
+ * Create an hash without the associations if the evaluation of the
+ * block returns true.
+ */
 static VALUE
 bdb_reject(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, rb_hash_new(), BDB_ST_REJECT);
 }
 
+/*
+ * call-seq:
+ *     each_value(set = nil, bulk = 0)
+ *
+ * Iterates over values.
+ */
 VALUE
 bdb_each_value(int argc, VALUE *argv, VALUE obj)
-{ 
+{
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_VALUE);
 }
 
@@ -3106,45 +3455,71 @@ bdb_each_eulav(int argc, VALUE *argv, VALUE obj)
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_VALUE | BDB_ST_ONE);
 }
 
+/*
+ * call-seq:
+ *     each_key(set = nil, bulk = 0) { |key| ... }
+ *
+ * Iterates over keys.
+ */
 VALUE
 bdb_each_key(int argc, VALUE *argv, VALUE obj)
-{ 
-    return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KEY); 
+{
+    return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KEY);
 }
 
 static VALUE
-bdb_each_yek(int argc, VALUE *argv, VALUE obj) 
-{ 
+bdb_each_yek(int argc, VALUE *argv, VALUE obj)
+{
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_KEY | BDB_ST_ONE);
 }
 
+/*
+ * call-seq:
+ *     each(set = nil, bulk = 0, "flags" => 0) { |key, value| ... }
+ *     each_pair(set = nil, bulk = 0, "flags" => 0) { |key, value| ... }
+ *
+ * Iterates over associations.
+ */
 static VALUE
-bdb_each_pair(int argc, VALUE *argv, VALUE obj) 
+bdb_each_pair(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KV);
 }
 
+/*
+ * call-seq:
+ *     each_by_prefix(prefix = nil) { |key, value| ... }
+ *
+ * Iterate over associations, where the key begin with +prefix+.
+ */
 static VALUE
-bdb_each_prefix(int argc, VALUE *argv, VALUE obj) 
+bdb_each_prefix(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_NEXT, Qfalse, BDB_ST_KV | BDB_ST_PREFIX);
 }
 
 static VALUE
-bdb_each_riap(int argc, VALUE *argv, VALUE obj) 
+bdb_each_riap(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, BDB_ST_KV | BDB_ST_ONE);
 }
 
 static VALUE
-bdb_each_xiferp(int argc, VALUE *argv, VALUE obj) 
+bdb_each_xiferp(int argc, VALUE *argv, VALUE obj)
 {
-    return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse, 
+    return bdb_each_kvc(argc, argv, obj, DB_PREV, Qfalse,
                         BDB_ST_KV | BDB_ST_ONE | BDB_ST_PREFIX);
 }
 
+/*
+ * call-seq:
+ *     each_primary(set = nil) { |skey, pkey, pvalue| ... }
+ *
+ * Iterates over secondary indexes and give secondary key, primary key
+ * and value.
+ */
 static VALUE
-bdb_each_pair_prim(int argc, VALUE *argv, VALUE obj) 
+bdb_each_pair_prim(int argc, VALUE *argv, VALUE obj)
 {
     VALUE tmp[2] = {Qnil, Qtrue};
     rb_scan_args(argc, argv, "01", tmp);
@@ -3152,7 +3527,7 @@ bdb_each_pair_prim(int argc, VALUE *argv, VALUE obj)
 }
 
 static VALUE
-bdb_each_riap_prim(int argc, VALUE *argv, VALUE obj) 
+bdb_each_riap_prim(int argc, VALUE *argv, VALUE obj)
 {
     VALUE tmp[2] = {Qnil, Qtrue};
     rb_scan_args(argc, argv, "01", tmp);
@@ -3200,11 +3575,11 @@ bdb_to_type(VALUE obj, VALUE result, VALUE flag)
 	    break;
 	case T_HASH:
 	    if (flag == Qtrue) {
-		rb_hash_aset(result, bdb_test_load_key(obj, &key), 
+		rb_hash_aset(result, bdb_test_load_key(obj, &key),
 			     bdb_test_load(obj, &data, FILTER_VALUE));
 	    }
 	    else {
-		rb_hash_aset(result, bdb_test_load(obj, &data, FILTER_VALUE), 
+		rb_hash_aset(result, bdb_test_load(obj, &data, FILTER_VALUE),
 			     bdb_test_load_key(obj, &key));
 	    }
 	}
@@ -3243,6 +3618,13 @@ bdb_update(VALUE obj, VALUE other)
     return obj;
 }
 
+/*
+ * call-seq:
+ *     clear
+ *     truncate
+ *
+ * Empty a database.
+ */
 VALUE
 bdb_clear(int argc, VALUE *argv, VALUE obj)
 {
@@ -3318,7 +3700,7 @@ bdb_to_hash(VALUE obj)
 {
     return bdb_to_type(obj, rb_hash_new(), Qtrue);
 }
- 
+
 static VALUE
 bdb_kv(VALUE obj, int type)
 {
@@ -3409,7 +3791,7 @@ bdb_internal_value(VALUE obj, VALUE a, VALUE b, int sens)
 	if (ret == DB_KEYEMPTY) continue;
 	if (rb_equal(a, bdb_test_load(obj, &data, FILTER_VALUE)) == Qtrue) {
 	    VALUE d;
-	    
+
 	    dbcp->c_close(dbcp);
 	    if (b == Qfalse) {
 		d = Qtrue;
@@ -3425,12 +3807,25 @@ bdb_internal_value(VALUE obj, VALUE a, VALUE b, int sens)
     return (b == Qfalse)?Qfalse:Qnil;
 }
 
+/*
+ * call-seq:
+ *     index(value)
+ *
+ * Returns the first +key+ associated with +value+.
+ */
 VALUE
-bdb_index(VALUE obj, VALUE a)
+bdb_index(VALUE obj, VALUE value)
 {
-    return bdb_internal_value(obj, a, Qtrue, DB_NEXT);
+    return bdb_internal_value(obj, value, Qtrue, DB_NEXT);
 }
 
+/*
+ * call-seq:
+ *     indexes(value1, value2, ...)
+ *     indices(value1, value2, ...)
+ *
+ * Returns the +keys+ associated with +value1, value2, ...+.
+ */
 static VALUE
 bdb_indexes(int argc, VALUE *argv, VALUE obj)
 {
@@ -3499,6 +3894,55 @@ bdb_sync(VALUE obj)
 
 #if HAVE_TYPE_DB_HASH_STAT
 
+/*
+ * Return an Hash with the fields (description for 4.0.14).
+ *
+ * * "hash_magic"
+ *     Magic number that identifies the file as a Hash file.
+ *
+ * * "hash_version"
+ *     The version of the Hash database.
+ *
+ * * "hash_nkeys"
+ *     The number of unique keys in the database.
+ *
+ * * "hash_ndata"
+ *     The number of key/data pairs in the database.
+ *
+ * * "hash_pagesize"
+ *     The underlying Hash database page (and bucket) size, in bytes.
+ *
+ * * "hash_nelem"
+ *     The estimated size of the hash table specified at database-creation time.
+ *
+ * * "hash_ffactor"
+ *     The desired fill factor (number of items per bucket) specified at database-creation time.
+ *
+ * * "hash_buckets"
+ *     The number of hash buckets.
+ *
+ * * "hash_free"
+ *     The number of pages on the free list.
+ *
+ * * "hash_bfree :The number of bytes free on bucket pages.
+ * * hash_bigpages"
+ *     The number of big key/data pages.
+ *
+ * * "hash_big_bfree"
+ *     The number of bytes free on big item pages.
+ *
+ * * "hash_overflows"
+ *     The number of overflow pages
+ *
+ * * "hash_ovfl_free"
+ *     The number of bytes free on overflow pages.
+ *
+ * * "hash_dup"
+ *     The number of duplicate pages.
+ *
+ * * "hash_dup_free"
+ *     The number of bytes free on duplicate pages.
+ */
 static VALUE
 bdb_hash_stat(int argc, VALUE *argv, VALUE obj)
 {
@@ -3567,6 +4011,63 @@ bdb_hash_stat(int argc, VALUE *argv, VALUE obj)
 
 #endif
 
+/*
+ * Return an Hash with the fields (description for 4.0.14).
+ *
+ * * "bt_magic"
+ *     Magic number that identifies the file as a Btree database.
+ *
+ * * "bt_version"
+ *     The version of the Btree database.
+ *
+ * * "bt_nkeys"
+ *     the number of unique keys in the database.
+ *
+ * * "bt_ndata"
+ *     the number of key/data pairs in the database.
+ *
+ * * "bt_pagesize"
+ *     Underlying database page size, in bytes.
+ *
+ * * "bt_minkey"
+ *     The minimum keys per page.
+ *
+ * * "bt_re_len"
+ *     The length of fixed-length records.
+ *
+ * * "bt_re_pad"
+ *     The padding byte value for fixed-length records.
+ *
+ * * "bt_levels"
+ *     Number of levels in the database.
+ *
+ * * "bt_int_pg"
+ *     Number of database internal pages.
+ *
+ * * "bt_leaf_pg"
+ *     Number of database leaf pages.
+ *
+ * * "bt_dup_pg"
+ *     Number of database duplicate pages.
+ *
+ * * "bt_over_pg"
+ *     Number of database overflow pages.
+ *
+ * * "bt_free"
+ *     Number of pages on the free list.
+ *
+ * * "bt_int_pgfree"
+ *     Number of bytes free in database internal pages.
+ *
+ * * "bt_leaf_pgfree"
+ *     Number of bytes free in database leaf pages.
+ *
+ * * "bt_dup_pgfree"
+ *     Number of bytes free in database duplicate pages.
+ *
+ * * "bt_over_pgfree"
+ *     Number of bytes free in database overflow pages.
+ */
 VALUE
 bdb_tree_stat(int argc, VALUE *argv, VALUE obj)
 {
@@ -3636,7 +4137,45 @@ bdb_tree_stat(int argc, VALUE *argv, VALUE obj)
 }
 
 #if HAVE_TYPE_DB_QUEUE_STAT
-
+/*
+ * Return an Hash with the fields (description for 4.0.14).
+ *
+ * * "qs_magic"
+ *     Magic number that identifies the file as a Queue file.
+ *
+ * * "qs_version"
+ *     The version of the Queue file type.
+ *
+ * * "qs_nkeys"
+ *     The number of records in the database.
+ *
+ * * "qs_ndata"
+ *     The number of records in the database.
+ *
+ * * "qs_pagesize"
+ *     Underlying database page size, in bytes.
+ *
+ * * "qs_extentsize"
+ *     Underlying database extent size, in pages.
+ *
+ * * "qs_pages"
+ *     Number of pages in the database.
+ *
+ * * "qs_re_len"
+ *     The length of the records.
+ *
+ * * "qs_re_pad"
+ *     The padding byte value for the records.
+ *
+ * * "qs_pgfree"
+ *     Number of bytes free in database pages.
+ *
+ * * "qs_first_recno"
+ *     First undeleted record in the database.
+ *
+ * * "qs_cur_recno"
+ *     Last allocated record number in the database.
+ */
 static VALUE
 bdb_queue_stat(int argc, VALUE *argv, VALUE obj)
 {
@@ -3733,8 +4272,14 @@ bdb_queue_padlen(VALUE obj)
 
 #endif
 
+/*
+ * call-seq:
+ *     set_partial(len, offset)
+ *
+ * Set the partial value +len+ and +offset+.
+ */
 static VALUE
-bdb_set_partial(VALUE obj, VALUE a, VALUE b)
+bdb_set_partial(VALUE obj, VALUE len, VALUE offset)
 {
     bdb_DB *dbst;
     VALUE ret;
@@ -3747,12 +4292,15 @@ bdb_set_partial(VALUE obj, VALUE a, VALUE b)
     rb_ary_push(ret, (dbst->partial == DB_DBT_PARTIAL)?Qtrue:Qfalse);
     rb_ary_push(ret, INT2NUM(dbst->doff));
     rb_ary_push(ret, INT2NUM(dbst->dlen));
-    dbst->doff = NUM2UINT(a);
-    dbst->dlen = NUM2UINT(b);
+    dbst->doff = NUM2UINT(len);
+    dbst->dlen = NUM2UINT(offset);
     dbst->partial = DB_DBT_PARTIAL;
     return ret;
 }
 
+/*
+ * Clear partial set.
+ */
 static VALUE
 bdb_clear_partial(VALUE obj)
 {
@@ -3804,6 +4352,13 @@ bdb_i_create(VALUE obj)
 
 #endif
 
+/*
+ * call-seq:
+ *     upgrade(name)
+ *     bdb_upgrade(name)
+ *
+ * Upgrade the database.
+ */
 static VALUE
 bdb_s_upgrade(int argc, VALUE *argv, VALUE obj)
 {
@@ -3830,6 +4385,19 @@ bdb_s_upgrade(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_REMOVE
 
+/*
+ * call-seq:
+ *     remove(name, subname = nil)
+ *     bdb_remove(name, subname = nil)
+ *     unlink(name, subname = nil)
+ *
+ * Removes the database (or subdatabase) represented by the name and
+ * subname combination.
+ *
+ * If no subdatabase is specified, the physical file represented by
+ * name is removed, incidentally removing all subdatabases that it
+ * contained.
+ */
 static VALUE
 bdb_s_remove(int argc, VALUE *argv, VALUE obj)
 {
@@ -3899,7 +4467,7 @@ bdb_i_joinclose(eachst *st)
     return Qnil;
 }
 
- 
+
 static VALUE
 bdb_i_join(eachst *st)
 {
@@ -3922,7 +4490,13 @@ bdb_i_join(eachst *st)
     } while (1);
     return Qnil;
 }
- 
+
+/*
+ * call-seq:
+ *     join(cursor, flag = 0) { |key, value| ... }
+ *
+ * Perform a join. +cursor+ is an array of <code>BDB::Cursor</code>.
+ */
 static VALUE
 bdb_join(int argc, VALUE *argv, VALUE obj)
 {
@@ -3976,6 +4550,13 @@ bdb_join(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_BYTESWAPPED || HAVE_ST_DB_GET_BYTESWAPPED
 
+/*
+ * call-seq:
+ *     byteswapped?
+ *     get_byteswapped
+ *
+ * Return if the underlying database is in host order.
+ */
 static VALUE
 bdb_byteswapp(VALUE obj)
 {
@@ -4049,6 +4630,18 @@ bdb_call_secondary(DB *secst, DBT *pkey, DBT *pdata, DBT *skey)
     return BDB_ERROR_PRIVATE;
 }
 
+/*
+ * call-seq:
+ *     associate(db, flag = 0)
+ *     associate(db, flag = 0) { |db, key, value| ... }
+ *
+ * Associate a secondary index db.
+ *
+ * +flag+ can have the value <code>BDB::RDONLY</code>.
+ *
+ * The block must return the new key, or +false+ in this case the
+ * secondary index will not contain any reference to key/value.
+ */
 static VALUE
 bdb_associate(int argc, VALUE *argv, VALUE obj)
 {
@@ -4097,11 +4690,11 @@ bdb_associate(int argc, VALUE *argv, VALUE obj)
 	  flags |= DB_AUTO_COMMIT;
 	}
 #endif
-	bdb_test_error(dbst->dbp->associate(dbst->dbp, txnid, secondst->dbp, 
+	bdb_test_error(dbst->dbp->associate(dbst->dbp, txnid, secondst->dbp,
 					    bdb_call_secondary, flags));
     }
 #else
-    bdb_test_error(dbst->dbp->associate(dbst->dbp, secondst->dbp, 
+    bdb_test_error(dbst->dbp->associate(dbst->dbp, secondst->dbp,
 					bdb_call_secondary, flags));
 #endif
     return obj;
@@ -4109,6 +4702,9 @@ bdb_associate(int argc, VALUE *argv, VALUE obj)
 
 #endif
 
+/*
+ * Return the name of the file.
+ */
 static VALUE
 bdb_filename(VALUE obj)
 {
@@ -4117,6 +4713,9 @@ bdb_filename(VALUE obj)
     return dbst->filename;
 }
 
+/*
+ * Return the subname.
+ */
 static VALUE
 bdb_database(VALUE obj)
 {
@@ -4127,6 +4726,13 @@ bdb_database(VALUE obj)
 
 #if HAVE_ST_DB_VERIFY
 
+/*
+ * call-seq:
+ *     verify(file = nil, flags = 0)
+ *
+ * Verify the integrity of the DB file, and optionnally output the
+ * key/data to +file+ (file must respond to #to_io).
+ */
 static VALUE
 bdb_verify(int argc, VALUE *argv, VALUE obj)
 {
@@ -4180,7 +4786,7 @@ bdb__txn__dup(VALUE obj, VALUE a)
     bdb_DB *dbp, *dbh;
     bdb_TXN *txnst;
     VALUE res;
- 
+
     GetDB(obj, dbp);
     GetTxnDB(a, txnst);
     res = Data_Make_Struct(CLASS_OF(obj), bdb_DB, bdb_mark, bdb_free, dbh);
@@ -4209,25 +4815,38 @@ bdb__txn__close(VALUE obj, VALUE commit, VALUE real)
 		dbst1->len = dbst->len;
 	    }
 	}
-//	bdb_close(0, 0, obj);
+	/* bdb_close(0, 0, obj); */
     }
     return Qnil;
 }
 
 #if HAVE_ST_DB_SET_CACHE_PRIORITY
 
+/*
+ * call-seq:
+ *     cache_priority = value
+ *
+ * Set the priority value, which can be:
+ * <code>BDB::PRIORITY_VERY_LOW</code>,
+ * <code>BDB::PRIORITY_LOW</code>, <code>BDB::PRIORITY_DEFAULT</code>,
+ * <code>BDB::PRIORITY_HIGH</code> or
+ * <code>BDB::PRIORITY_VERY_HIGH</code>.
+ */
 static VALUE
-bdb_cache_priority_set(VALUE obj, VALUE a)
+bdb_cache_priority_set(VALUE obj, VALUE value)
 {
     int priority;
     bdb_DB *dbst;
     GetDB(obj, dbst);
     priority = dbst->priority;
-    bdb_test_error(dbst->dbp->set_cache_priority(dbst->dbp, NUM2INT(a)));
-    dbst->priority = NUM2INT(a);
+    bdb_test_error(dbst->dbp->set_cache_priority(dbst->dbp, NUM2INT(value)));
+    dbst->priority = NUM2INT(value);
     return INT2FIX(priority);
 }
 
+/*
+ * Return the current priority value.
+ */
 static VALUE
 bdb_cache_priority_get(VALUE obj)
 {
@@ -4240,26 +4859,32 @@ bdb_cache_priority_get(VALUE obj)
 
 #if HAVE_ST_DB_SET_FEEDBACK
 
+/*
+ * call-seq:
+ *     feedback = proc
+ *
+ * Monitor the progress of some operations.
+ */
 static VALUE
-bdb_feedback_set(VALUE obj, VALUE a)
+bdb_feedback_set(VALUE obj, VALUE proc)
 {
     bdb_DB *dbst;
 
     GetDB(obj, dbst);
-    if (NIL_P(a)) {
-	dbst->feedback = a;
+    if (NIL_P(proc)) {
+	dbst->feedback = proc;
     }
     else {
-	if (!rb_respond_to(a, bdb_id_call)) {
+	if (!rb_respond_to(proc, bdb_id_call)) {
 	    rb_raise(bdb_eFatal, "arg must respond to #call");
 	}
-	dbst->feedback = a;
+	dbst->feedback = proc;
 	if (!(dbst->options & BDB_FEEDBACK)) {
 	    dbst->options |= BDB_FEEDBACK;
-	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, obj); 
+	    rb_thread_local_aset(rb_thread_current(), bdb_id_current_db, obj);
 	}
     }
-    return a;
+    return proc;
 }
 
 #endif
@@ -4554,6 +5179,9 @@ bdb_init_common(void)
 #if HAVE_ST_DB_SET_FEEDBACK
     id_feedback = rb_intern("bdb_feedback");
 #endif
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cCommon = rb_define_class_under(bdb_mDb, "Common", rb_cObject);
     rb_define_private_method(bdb_cCommon, "initialize", bdb_init, -1);
     rb_include_module(bdb_cCommon, rb_mEnumerable);
@@ -4561,7 +5189,7 @@ bdb_init_common(void)
     rb_define_singleton_method(bdb_cCommon, "new", bdb_s_new, -1);
     rb_define_singleton_method(bdb_cCommon, "create", bdb_s_new, -1);
     rb_define_singleton_method(bdb_cCommon, "open", bdb_s_open, -1);
-    rb_define_singleton_method(bdb_cCommon, "[]", bdb_s_create, -1);
+    rb_define_singleton_method(bdb_cCommon, "[]", bdb_s_aref, -1);
 #if HAVE_ST_DB_REMOVE
     rb_define_singleton_method(bdb_cCommon, "remove", bdb_s_remove, -1);
     rb_define_singleton_method(bdb_cCommon, "bdb_remove", bdb_s_remove, -1);

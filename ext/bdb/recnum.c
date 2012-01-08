@@ -22,7 +22,7 @@ bdb_recnum_init(int argc, VALUE *argv, VALUE obj)
     }
     rb_hash_aset(argv[argc - 1], rb_str_new2("set_flags"), INT2FIX(DB_RENUMBER));
     return bdb_init(argc, argv, obj);
-} 
+}
 
 static VALUE
 bdb_sary_subseq(VALUE obj, long beg, long len)
@@ -65,6 +65,34 @@ bdb_sary_entry(VALUE obj, VALUE position)
     return bdb_get(1, &position, obj);
 }
 
+/*
+ * call-seq:
+ *     db[nth]
+ *     db[start..end]
+ *     db[start, length]
+ *
+ * Element reference - with the following syntax:
+ *
+ * * db[nth]
+ *
+ *     Retrieves the +nth+ item from an array.  Index starts from
+ *     zero.  If index is the negative, counts backward from the end
+ *     of the array.  The index of the last element is -1. Returns
+ *     +nil+, if the +nth+ element does not exist in the array.
+ *
+ * * db[start..end]
+ *
+ *     Returns an array containing the objects from +start+ to +end+,
+ *     including both ends. if end is larger than the length of the
+ *     array, it will be rounded to the length.  If +start+ is out of
+ *     an array range , returns +nil+.  And if +start+ is larger than
+ *     end with in array range, returns empty array ([]).
+ *
+ * * db[start, length]
+ *
+ *     Returns an array containing +length+ items from +start+.
+ *     Returns +nil+ if +length+ is negative.
+ */
 static VALUE
 bdb_sary_aref(int argc, VALUE *argv, VALUE obj)
 {
@@ -210,6 +238,32 @@ bdb_sary_replace(VALUE obj, VALUE beg, long len, long rpl)
     }
 }
 
+/*
+ * call-seq:
+ *     db[nth] = val
+ *     db[start..end] = val
+ *     db[start, length] = val
+ *
+ * Element assignment - with the following syntax:
+ *
+ * * db[nth] = val
+ *
+ *     Changes the +nth+ element of the array into +val+.  If +nth+ is
+ *     larger than array length, the array shall be extended
+ *     automatically.  Extended region shall be initialized by +nil+.
+ *
+ * * db[start..end] = val
+ *
+ *     Replaces the items from +start+ to +end+ with +val+.  If +val+
+ *     is not an array, the type of +val+ will be converted into the
+ *     Array using +to_a+ method.
+ *
+ * * db[start, length] = val
+ *
+ *     Replaces the +length+ items from +start+ with +val+.  If +val+
+ *     is not an array, the type of +val+ will be converted into the
+ *     Array using +to_a+.
+ */
 static VALUE
 bdb_sary_aset(int argc, VALUE *argv, VALUE obj)
 {
@@ -338,7 +392,7 @@ bdb_sary_fetch(int argc, VALUE *argv, VALUE obj)
     pos = INT2NUM(idx);
     return bdb_get(1, &pos, obj);
 }
-    
+
 
 static VALUE
 bdb_sary_concat(VALUE obj, VALUE y)
@@ -357,7 +411,7 @@ bdb_sary_concat(VALUE obj, VALUE y)
     }
     return obj;
 }
-    
+
 static VALUE
 bdb_sary_push(VALUE obj, VALUE y)
 {
@@ -408,7 +462,8 @@ bdb_sary_s_create(int argc, VALUE *argv, VALUE obj)
     }
     return res;
 }
-    
+
+/* Removes and returns an association from the database. */
 static VALUE
 bdb_sary_shift(VALUE obj)
 {
@@ -911,6 +966,9 @@ void
 bdb_init_recnum(void)
 {
     id_cmp = rb_intern("<=>");
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cRecnum = rb_define_class_under(bdb_mDb, "Recnum", bdb_cCommon);
     rb_define_singleton_method(bdb_cRecnum, "[]", bdb_sary_s_create, -1);
     rb_define_private_method(bdb_cRecnum, "initialize", bdb_recnum_init, -1);

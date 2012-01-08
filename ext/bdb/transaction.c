@@ -95,6 +95,15 @@ bdb_txn_mark(bdb_TXN *txnst)
     bdb_ary_mark(&txnst->db_assoc);
 }
 
+/*
+ * call-seq:
+ *     assoc(db, ...)
+ *     associate(db, ...)
+ *     txn_assoc(db, ...)
+ *
+ * Associate a database with the transaction, return a new database
+ * handle which is transaction protected.
+ */
 static VALUE
 bdb_txn_assoc(int argc, VALUE *argv, VALUE obj)
 {
@@ -132,6 +141,32 @@ bdb_txn_close_all(VALUE obj, VALUE result)
 #define COMMIT 2
 #define ROLLBACK 3
 
+/*
+ * call-seq:
+ *     commit(flags = 0)
+ *     close(flags = 0)
+ *     txn_commit(flags = 0)
+ *     txn_close(flags = 0)
+ *
+ * Commit the transaction. This will finish the transaction.
+ *
+ * The +flags+ can have the value:
+ *
+ * * BDB::TXN_SYNC
+ *     Synchronously flush the log. This means the transaction will
+ *     exhibit all of the ACID (atomicity, consistency and isolation
+ *     and durability) properties. This is the default value.
+ *
+ * * BDB::TXN_NOSYNC
+ *     Do not synchronously flush the log. This means the transaction
+ *     will exhibit the ACI (atomicity, consistency and isolation)
+ *     properties, but not D (durability), i.e., database integrity
+ *     will be maintained but it is possible that this transaction may
+ *     be undone during recovery instead of being redone.
+ *
+ * This behavior may be set for an entire Berkeley DB environment as
+ * part of the open interface.
+ */
 static VALUE
 bdb_txn_commit(int argc, VALUE *argv, VALUE obj)
 {
@@ -168,6 +203,9 @@ bdb_txn_commit(int argc, VALUE *argv, VALUE obj)
     return Qtrue;
 }
 
+/*
+ * Abort the transaction.  This is will terminate the transaction.
+ */
 static VALUE
 bdb_txn_abort(VALUE obj)
 {
@@ -300,7 +338,7 @@ bdb_txn_i_options(VALUE obj, VALUE dbstobj)
 #endif
     return Qnil;
 }
-	
+
 #if HAVE_ST_DB_TXN_SET_TIMEOUT
 static VALUE bdb_txn_set_timeout(VALUE, VALUE);
 static VALUE bdb_txn_set_txn_timeout(VALUE, VALUE);
@@ -447,12 +485,51 @@ bdb_env_rslbl_begin(VALUE origin, int argc, VALUE *argv, VALUE obj)
     }
 }
 
+/*
+ * call-seq:
+ *     BDB::Env#begin(flags = 0)
+ *     BDB::Env#begin(flags = 0, db, ...) { |txn, db, ...| ...}
+ *
+ *     BDB::Txn#begin(flags = 0, db, ...)
+ *     BDB::Txn#begin(flags = 0, db, ...) { |txn, db, ...| ...}
+ *
+ * Begin a transaction (the transaction manager must be enabled).
+ * +flags+ can have the value <code>DBD::TXN_COMMIT</code>, in this
+ * case the transaction will be committed at end.
+ *
+ * Return a new transaction object, and the associated database handle
+ * if specified.
+ *
+ * If +#begin+ is called as an iterator, +#commit+ and +#abort+ will
+ * terminate the iterator.
+ *
+ *     env.begin(db) do |txn, b|
+ *	 ...
+ *     end
+ *
+ *     is the same than
+ *
+ *     env.begin do |txn|
+ *	 b = txn.assoc(db)
+ *	 ...
+ *     end
+ *
+ * An optional hash can be given with the possible keys:
+ * <code>"flags"</code>, <code>"set_timeout"</code>,
+ * <code>"set_txn_timeout"</code>, <code>"set_lock_timeout"</code>
+ */
 static VALUE
 bdb_env_begin(int argc, VALUE *argv, VALUE obj)
 {
     return bdb_env_rslbl_begin(Qfalse, argc, argv, obj);
 }
 
+/*
+ * The txn_id function returns the unique transaction id associated
+ * with the specified transaction.  Locking calls made on behalf of
+ * this transaction should use the value returned from txn_id as the
+ * locker parameter to the lock_get or lock_vec calls.
+ */
 static VALUE
 bdb_txn_id(VALUE obj)
 {
@@ -468,10 +545,32 @@ bdb_txn_id(VALUE obj)
     return INT2FIX(res);
 }
 
-static VALUE
 #if HAVE_ST_DB_TXN_PREPARE || HAVE_TXN_PREPARE
+/*
+ * call-seq:
+ *     prepare()
+ *     txn_prepare()
+ *     prepare(id)
+ *     txn_prepare(id)
+ *
+ * The +txn_prepare+ function initiates the beginning of a two-phase
+ * commit.
+ *
+ * In a distributed transaction environment, Berkeley DB can be used
+ * as a local transaction manager.  In this case, the distributed
+ * transaction manager must send prepare messages to each local
+ * manager.  The local manager must then issue a +txn_prepare+ and
+ * await its successful return before responding to the distributed
+ * transaction manager.  Only after the distributed transaction
+ * manager receives successful responses from all of its prepare
+ * messages should it issue any commit messages.
+ *
+ * Passing an +id+ is supported in DB >= 3.3.11.
+ */
+static VALUE
 bdb_txn_prepare(VALUE obj, VALUE txnid)
 #else
+static VALUE
 bdb_txn_prepare(VALUE obj)
 #endif
 {
@@ -493,6 +592,18 @@ bdb_txn_prepare(VALUE obj)
     return Qtrue;
 }
 
+/*
+ * call-seq:
+ *     checkpoint(kbyte, min = 0)
+ *
+ * The txn_checkpoint function flushes the underlying memory pool,
+ * writes a checkpoint record to the log and then flushes the log.
+ *
+ * If either kbyte or min is non-zero, the checkpoint is only done if
+ * more than min minutes have passed since the last checkpoint, or if
+ * more than kbyte kilobytes of log data have been written since the
+ * last checkpoint.
+ */
 static VALUE
 bdb_env_check(int argc, VALUE *argv, VALUE obj)
 {
@@ -538,6 +649,17 @@ bdb_env_check(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_TXN_RECOVER || HAVE_TXN_RECOVER
 
+/*
+ * call-seq:
+ *     recover { |txn, id| ... }
+ *
+ * Only for DB >= 3.3.
+ *
+ * Iterate over all prepared transactions.  The transaction +txn+ must
+ * be made a call to +abort+, +commit+, +discard+.
+ *
+ * +id+ is the global transaction ID for the transaction.
+ */
 static VALUE
 bdb_env_recover(VALUE obj)
 {
@@ -578,6 +700,12 @@ bdb_env_recover(VALUE obj)
 
 #if HAVE_ST_DB_TXN_DISCARD || HAVE_TXN_DISCARD
 
+/*
+ * Only for DB >= 3.3.
+ *
+ * Discard a prepared but not resolved transaction handle, must be
+ * called only within +BDB::Env#recover+.
+ */
 static VALUE
 bdb_txn_discard(VALUE obj)
 {
@@ -603,6 +731,9 @@ bdb_txn_discard(VALUE obj)
 
 #endif
 
+/*
+ * Return transaction subsystem statistics.
+ */
 static VALUE
 bdb_env_stat(int argc, VALUE *argv, VALUE obj)
 {
@@ -751,6 +882,19 @@ bdb_txn_set_timeout(VALUE obj, VALUE a)
 
 #if HAVE_ST_DB_ENV_DBREMOVE
 
+/*
+ * call-seq:
+ *     dbremove(file, database = nil, flags = 0)
+ *
+ * Only for DB >= 4.1.
+ *
+ * Remove the database specified by +file+ and +database+.  If no
+ * +database+ is +nil+, the underlying file represented by +file+ is
+ * removed, incidentally removing all databases that it contained.
+ *
+ * The +flags+ value must be set to 0 or
+ * <code>BDB::AUTO_COMMIT</code>.
+ */
 static VALUE
 bdb_env_dbremove(int argc, VALUE *argv, VALUE obj)
 {
@@ -800,6 +944,20 @@ bdb_env_dbremove(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_ENV_DBRENAME
 
+/*
+ * call-seq:
+ *     dbrename(file, database, newname, flags = 0)
+ *
+ * Only for DB >= 4.1.
+ *
+ * Rename the database specified by +file+ and +database+ to
+ * +newname+.  If +database+ is +nil+, the underlying file represented
+ * by +file+ is renamed, incidentally renaming all databases that it
+ * contained.
+ *
+ * The +flags+ value must be set to 0 or
+ * <code>BDB::AUTO_COMMIT</code>.
+ */
 static VALUE
 bdb_env_dbrename(int argc, VALUE *argv, VALUE obj)
 {
@@ -859,16 +1017,26 @@ bdb_env_dbrename(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DB_TXN_SET_NAME
 
+/*
+ * Only for DB >= 4.4.
+ *
+ * Set the string associated with a transaction.
+ */
 static VALUE
-bdb_txn_set_name(VALUE obj, VALUE a)
+bdb_txn_set_name(VALUE obj, VALUE string)
 {
     bdb_TXN *txnst;
 
     GetTxnDB(obj, txnst);
-    bdb_test_error(txnst->txnid->set_name(txnst->txnid, StringValuePtr(a)));
-    return a;
+    bdb_test_error(txnst->txnid->set_name(txnst->txnid, StringValuePtr(string)));
+    return string;
 }
 
+/*
+ * Only for DB >= 4.4.
+ *
+ * Return the string associated with a transaction.
+ */
 static VALUE
 bdb_txn_get_name(VALUE obj)
 {
@@ -886,6 +1054,9 @@ void
 bdb_init_transaction(void)
 {
     id_txn_close = rb_intern("__txn_close__");
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cTxn = rb_define_class_under(bdb_mDb, "Txn", rb_cObject);
     bdb_cTxnCatch = rb_define_class_under(bdb_mDb, "DBTxnCatch", bdb_cTxn);
     rb_undef_alloc_func(bdb_cTxn);

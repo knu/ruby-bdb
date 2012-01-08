@@ -69,6 +69,16 @@ bdb_s_log_put_internal(VALUE obj, VALUE a, int flag)
     return ret;
 }
 
+/*
+ * call-seq:
+ *     log_put(string, flag = 0)
+ *
+ *  The +log_put+ function appends records to the log.  It return an
+ *  object <code>BDB::Lsn</code>.
+ *
+ *  +flag+ can have the value <code>BDB::CHECKPOINT</code>,
+ *  <code>BDB::CURLSN</code>, <code>BDB::FLUSH</code>.
+ */
 static VALUE
 bdb_s_log_put(int argc, VALUE *argv, VALUE obj)
 {
@@ -87,17 +97,33 @@ bdb_s_log_put(int argc, VALUE *argv, VALUE obj)
     return bdb_s_log_put_internal(obj, a, flag);
 }
 
+/*
+ * call-seq:
+ *     log_checkpoint(string)
+ *
+ * Same as +log_put(string, BDB::CHECKPOINT)+.
+ */
 static VALUE
-bdb_s_log_checkpoint(VALUE obj, VALUE a)
+bdb_s_log_checkpoint(VALUE obj, VALUE string)
 {
 #if HAVE_CONST_DB_CHECKPOINT
-    return bdb_s_log_put_internal(obj, a, DB_CHECKPOINT);
+    return bdb_s_log_put_internal(obj, string, DB_CHECKPOINT);
 #else
     rb_warning("BDB::CHECKPOINT is obsolete");
-    return bdb_s_log_put_internal(obj, a, 0);
+    return bdb_s_log_put_internal(obj, string, 0);
 #endif
 }
 
+/*
+ * call-seq:
+ *     log_flush(string)
+ *     log_flush()
+ *
+ * Same as +log_put(string, BDB::FLUSH)+.
+ *
+ * Without argument, garantee that all records are written to the
+ * disk.
+ */
 static VALUE
 bdb_s_log_flush(int argc, VALUE *argv, VALUE obj)
 {
@@ -125,18 +151,30 @@ bdb_s_log_flush(int argc, VALUE *argv, VALUE obj)
     }
 }
 
+/*
+ * call-seq:
+ *     log_curlsn(string)
+ *
+ * Same as +log_put(string, BDB::CURLSN)+.
+ */
 static VALUE
-bdb_s_log_curlsn(VALUE obj, VALUE a)
+bdb_s_log_curlsn(VALUE obj, VALUE string)
 {
 #if HAVE_CONST_DB_CURLSN
-    return bdb_s_log_put_internal(obj, a, DB_CURLSN);
+    return bdb_s_log_put_internal(obj, string, DB_CURLSN);
 #else
     rb_warning("BDB::CURLSN is obsolete");
-    return bdb_s_log_put_internal(obj, a, 0);
+    return bdb_s_log_put_internal(obj, string, 0);
 #endif
 }
-  
 
+
+/*
+ * call-seq:
+ *     log_stat
+ *
+ * Return log statistics.
+ */
 static VALUE
 bdb_env_log_stat(int argc, VALUE *argv, VALUE obj)
 {
@@ -221,8 +259,15 @@ bdb_env_log_stat(int argc, VALUE *argv, VALUE obj)
 
 #if ! HAVE_ST_DB_ENV_LOG_CURSOR
 
+/*
+ *  The +log_get+ return an array +[String, BDB::Lsn]+ according to
+ *  the +flag+ value.
+ *
+ *  +flag+ can has the value <code>BDB::CHECKPOINT</code>, <code>BDB::FIRST</code>,
+ *  <code>BDB::LAST</code>, <code>BDB::NEXT</code>, <code>BDB::PREV</code>, <code>BDB::CURRENT</code>.
+ */
 static VALUE
-bdb_env_log_get(VALUE obj, VALUE a)
+bdb_env_log_get(VALUE obj, VALUE flag)
 {
     bdb_ENV *envst;
     DBT data;
@@ -231,7 +276,7 @@ bdb_env_log_get(VALUE obj, VALUE a)
     int ret, flag;
 
     GetEnvDB(obj, envst);
-    flag = NUM2INT(a);
+    flag = NUM2INT(flag);
     MEMZERO(&data, DBT, 1);
     data.flags |= DB_DBT_MALLOC;
     lsn = bdb_makelsn(obj);
@@ -411,6 +456,12 @@ bdb_env_i_get(VALUE obj)
 }
 
 
+/*
+ * call-seq:
+ *     log_each { |string, lsn| ... }
+ *
+ * Implements an iterator inside of the log.
+ */
 static VALUE
 bdb_env_log_each(VALUE obj)
 {
@@ -423,6 +474,12 @@ bdb_env_log_each(VALUE obj)
     return rb_ensure(bdb_env_i_get, lsn, bdb_log_cursor_close, lsn);
 }
 
+/*
+ * call-seq:
+ *     log_reverse_each { |string, lsn| ... }
+ *
+ * Implements an iterator inside of the log.
+ */
 static VALUE
 bdb_env_log_hcae(VALUE obj)
 {
@@ -467,7 +524,17 @@ bdb_log_hcae(VALUE lsn)
 
 
 #endif
- 
+
+/*
+ * call-seq:
+ *     log_archive(flags = 0)
+ *
+ * The log_archive function return an array of log or database file
+ * names.
+ *
+ * +flags+ value must be set to 0 or the value <code>BDB::ARCH_DATA</code>,
+ * <code>BDB::ARCH_ABS</code>, <code>BDB::ARCH_LOG</code>.
+ */
 static VALUE
 bdb_env_log_archive(int argc, VALUE *argv, VALUE obj)
 {
@@ -519,6 +586,10 @@ bdb_lsn_env(VALUE obj)
     return lsnst->env;
 }
 
+/*
+ * The +log_file+ function maps <code>BDB::Lsn</code> structures to file
+ * names.
+ */
 static VALUE
 bdb_lsn_log_file(VALUE obj)
 {
@@ -540,6 +611,11 @@ bdb_lsn_log_file(VALUE obj)
     return rb_tainted_str_new2(name);
 }
 
+/*
+ * The +log_flush+ function guarantees that all log records whose
+ * <code>DBB:Lsn</code> are less than or equal to the current lsn have been
+ * written to disk.
+ */
 static VALUE
 bdb_lsn_log_flush(VALUE obj)
 {
@@ -561,19 +637,26 @@ bdb_lsn_log_flush(VALUE obj)
 }
 
 static VALUE
-bdb_lsn_log_compare(VALUE obj, VALUE a)
+bdb_lsn_log_compare(VALUE obj, VALUE other)
 {
     struct dblsnst *lsnst1, *lsnst2;
     bdb_ENV *envst1, *envst2;
 
-    if (!rb_obj_is_kind_of(a, bdb_cLsn)) {
+    if (!rb_obj_is_kind_of(other, bdb_cLsn)) {
 	rb_raise(bdb_eFatal, "invalid argument for <=>");
     }
     GetLsn(obj, lsnst1, envst1);
-    GetLsn(a, lsnst2, envst2);
+    GetLsn(other, lsnst2, envst2);
     return INT2NUM(log_compare(lsnst1->lsn, lsnst2->lsn));
 }
 
+/*
+ * call-seq:
+ *     log_get(flags = BDB::SET)
+ *     get(flags = BDB::SET)
+ *
+ * Return the +String+ associated with this <code>BDB::Lsn</code>.
+ */
 static VALUE
 bdb_lsn_log_get(int argc, VALUE *argv, VALUE obj)
 {
@@ -616,8 +699,11 @@ bdb_lsn_log_get(int argc, VALUE *argv, VALUE obj)
     return res;
 }
 
+/*
+ * The +log_register+ function registers a file +name+.
+ */
 static VALUE
-bdb_log_register(VALUE obj, VALUE a)
+bdb_log_register(VALUE obj, VALUE name)
 {
 #if ! (HAVE_ST_DB_ENV_LOG_REGISTER || HAVE_DB_LOG_REGISTER || HAVE_ST_DB_ENV_LG_INFO)
     rb_warn("log_register is obsolete");
@@ -626,7 +712,7 @@ bdb_log_register(VALUE obj, VALUE a)
     bdb_DB *dbst;
     bdb_ENV *envst;
 
-    if (TYPE(a) != T_STRING) {
+    if (TYPE(name) != T_STRING) {
 	rb_raise(bdb_eFatal, "Need a filename");
     }
     if (bdb_env_p(obj) == Qfalse) {
@@ -638,20 +724,23 @@ bdb_log_register(VALUE obj, VALUE a)
     if (!envst->envp->lg_info) {
 	rb_raise(bdb_eFatal, "log region not open");
     }
-    bdb_test_error(log_register(envst->envp->lg_info, dbst->dbp, StringValuePtr(a), dbst->type, &envst->fidp));
+    bdb_test_error(log_register(envst->envp->lg_info, dbst->dbp, StringValuePtr(name), dbst->type, &envst->fidp));
 #elif HAVE_ST_DB_ENV_LOG_REGISTER
-    bdb_test_error(envst->envp->log_register(envst->envp, dbst->dbp, StringValuePtr(a)));
+    bdb_test_error(envst->envp->log_register(envst->envp, dbst->dbp, StringValuePtr(name)));
 #else
 #if HAVE_DB_LOG_REGISTER_4
-    bdb_test_error(log_register(envst->envp, dbst->dbp, StringValuePtr(a), &envst->fidp));
+    bdb_test_error(log_register(envst->envp, dbst->dbp, StringValuePtr(name), &envst->fidp));
 #else
-    bdb_test_error(log_register(envst->envp, dbst->dbp, StringValuePtr(a)));
+    bdb_test_error(log_register(envst->envp, dbst->dbp, StringValuePtr(name)));
 #endif
 #endif
     return obj;
 #endif
 }
 
+/*
+ * The +log_unregister+ function unregisters a file name.
+ */
 static VALUE
 bdb_log_unregister(VALUE obj)
 {
@@ -703,6 +792,9 @@ bdb_init_log(void)
     rb_define_method(bdb_cEnv, "log_reverse_each", bdb_env_log_hcae, 0);
     rb_define_method(bdb_cCommon, "log_register", bdb_log_register, 1);
     rb_define_method(bdb_cCommon, "log_unregister", bdb_log_unregister, 0);
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cLsn = rb_define_class_under(bdb_mDb, "Lsn", rb_cObject);
     rb_include_module(bdb_cLsn, rb_mComparable);
     rb_undef_alloc_func(bdb_cLsn);

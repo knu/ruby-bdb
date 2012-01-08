@@ -1,6 +1,6 @@
 #include "bdb.h"
 
-static void 
+static void
 bdb_cursor_free(bdb_DBC *dbcst)
 {
     bdb_DB *dbst;
@@ -15,6 +15,13 @@ bdb_cursor_free(bdb_DBC *dbcst)
     free(dbcst);
 }
 
+/*
+ * call-seq:
+ *     cursor(flags = 0)
+ *     db_cursor(flags = 0)
+ *
+ * Open a new cursor.
+ */
 static VALUE
 bdb_cursor(int argc, VALUE *argv, VALUE obj)
 {
@@ -49,6 +56,13 @@ bdb_cursor(int argc, VALUE *argv, VALUE obj)
     return a;
 }
 
+/*
+ * call-seq:
+ *     write_cursor(flags = 0)
+ *     db_write_cursor(flags = 0)
+ *
+ * Open a new cursor with the flag <code>BDB::WRITECURSOR</code>.
+ */
 static VALUE
 bdb_write_cursor(VALUE obj)
 {
@@ -61,12 +75,13 @@ bdb_write_cursor(VALUE obj)
     return bdb_cursor(1, &f, obj);
 }
 
+/* Discards the cursor. */
 static VALUE
 bdb_cursor_close(VALUE obj)
 {
     bdb_DBC *dbcst;
     bdb_DB *dbst;
-    
+
     if (!OBJ_TAINTED(obj) && rb_safe_level() >= 4)
 	rb_raise(rb_eSecurityError, "Insecure: can't close the cursor");
     GetCursorDB(obj, dbcst, dbst);
@@ -74,14 +89,15 @@ bdb_cursor_close(VALUE obj)
     dbcst->dbc = NULL;
     return Qtrue;
 }
-  
+
+/* Deletes the key/data pair currently referenced by the cursor. */
 static VALUE
 bdb_cursor_del(VALUE obj)
 {
     int flags = 0;
     bdb_DBC *dbcst;
     bdb_DB *dbst;
-    
+
     rb_secure(4);
     GetCursorDB(obj, dbcst, dbst);
     bdb_test_error(dbcst->dbc->c_del(dbcst->dbc, flags));
@@ -90,6 +106,23 @@ bdb_cursor_del(VALUE obj)
 
 #if HAVE_ST_DBC_C_DUP
 
+/*
+ * call-seq:
+ *     dup(flags = 0)
+ *     clone(flags = 0)
+ *     c_dup(flags = 0)
+ *     c_clone(flags = 0)
+ *
+ * Creates new cursor that uses the same transaction and locker ID as
+ * the original cursor.  This is useful when an application is using
+ * locking and requires two or more cursors in the same thread of
+ * control.
+ *
+ * +flags+ can have the value <code>BDB::DB_POSITION</code>, in this
+ * case the newly created cursor is initialized to reference the same
+ * position in the database as the original cursor and hold the same
+ * locks.
+ */
 static VALUE
 bdb_cursor_dup(int argc, VALUE *argv, VALUE obj)
 {
@@ -98,7 +131,7 @@ bdb_cursor_dup(int argc, VALUE *argv, VALUE obj)
     bdb_DBC *dbcst, *dbcstdup;
     bdb_DB *dbst;
     DBC *dbcdup;
-    
+
     if (rb_scan_args(argc, argv, "01", &a))
         flags = NUM2INT(a);
     GetCursorDB(obj, dbcst, dbst);
@@ -111,6 +144,7 @@ bdb_cursor_dup(int argc, VALUE *argv, VALUE obj)
 
 #endif
 
+/* Returns the count of duplicate. */
 static VALUE
 bdb_cursor_count(VALUE obj)
 {
@@ -248,6 +282,22 @@ bdb_cursor_get_common(int argc, VALUE *argv, VALUE obj, int c_pget)
     }
 }
 
+/*
+ * call-seq:
+ *     get(flags, key = nil, value = nil)
+ *     c_get(flags, key = nil, value = nil)
+ *
+ * Retrieves key/data pair from the database.
+ *
+ * See the description of +c_get+ in the Berkeley distribution for the
+ * different values of the +flags+ parameter.
+ *
+ * +key+ must be given if the +flags+ parameter is:
+ * <code>BDB::SET</code> | <code>BDB::SET_RANGE</code> |
+ * <code>BDB::SET_RECNO</code>
+ *
+ * +key+ and +value+ must be specified for <code>BDB::GET_BOTH</code>.
+ */
 static VALUE
 bdb_cursor_get(int argc, VALUE *argv, VALUE obj)
 {
@@ -256,6 +306,13 @@ bdb_cursor_get(int argc, VALUE *argv, VALUE obj)
 
 #if HAVE_ST_DBC_C_PGET
 
+/*
+ * call-seq:
+ *     pget(flags, key = nil, value = nil)
+ *     c_pget(flags, key = nil, value = nil)
+ *
+ * Retrieves key/primary key/data pair from the database.
+ */
 static VALUE
 bdb_cursor_pget(int argc, VALUE *argv, VALUE obj)
 {
@@ -274,21 +331,33 @@ bdb_cursor_set_xxx(VALUE obj, VALUE a, int flag)
     return bdb_cursor_get(2, b, obj);
 }
 
-static VALUE 
+/*
+ * call-seq:
+ *     set(key)
+ *     c_set(key)
+ *     set_range(key)
+ *     c_set_range(key)
+ *     set_recno(key)
+ *     c_set_recno(key)
+ *
+ * Same as +get+ with the flags <code>BDB::SET</code> or
+ * <code>BDB::SET_RANGE</code> or <code>BDB::SET_RECNO</code>.
+ */
+static VALUE
 bdb_cursor_set(VALUE obj, VALUE a)
-{ 
+{
     return bdb_cursor_set_xxx(obj, a, DB_SET);
 }
 
-static VALUE 
+static VALUE
 bdb_cursor_set_range(VALUE obj, VALUE a)
-{ 
+{
     return bdb_cursor_set_xxx(obj, a, DB_SET_RANGE);
 }
 
-static VALUE 
+static VALUE
 bdb_cursor_set_recno(VALUE obj, VALUE a)
-{ 
+{
     return bdb_cursor_set_xxx(obj, a, DB_SET_RECNO);
 }
 
@@ -300,6 +369,7 @@ bdb_cursor_xxx(VALUE obj, int val)
     return bdb_cursor_get(1, &b, obj);
 }
 
+/* Same as +get(BDB::NEXT)+. */
 static VALUE
 bdb_cursor_next(VALUE obj)
 {
@@ -316,30 +386,51 @@ bdb_cursor_next_dup(VALUE obj)
 
 #endif
 
+/* Same as +get(BDB::PREV)+. */
 static VALUE
 bdb_cursor_prev(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_PREV);
 }
 
+/* Same as +get(BDB::FIRST)+. */
 static VALUE
 bdb_cursor_first(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_FIRST);
 }
 
+/* Same as +get(BDB::LAST)+. */
 static VALUE
 bdb_cursor_last(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_LAST);
 }
 
+/* Same as +get(BDB::CURRENT)+. */
 static VALUE
 bdb_cursor_current(VALUE obj)
 {
     return bdb_cursor_xxx(obj, DB_CURRENT);
 }
 
+/*
+ * call-seq:
+ *     put(flags, value)
+ *     c_put(flags, value)
+ *     put(flags, key, value)
+ *     c_put(flags, key, value)
+ *
+ * Stores data +value+ into the database.  If +key+ is given, stores
+ * key/data pairs into the database (only for Btree and Hash access
+ * methods).
+ *
+ * See the description of +c_put+ in the Berkeley distribution for the
+ * different values of the +flags+ parameter.
+ *
+ * +flags+ must have the value <code>BDB::KEYFIRST</code> or
+ * <code>BDB::KEYLAST</code>.
+ */
 static VALUE
 bdb_cursor_put(int argc, VALUE *argv, VALUE obj)
 {
@@ -429,6 +520,9 @@ bdb_init_cursor(void)
     rb_define_method(bdb_cCommon, "cursor", bdb_cursor, -1);
     rb_define_method(bdb_cCommon, "db_write_cursor", bdb_write_cursor, 0);
     rb_define_method(bdb_cCommon, "write_cursor", bdb_write_cursor, 0);
+#if 0 /* rdoc */
+    bdb_mDb = rb_define_module("BDB");
+#endif
     bdb_cCursor = rb_define_class_under(bdb_mDb, "Cursor", rb_cObject);
     rb_undef_alloc_func(bdb_cCursor);
     rb_undef_method(CLASS_OF(bdb_cCursor), "new");
