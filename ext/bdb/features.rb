@@ -1,5 +1,3 @@
-#!/usr/bin/ruby
-
 unless "a".respond_to?(:tr_cpp)
    class String
       def tr_cpp
@@ -811,12 +809,7 @@ end
 #
 
 begin
-   conftest = CONFTEST_C.dup
-   class Object
-      remove_const('CONFTEST_C')
-   end
-
-   CONFTEST_C = 'conftest.cxx'
+   cppflags, $CPPFLAGS = $CPPFLAGS, $CPPFLAGS + ' -x c++'
 
    if $defs.include?('-DHAVE_ST_DB_ENV_SET_REP_TRANSPORT') ||
          $defs.include?('-DHAVE_ST_DB_ENV_REP_SET_TRANSPORT')
@@ -877,11 +870,7 @@ EOT
 
 
 ensure
-   class Object
-      remove_const('CONFTEST_C')
-   end
-
-   CONFTEST_C = conftest
+   $CPPFLAGS = cppflags
 end
 
 
