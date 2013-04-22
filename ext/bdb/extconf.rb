@@ -119,15 +119,6 @@ end
    have_func(f, "ruby.h")
 end
 
-["insert", "values_at"].each do |f|
-   print "checking for Array##{f}... "
-   if [].respond_to?(f)
-      puts "yes"
-      $defs << "-DHAVE_RB_ARY_#{f.upcase}"
-   else
-      puts "no"
-   end
-end
 have_type('rb_io_t', headers)
 
 if enable_config('db-xml')

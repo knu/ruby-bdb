@@ -3832,7 +3832,6 @@ bdb_indexes(int argc, VALUE *argv, VALUE obj)
     VALUE indexes;
     int i;
 
-#if HAVE_RB_ARY_VALUES_AT
     rb_warn("Common#%s is deprecated; use Common#values_at",
 #if HAVE_RB_FRAME_THIS_FUNC
 	    rb_id2name(rb_frame_this_func())
@@ -3840,7 +3839,6 @@ bdb_indexes(int argc, VALUE *argv, VALUE obj)
 	    rb_id2name(rb_frame_last_func())
 #endif
 	    );
-#endif
     indexes = rb_ary_new2(argc);
     for (i = 0; i < argc; i++) {
 	rb_ary_push(indexes, bdb_get(1, &argv[i], obj));
