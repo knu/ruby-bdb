@@ -136,7 +136,7 @@ else
    $defs << '-DNOT_HAVE_DBXML_INTERFACE'
 end
 
-require './features'
+require File.expand_path('features', File.dirname(__FILE__))
 
 create_makefile("bdb")
 if unknown
