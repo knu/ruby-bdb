@@ -2864,7 +2864,7 @@ bdb_env_rep_set_nsites(VALUE obj, VALUE sites)
 
     GetEnvDB(obj, envst);
     bdb_test_error(envst->envp->rep_set_nsites(envst->envp, NUM2UINT(sites)));
-    return a;
+    return sites;
 }
 
 /*

@@ -2817,7 +2817,7 @@ bdb_has_both(VALUE obj, VALUE a, VALUE b)
  * exist.
  */
 VALUE
-bdb_del(VALUE obj, VALUE key)
+bdb_del(VALUE obj, VALUE a)
 {
     bdb_DB *dbst;
     DB_TXN *txnid;
@@ -2835,7 +2835,7 @@ bdb_del(VALUE obj, VALUE key)
     }
 #endif
     MEMZERO(&key, DBT, 1);
-    b = bdb_test_recno(obj, &key, &recno, key);
+    b = bdb_test_recno(obj, &key, &recno, a);
     ret = bdb_test_error(dbst->dbp->del(dbst->dbp, txnid, &key, flag));
     if (ret == DB_NOTFOUND || ret == DB_KEYEMPTY)
         return Qnil;
