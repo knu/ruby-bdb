@@ -8,6 +8,8 @@ InstalledFiles
 _yardoc
 coverage
 doc/
+ext/*/mkmf.log
+lib/*.so
 lib/bundler/man
 pkg
 rdoc
