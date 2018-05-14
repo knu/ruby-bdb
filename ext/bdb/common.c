@@ -1741,7 +1741,7 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 #endif
 	switch(dbst->type) {
 	case DB_BTREE:
-	    RBASIC(obj)->klass = bdb_cBtree;
+	    rb_obj_reveal(obj, bdb_cBtree);
 	    break;
 	case DB_HASH:
 	    RBASIC(obj)->klass = bdb_cHash;
@@ -1752,17 +1752,17 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 
 	    rb_warning("It's hard to distinguish Recnum with Recno for all versions of Berkeley DB");
 	    if ((count = bdb_is_recnum(dbst->dbp)) != -1) {
-		RBASIC(obj)->klass = bdb_cRecnum;
+		rb_obj_reveal(obj, bdb_cRecnum);
 		dbst->len = count;
 	    }
 	    else {
-		RBASIC(obj)->klass = bdb_cRecno;
+		rb_obj_reveal(obj, bdb_cRecno);
 	    }
 	    break;
 	}
 #if HAVE_CONST_DB_QUEUE
 	case DB_QUEUE:
-	    RBASIC(obj)->klass = bdb_cQueue;
+	    rb_obj_reveal(obj, bdb_cQueue);
 	    break;
 #endif
 	default:
