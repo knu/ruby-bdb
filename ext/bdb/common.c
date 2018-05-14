@@ -1805,19 +1805,19 @@ bdb_s_alloc(VALUE obj)
     dbst->options = BDB_NOT_OPEN;
     cl = obj;
     while (cl) {
-	if (cl == bdb_cBtree || RCLASS(cl)->m_tbl == RCLASS(bdb_cBtree)->m_tbl) {
+	if (cl == bdb_cBtree || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cBtree))) {
 	    dbst->type = DB_BTREE;
 	    break;
 	}
-	if (cl == bdb_cRecnum || RCLASS(cl)->m_tbl == RCLASS(bdb_cRecnum)->m_tbl) {
+	if (cl == bdb_cRecnum || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cRecnum))) {
 	    dbst->type = DB_RECNO;
 	    break;
 	}
-	else if (cl == bdb_cHash || RCLASS(cl)->m_tbl == RCLASS(bdb_cHash)->m_tbl) {
+	else if (cl == bdb_cHash || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cHash))) {
 	    dbst->type = DB_HASH;
 	    break;
 	}
-	else if (cl == bdb_cRecno || RCLASS(cl)->m_tbl == RCLASS(bdb_cRecno)->m_tbl) {
+	else if (cl == bdb_cRecno || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cRecno))) {
 	    dbst->type = DB_RECNO;
 	    break;
     }
@@ -1827,7 +1827,7 @@ bdb_s_alloc(VALUE obj)
 	    break;
 	}
 #endif
-	else if (cl == bdb_cUnknown || RCLASS(cl)->m_tbl == RCLASS(bdb_cUnknown)->m_tbl) {
+	else if (cl == bdb_cUnknown || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cUnknown))) {
 	    dbst->type = DB_UNKNOWN;
 	    break;
 	}
