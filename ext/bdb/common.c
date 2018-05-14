@@ -1448,16 +1448,16 @@ bdb_s_new(int argc, VALUE *argv, VALUE obj)
 	dbst->marshal = obj;
 	dbst->options |= BDB_MARSHAL;
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_store_key"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_store_key"), 0) == 1) {
 	dbst->filter[FILTER_KEY] = INT2FIX(rb_intern("bdb_store_key"));
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_fetch_key"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_fetch_key"), 0) == 1) {
 	dbst->filter[2 + FILTER_KEY] = INT2FIX(rb_intern("bdb_fetch_key"));
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_store_value"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_store_value"), 0) == 1) {
 	dbst->filter[FILTER_VALUE] = INT2FIX(rb_intern("bdb_store_value"));
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_fetch_value"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_fetch_value"), 0) == 1) {
 	dbst->filter[2 + FILTER_VALUE] = INT2FIX(rb_intern("bdb_fetch_value"));
     }
     rb_obj_call_init(res, argc, argv);
