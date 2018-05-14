@@ -1448,16 +1448,16 @@ bdb_s_new(int argc, VALUE *argv, VALUE obj)
 	dbst->marshal = obj;
 	dbst->options |= BDB_MARSHAL;
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_store_key"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_store_key"), 0) == 1) {
 	dbst->filter[FILTER_KEY] = INT2FIX(rb_intern("bdb_store_key"));
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_fetch_key"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_fetch_key"), 0) == 1) {
 	dbst->filter[2 + FILTER_KEY] = INT2FIX(rb_intern("bdb_fetch_key"));
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_store_value"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_store_value"), 0) == 1) {
 	dbst->filter[FILTER_VALUE] = INT2FIX(rb_intern("bdb_store_value"));
     }
-    if (rb_method_boundp(obj, rb_intern("bdb_fetch_value"), 0) == Qtrue) {
+    if (rb_method_boundp(obj, rb_intern("bdb_fetch_value"), 0) == 1) {
 	dbst->filter[2 + FILTER_VALUE] = INT2FIX(rb_intern("bdb_fetch_value"));
     }
     rb_obj_call_init(res, argc, argv);
@@ -1741,7 +1741,7 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 #endif
 	switch(dbst->type) {
 	case DB_BTREE:
-	    RBASIC(obj)->klass = bdb_cBtree;
+	    rb_obj_reveal(obj, bdb_cBtree);
 	    break;
 	case DB_HASH:
 	    RBASIC(obj)->klass = bdb_cHash;
@@ -1752,17 +1752,17 @@ bdb_init(int argc, VALUE *argv, VALUE obj)
 
 	    rb_warning("It's hard to distinguish Recnum with Recno for all versions of Berkeley DB");
 	    if ((count = bdb_is_recnum(dbst->dbp)) != -1) {
-		RBASIC(obj)->klass = bdb_cRecnum;
+		rb_obj_reveal(obj, bdb_cRecnum);
 		dbst->len = count;
 	    }
 	    else {
-		RBASIC(obj)->klass = bdb_cRecno;
+		rb_obj_reveal(obj, bdb_cRecno);
 	    }
 	    break;
 	}
 #if HAVE_CONST_DB_QUEUE
 	case DB_QUEUE:
-	    RBASIC(obj)->klass = bdb_cQueue;
+	    rb_obj_reveal(obj, bdb_cQueue);
 	    break;
 #endif
 	default:
@@ -1805,19 +1805,19 @@ bdb_s_alloc(VALUE obj)
     dbst->options = BDB_NOT_OPEN;
     cl = obj;
     while (cl) {
-	if (cl == bdb_cBtree || RCLASS(cl)->m_tbl == RCLASS(bdb_cBtree)->m_tbl) {
+	if (cl == bdb_cBtree || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cBtree))) {
 	    dbst->type = DB_BTREE;
 	    break;
 	}
-	if (cl == bdb_cRecnum || RCLASS(cl)->m_tbl == RCLASS(bdb_cRecnum)->m_tbl) {
+	if (cl == bdb_cRecnum || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cRecnum))) {
 	    dbst->type = DB_RECNO;
 	    break;
 	}
-	else if (cl == bdb_cHash || RCLASS(cl)->m_tbl == RCLASS(bdb_cHash)->m_tbl) {
+	else if (cl == bdb_cHash || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cHash))) {
 	    dbst->type = DB_HASH;
 	    break;
 	}
-	else if (cl == bdb_cRecno || RCLASS(cl)->m_tbl == RCLASS(bdb_cRecno)->m_tbl) {
+	else if (cl == bdb_cRecno || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cRecno))) {
 	    dbst->type = DB_RECNO;
 	    break;
     }
@@ -1827,7 +1827,7 @@ bdb_s_alloc(VALUE obj)
 	    break;
 	}
 #endif
-	else if (cl == bdb_cUnknown || RCLASS(cl)->m_tbl == RCLASS(bdb_cUnknown)->m_tbl) {
+	else if (cl == bdb_cUnknown || RTEST(rb_funcall(cl, rb_intern("<="), 1, bdb_cUnknown))) {
 	    dbst->type = DB_UNKNOWN;
 	    break;
 	}
